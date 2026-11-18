@@ -1,0 +1,673 @@
+/* POWERSCALING — DOM interface: menus, HUD, reward cards, pause sheet, results */
+(function () {
+  'use strict';
+  const PS = (window.PS = window.PS || {});
+  const U = PS.U, D = PS.Data;
+  const $ = (id) => document.getElementById(id);
+  const esc = U.esc;
+  const ico = (name, size, color) => PS.Icons.svg(name, { size: size || 20, color: color || 'currentColor' });
+  const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe' };
+
+  let hudT = 0, loadoutSig = '', affSig = '', curSpec = null, choiceAt = 0, banishMode = false;
+  let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
+
+  function hydrate(root) {
+    (root || document).querySelectorAll('i[data-icon]').forEach((el) => {
+      if (!el.firstChild) el.innerHTML = ico(el.dataset.icon, +el.dataset.size || 18);
+    });
+  }
+  function click(el, fn) {
+    el.addEventListener('click', (e) => { PS.Audio.play('uiClick', { vol: 0.5 }); fn(e); });
+  }
+  function elColor(el) { return el ? D.ELEMENTS[el].color : '#efe8d8'; }
+
+  const UI = {
+    /* ================================================================ boot */
+    init() {
+      hydrate();
+      // logo: each letter larger than the last
+      const word = 'POWERSCALING';
+      $('logo').innerHTML = word.split('').map((ch, i) => {
+        const t = i / (word.length - 1);
+        return `<span style="font-size:${(0.5 + Math.pow(t, 1.6) * 1.15).toFixed(3)}em;--t:${t.toFixed(3)}">${ch}</span>`;
+      }).join('');
+
+      click($('navPlay'), () => this.showScreen('scrClass'));
+      click($('navTree'), () => this.showScreen('scrTree'));
+      click($('navBoard'), () => this.showScreen('scrBoard'));
+      click($('navHelp'), () => this.showScreen('scrHelp'));
+      click($('navSettings'), () => this.showScreen('scrSettings'));
+      document.querySelectorAll('[data-back]').forEach((b) => click(b, () => this.showScreen('scrTitle')));
+      click($('btnPause'), () => PS.Game.pause());
+      click($('pauseResume'), () => PS.Game.resume());
+      click($('pauseSettings'), () => this.openSettingsOverlay());
+      click($('ovSettingsClose'), () => { $('ovSettings').hidden = true; });
+      const quit = $('pauseQuit');
+      click(quit, () => {
+        if (quit.dataset.armed) { delete quit.dataset.armed; quit.textContent = 'End run'; this.hidePause(); PS.Game.endRun(true); }
+        else { quit.dataset.armed = '1'; quit.textContent = 'Really end the run?'; }
+      });
+
+      // tooltips
+      const tip = $('tooltip');
+      document.addEventListener('mouseover', (e) => {
+        const t = e.target.closest && e.target.closest('[data-tip]');
+        if (!t) { tip.hidden = true; return; }
+        tip.innerHTML = t.dataset.tip;
+        tip.hidden = false;
+        const r = t.getBoundingClientRect();
+        const tw = tip.offsetWidth, th = tip.offsetHeight;
+        let x = r.left + r.width / 2 - tw / 2, y = r.top - th - 10;
+        if (y < 8) y = r.bottom + 10;
+        tip.style.left = U.clamp(x, 8, window.innerWidth - tw - 8) + 'px';
+        tip.style.top = y + 'px';
+      });
+      document.addEventListener('mouseover', (e) => {
+        if (e.target.closest && e.target.closest('button') && e.relatedTarget && !e.target.closest('button').contains(e.relatedTarget)) PS.Audio.play('uiHover', { vol: 0.25 });
+      });
+
+      selClass = D.CLASSES[PS.Save.data.lastClass] && PS.Save.data.unlocked[PS.Save.data.lastClass] ? PS.Save.data.lastClass : 'vanguard';
+      this.showMenu();
+      if (/[?&]bot=1/.test(location.search)) setTimeout(() => PS.Game.start(selClass, { bot: {} }), 300);
+    },
+
+    /* ================================================================ menu screens */
+    showMenu() {
+      $('hud').hidden = true;
+      $('touch').hidden = true;
+      $('ovChoice').hidden = true; $('ovPause').hidden = true; $('ovOver').hidden = true;
+      $('screens').hidden = false;
+      this.showScreen('scrTitle');
+    },
+    showScreen(id) {
+      document.querySelectorAll('.screen').forEach((s) => { s.hidden = s.id !== id; });
+      lastScreen = id;
+      if (id === 'scrTitle') this.renderTitle();
+      if (id === 'scrClass') this.renderClasses();
+      if (id === 'scrTree') this.renderTree();
+      if (id === 'scrBoard') this.renderBoard();
+      if (id === 'scrHelp') this.renderHelp();
+      if (id === 'scrSettings') this.renderSettings($('settingsBody'));
+    },
+    renderTitle() {
+      const d = PS.Save.data, st = d.stats;
+      $('navEssence').innerHTML = `${ico('essence', 14)} ${U.fmtNum(d.essence)}`;
+      const top = PS.Save.board().slice(0, 3);
+      const affordable = D.META.some((n) => (d.tree[n.id] || 0) < n.max && this.nodeOpen(n) && d.essence >= D.metaCost(n, d.tree[n.id] || 0));
+      $('navTree').classList.toggle('has-news', affordable);
+      $('titleSide').innerHTML = `
+        <div class="side-card">
+          <h3>Your record</h3>
+          ${st.runs ? `
+          <dl class="record">
+            <div><dt>Best score</dt><dd>${U.fmtNum(st.bestScore)}</dd></div>
+            <div><dt>Longest run</dt><dd>${U.fmtTime(st.bestTime)}</dd></div>
+            <div><dt>Runs</dt><dd>${st.runs}</dd></div>
+            <div><dt>Bosses slain</dt><dd>${st.bosses}</dd></div>
+          </dl>` : `<p class="muted">No runs yet. The first boss arrives at 3:00 — can you last that long?</p>`}
+          ${top.length ? `<ol class="mini-board">${top.map((r) => `<li><span>${esc(r.name)}</span><span class="muted">${D.CLASSES[r.cls] ? D.CLASSES[r.cls].name : ''}</span><b>${U.fmtNum(r.score)}</b></li>`).join('')}</ol>` : ''}
+          ${affordable ? `<p class="hint">${ico('essence', 14)} You can afford a skill tree upgrade.</p>` : ''}
+        </div>`;
+    },
+
+    renderClasses() {
+      const d = PS.Save.data;
+      const grid = $('classGrid');
+      grid.innerHTML = D.CLASS_IDS.map((id) => {
+        const c = D.CLASSES[id], locked = !d.unlocked[id];
+        return `<button class="class-card${id === selClass ? ' sel' : ''}${locked ? ' locked' : ''}" data-cls="${id}" style="--c:${c.color}">
+          <span class="class-ico">${ico(locked ? 'lock' : CLASS_ICON[id], 34)}</span>
+          <span class="class-name">${c.name}</span>
+          <span class="class-title">${locked ? c.unlock.text : c.title}</span>
+        </button>`;
+      }).join('');
+      grid.querySelectorAll('.class-card').forEach((b) => click(b, () => { selClass = b.dataset.cls; this.renderClasses(); }));
+      const c = D.CLASSES[selClass], locked = !d.unlocked[selClass];
+      const prim = PS.Skills.DEFS[c.primary], el = D.ELEMENTS[prim.el];
+      const base = Object.assign({ maxHp: 100, speed: 210, armor: 0 }, c.base);
+      $('classDetail').innerHTML = `
+        <div class="cd-main" style="--c:${c.color}">
+          <p class="cd-blurb">${c.blurb}</p>
+          <div class="cd-stats">
+            <span>${ico('heart', 16)} ${base.maxHp} health</span>
+            <span>${ico('boot', 16)} ${base.speed} speed</span>
+            ${base.armor ? `<span>${ico('shield', 16)} ${base.armor} armor</span>` : ''}
+            <span>${ico('swords', 16)} ${c.difficulty} to play</span>
+          </div>
+          <div class="cd-kit">
+            <div class="kit"><span class="kit-ico" style="--c:${el.color}">${ico(prim.icon, 26)}</span><div><b>${prim.name}</b><small>Attack, ${el.name}</small><p>${prim.desc}</p></div></div>
+            <div class="kit"><span class="kit-ico" style="--c:${c.color}">${ico(c.ability.icon, 26)}</span><div><b>${c.ability.name}</b><small>Ability, ${c.ability.cd}s cooldown</small><p>${c.ability.desc}</p></div></div>
+            <div class="kit"><span class="kit-ico" style="--c:#bcd0ff">${ico('dash', 26)}</span><div><b>${c.dashName}</b><small>Dash</small><p>A quick burst of movement. You cannot be hurt while dashing.${c.passive ? ' ' + c.passive : ''}</p></div></div>
+          </div>
+          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : 'Begin run'}</button>
+        </div>
+        <div class="cd-tree">
+          <h3>Ascension paths <small>one talent every 6 levels, and only one path can reach its final tier</small></h3>
+          <div class="branches">${c.branches.map((br) => `
+            <div class="branch" style="--c:${br.color}">
+              <h4>${ico(br.icon, 18)} ${br.name}</h4>
+              <ol>${br.nodes.map((n) => `<li><b>${n.name}</b><span>${n.desc}</span></li>`).join('')}</ol>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      const begin = $('btnBegin');
+      if (!locked) click(begin, () => PS.Game.start(selClass));
+    },
+
+    /* ---------------------------------------------------------------- meta tree */
+    nodeOpen(n) {
+      const tree = PS.Save.data.tree;
+      return n.req.some((r) => r === 'core' || (tree[r] || 0) > 0);
+    },
+    renderTree() {
+      const d = PS.Save.data, tree = d.tree;
+      $('treeEssence').textContent = U.fmtNum(d.essence);
+      const SPAN = 6.9; // layout units from centre to edge
+      const pos = (v) => (50 + (v / SPAN) * 50).toFixed(2) + '%';
+      let lines = '';
+      for (const n of D.META) {
+        for (const r of n.req) {
+          const a = r === 'core' ? { x: 0, y: 0 } : D.META_BY_ID[r];
+          const lit = (tree[n.id] || 0) > 0;
+          lines += `<line x1="${a.x}" y1="${a.y}" x2="${n.x}" y2="${n.y}" class="${lit ? 'lit' : ''}" style="--c:${D.META_ARMS[n.arm].color}"/>`;
+        }
+      }
+      const nodes = D.META.map((n) => {
+        const rank = tree[n.id] || 0, open = this.nodeOpen(n), cost = D.metaCost(n, rank);
+        const cls = rank >= n.max ? 'max' : rank > 0 ? 'own' : open ? (d.essence >= cost ? 'can' : 'open') : 'locked';
+        return `<button class="tnode ${cls}${n.id === selNode ? ' sel' : ''}${n.max === 1 && n.cost >= 400 ? ' cap' : ''}" data-node="${n.id}" style="left:${pos(n.x)};top:${pos(n.y)};--c:${D.META_ARMS[n.arm].color}" aria-label="${esc(n.name)}">
+          ${ico(n.icon, 24)}<span class="trank">${rank}/${n.max}</span></button>`;
+      }).join('');
+      $('treeCanvas').innerHTML = `
+        <div class="tree-square">
+          <svg viewBox="${-SPAN} ${-SPAN} ${SPAN * 2} ${SPAN * 2}" class="tree-lines" aria-hidden="true">${lines}</svg>
+          <div class="tcore" style="left:50%;top:50%">${ico('essence', 30)}</div>
+          ${Object.keys(D.META_ARMS).map((k) => {
+            const a = D.META_ARMS[k];
+            const p = { might: [0, -6.75], vitality: [-5.4, -2.0], fortune: [5.4, -2.0], mastery: [0, 6.75] }[k];
+            return `<span class="tarm" style="left:${pos(p[0])};top:${pos(p[1])};color:${a.color}">${a.name}</span>`;
+          }).join('')}
+          ${nodes}
+        </div>`;
+      $('treeCanvas').querySelectorAll('.tnode').forEach((b) => {
+        b.addEventListener('click', () => {
+          if (selNode === b.dataset.node) this.buyNode(selNode);
+          else { selNode = b.dataset.node; PS.Audio.play('uiClick', { vol: 0.5 }); this.renderTree(); }
+        });
+      });
+      this.renderTreeInfo();
+    },
+    renderTreeInfo() {
+      const d = PS.Save.data, n = D.META_BY_ID[selNode], rank = d.tree[n.id] || 0;
+      const open = this.nodeOpen(n), cost = D.metaCost(n, rank), maxed = rank >= n.max;
+      const arm = D.META_ARMS[n.arm];
+      const spent = D.META.reduce((sum, m) => { let s = 0; for (let i = 0; i < (d.tree[m.id] || 0); i++) s += D.metaCost(m, i); return sum + s; }, 0);
+      $('treeInfo').innerHTML = `
+        <div class="ti-head" style="--c:${arm.color}">
+          <span class="ti-ico">${ico(n.icon, 30)}</span>
+          <div><h3>${n.name}</h3><small style="color:${arm.color}">${arm.name}, rank ${rank} of ${n.max}</small></div>
+        </div>
+        <dl class="ti-effects">
+          ${rank > 0 ? `<div><dt>Now</dt><dd>${n.desc(rank)}</dd></div>` : ''}
+          ${!maxed ? `<div><dt>Next rank</dt><dd>${n.desc(rank + 1)}</dd></div>` : ''}
+        </dl>
+        ${maxed ? `<p class="ti-note">Fully mastered.</p>`
+          : !open ? `<p class="ti-note">Locked. Buy a connected upgrade first.</p>`
+          : `<button class="btn btn-primary btn-big" id="btnBuy" ${d.essence < cost ? 'disabled' : ''}>${d.essence < cost ? `Need ${U.fmtNum(cost - d.essence)} more Essence` : `Buy for ${U.fmtNum(cost)} Essence`}</button>`}
+        <p class="ti-foot">Essence is earned at the end of every run, win or lose. Upgrades are permanent and apply to every class.</p>
+        ${spent > 0 ? `<button class="btn btn-ghost" id="btnRefund">Refund all (${U.fmtNum(spent)} Essence)</button>` : ''}`;
+      const buy = $('btnBuy');
+      if (buy) buy.addEventListener('click', () => this.buyNode(n.id));
+      const refund = $('btnRefund');
+      if (refund) click(refund, () => {
+        if (!refund.dataset.armed) { refund.dataset.armed = '1'; refund.textContent = 'Refund everything?'; return; }
+        d.essence += spent; d.tree = {}; PS.Save.save(); this.renderTree();
+      });
+    },
+    buyNode(id) {
+      const d = PS.Save.data, n = D.META_BY_ID[id], rank = d.tree[id] || 0, cost = D.metaCost(n, rank);
+      if (rank >= n.max || !this.nodeOpen(n) || d.essence < cost) { PS.Audio.play('deny', { vol: 0.5 }); return; }
+      d.essence -= cost;
+      d.tree[id] = rank + 1;
+      PS.Save.save();
+      PS.Audio.play('buy');
+      this.renderTree();
+    },
+
+    /* ---------------------------------------------------------------- leaderboard */
+    renderBoard() {
+      const tabs = ['all'].concat(D.CLASS_IDS);
+      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : D.CLASSES[t].name}</button>`).join('');
+      $('boardTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { boardTab = b.dataset.tab; this.renderBoard(); }));
+      const rows = PS.Save.board(boardTab);
+      if (!rows.length) {
+        $('boardBody').innerHTML = `<div class="empty"><p>No runs recorded${boardTab === 'all' ? '' : ' for this class'} yet.</p><button class="btn btn-primary" id="boardPlay">Enter the rift</button></div>`;
+        click($('boardPlay'), () => this.showScreen('scrClass'));
+        return;
+      }
+      $('boardBody').innerHTML = `<table class="board-table">
+        <thead><tr><th>#</th><th>Name</th><th>Class</th><th class="num">Score</th><th class="num">Time</th><th class="num">Level</th><th class="num">Kills</th><th class="num">Bosses</th><th>Top damage</th><th>Date</th></tr></thead>
+        <tbody>${rows.map((r, i) => {
+          const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
+          return `<tr class="${i < 3 ? 'top' + (i + 1) : ''}">
+            <td>${i + 1}</td><td class="nm">${esc(r.name)}${r.won ? ` <span class="won" data-tip="Slew the Rift Lord">${ico('crown', 14)}</span>` : ''}</td>
+            <td style="color:${c.color}">${c.name}</td>
+            <td class="num score">${Math.round(r.score).toLocaleString('en-US')}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td>
+            <td class="num">${Math.round(r.kills).toLocaleString('en-US')}</td><td class="num">${r.bosses}</td>
+            <td class="muted">${esc((r.build || []).slice(0, 2).join(', '))}</td>
+            <td class="muted">${new Date(r.date).toLocaleDateString()}</td></tr>`;
+        }).join('')}</tbody></table>`;
+    },
+
+    renderHelp() {
+      const k = (s) => `<kbd>${s}</kbd>`;
+      $('helpBody').innerHTML = `
+        <div class="help-col">
+          <h3>Controls</h3>
+          <ul class="keys">
+            <li>${k('W')}${k('A')}${k('S')}${k('D')}<span>Move</span></li>
+            <li>${k('Mouse')}<span>Aim your attack. It fires on its own.</span></li>
+            <li>${k('Space')}<span>Dash. Nothing can hurt you mid-dash.</span></li>
+            <li>${k('Q')} or ${k('Right click')}<span>Class ability</span></li>
+            <li>${k('T')}<span>Toggle auto-aim</span></li>
+            <li>${k('Esc')}<span>Pause and inspect your build</span></li>
+            <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
+          </ul>
+          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
+        </div>
+        <div class="help-col">
+          <h3>The run</h3>
+          <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger.</p>
+          <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
+          <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
+        </div>
+        <div class="help-col">
+          <h3>Building power</h3>
+          <p>Each skill belongs to one of six elements. Owning 2, 4 and 6 skills of the same element unlocks set bonuses, so a focused build is far stronger than a scattered one.</p>
+          <ul class="els">${D.ELEMENT_IDS.map((id) => `<li style="--c:${D.ELEMENTS[id].color}">${ico(D.ELEMENTS[id].icon, 16)}<b>${D.ELEMENTS[id].name}</b><span>${D.AFFINITY[id][1].text}</span></li>`).join('')}</ul>
+          <p>A skill at level 6 evolves if you own its matching tome. An evolved skill counts twice toward its element, and can then be overcharged without limit.</p>
+        </div>`;
+    },
+
+    renderSettings(root) {
+      const d = PS.Save.data, s = d.settings;
+      const tog = (key, label, hint) => `<label class="set-row"><span><b>${label}</b><small>${hint}</small></span><input type="checkbox" data-set="${key}" ${s[key] ? 'checked' : ''}><i class="switch"></i></label>`;
+      const sl = (key, label) => `<label class="set-row"><span><b>${label}</b></span><input type="range" min="0" max="1" step="0.05" value="${s[key]}" data-set="${key}"></label>`;
+      root.innerHTML = `
+        <label class="set-row"><span><b>Name</b><small>Shown on the leaderboard</small></span><input type="text" maxlength="14" value="${esc(d.name)}" placeholder="Wanderer" data-name></label>
+        ${sl('sfx', 'Sound effects')}
+        ${sl('music', 'Music')}
+        ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
+        ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
+        ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
+        ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
+        ${PS.Game.state === 'menu' ? `<div class="set-row"><span><b>Erase progress</b><small>Deletes Essence, upgrades, unlocks and the leaderboard</small></span><button class="btn btn-danger" data-reset>Erase</button></div>` : ''}`;
+      root.querySelectorAll('[data-set]').forEach((inp) => {
+        inp.addEventListener('input', () => {
+          const key = inp.dataset.set;
+          s[key] = inp.type === 'checkbox' ? inp.checked : +inp.value;
+          if (key === 'sfx') { PS.Audio.setSfxVolume(s.sfx); PS.Audio.play('uiClick'); }
+          if (key === 'music') PS.Audio.setMusicVolume(s.music);
+          PS.Save.save();
+        });
+      });
+      const nm = root.querySelector('[data-name]');
+      nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const reset = root.querySelector('[data-reset]');
+      if (reset) click(reset, () => {
+        if (!reset.dataset.armed) { reset.dataset.armed = '1'; reset.textContent = 'Erase everything?'; return; }
+        PS.Save.reset(); this.renderSettings(root);
+      });
+    },
+    openSettingsOverlay() {
+      this.renderSettings($('ovSettingsBody'));
+      $('ovSettings').hidden = false;
+    },
+    toggleAutoAim() {
+      const s = PS.Save.data.settings;
+      s.autoAim = !s.autoAim;
+      PS.Save.save();
+      this.toast(s.autoAim ? 'Auto-aim on' : 'Auto-aim off', 'crosshair');
+    },
+
+    /* ================================================================ HUD */
+    startRun() {
+      $('screens').hidden = true;
+      $('ovOver').hidden = true; $('ovPause').hidden = true; $('ovChoice').hidden = true;
+      $('hud').hidden = false;
+      $('touch').hidden = !PS.Input.touch;
+      $('toasts').innerHTML = '';
+      $('banner').hidden = true;
+      $('bossBar').hidden = true;
+      loadoutSig = ''; affSig = ''; hudT = 0;
+      const p = PS.G.player, c = p.cls;
+      const abil = ico(c.ability.icon, 26);
+      $('actAbility').querySelector('i').innerHTML = abil;
+      $('actAbility').style.setProperty('--c', c.color);
+      $('tAbility').querySelector('i').innerHTML = ico(c.ability.icon, 30);
+      $('tAbility').style.setProperty('--c', c.color);
+      hydrate($('touch'));
+      this.updateHud(1);
+      if (!PS.Save.data.seenTutorial) {
+        PS.Save.data.seenTutorial = true;
+        PS.Save.save();
+        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Q for your ability.', 4.5);
+      }
+    },
+    updateHud(dt) {
+      const G = PS.G, p = G.player, s = p.stats;
+      $('xpFill').style.transform = `scaleX(${Math.min(1, p.xp / p.xpNext).toFixed(4)})`;
+      $('hpFill').style.transform = `scaleX(${Math.max(0, p.hp / s.maxHp).toFixed(4)})`;
+      const ab = $('actAbility'), da = $('actDash');
+      const ap = p.abilityCd > 0 ? p.abilityCd / p.abilityMax : 0;
+      ab.style.setProperty('--p', ap.toFixed(3));
+      ab.classList.toggle('ready', ap <= 0);
+      const dp = p.dashCharges > 0 ? 0 : p.dashRecharge / s.dashCd;
+      da.style.setProperty('--p', dp.toFixed(3));
+      da.classList.toggle('ready', p.dashCharges > 0);
+      if (G.boss) $('bossFill').style.transform = `scaleX(${Math.max(0, G.boss.hp / G.boss.maxHp).toFixed(4)})`;
+
+      if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $('banner').hidden = true; }
+      hudT -= dt;
+      if (hudT > 0) return;
+      hudT = 0.12;
+      $('hudLevel').textContent = p.level;
+      $('hudTime').textContent = U.fmtTime(G.time);
+      $('hudKills').textContent = U.fmtNum(G.kills);
+      $('hudGold').textContent = U.fmtNum(p.gold);
+      $('hpText').textContent = Math.ceil(Math.max(0, p.hp)) + ' / ' + s.maxHp;
+      $('hpFill').parentNode.classList.toggle('low', p.hp < s.maxHp * 0.3);
+      // next boss
+      const Dr = PS.Director;
+      let next = '';
+      if (G.boss) next = '';
+      else if (Dr.bossIdx < Dr.BOSS_TIMES.length) next = 'Boss in ' + U.fmtTime(Dr.BOSS_TIMES[Dr.bossIdx] - G.time);
+      else if (Dr.victory) next = 'Beyond the rift';
+      $('hudNext').textContent = next;
+      $('bossBar').hidden = !G.boss;
+
+      // loadout tiles only re-render when something changed
+      const sig = p.skills.map((k) => k.id + k.level + (k.evolved ? 'e' : '') + Math.round(k.over * 100)).join() + '|' + p.tomes.map((t) => t.id + t.level).join() + '|' + p.relicOrder.length;
+      if (sig !== loadoutSig) {
+        loadoutSig = sig;
+        $('hudSkills').innerHTML = p.skills.map((k) => this.skillTile(k)).join('') + '<span class="slot empty"></span>'.repeat(Math.max(0, p.skillSlots - p.skills.length));
+        $('hudTomes').innerHTML = p.tomes.map((t) => `<span class="slot tome" data-tip="<b>${esc(t.def.name)}</b><br>Level ${t.level}: +${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 16)}<em>${t.level}</em></span>`).join('')
+          + '<span class="slot tome empty"></span>'.repeat(Math.max(0, p.tomeSlots - p.tomes.length));
+      }
+      const asig = D.ELEMENT_IDS.map((e) => p.aff[e]).join();
+      if (asig !== affSig) {
+        affSig = asig;
+        $('hudAff').innerHTML = D.ELEMENT_IDS.filter((e) => p.aff[e] > 0).map((e) => {
+          const el = D.ELEMENTS[e], n = p.aff[e];
+          const tip = `<b>${el.name} ${n}</b>` + D.AFFINITY[e].map((a) => `<br><span class='${n >= a.n ? 'on' : 'off'}'>${a.n}: ${a.text}</span>`).join('');
+          return `<div class="aff${n >= 2 ? ' lit' : ''}" style="--c:${el.color}" data-tip="${tip}">${ico(el.icon, 16)}<b>${n}</b><span class="pips">${[2, 4, 6].map((t) => `<i class="${n >= t ? 'on' : ''}"></i>`).join('')}</span></div>`;
+        }).join('');
+      }
+    },
+    skillTile(k) {
+      const def = k.def, col = elColor(def.el);
+      const tip = `<b>${esc(k.name)}</b><br>${D.ELEMENTS[def.el].name} · Level ${k.level}${k.over > 0 ? ` · +${Math.round(k.over * 100)}% damage` : ''}<br>${esc(k.evolved ? def.evo.desc : def.desc)}`;
+      return `<span class="slot skill${k.evolved ? ' evo' : ''}" style="--c:${col}" data-tip="${tip}">${ico(def.icon, 24)}<em>${k.level >= PS.Skills.MAX_LEVEL ? (k.evolved ? '★' : 'MAX') : k.level}</em></span>`;
+    },
+
+    toast(text, icon) {
+      if (!PS.G) return;
+      const box = $('toasts');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `${icon ? ico(icon, 16) : ''}<span>${esc(text)}</span>`;
+      box.appendChild(el);
+      const max = window.innerWidth < 760 || window.innerHeight < 520 ? 2 : 4;
+      while (box.children.length > max) box.removeChild(box.firstChild);
+      setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 3200);
+    },
+    banner(title, sub, dur) {
+      $('bannerTitle').textContent = title;
+      $('bannerSub').textContent = sub || '';
+      const b = $('banner');
+      b.hidden = false;
+      b.classList.remove('boss');
+      b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
+      bannerT = dur || 3.5;
+    },
+    bossIntro(def) {
+      this.banner(def.name, def.title, 2.6);
+      $('banner').classList.add('boss');
+      $('bossName').textContent = def.name + ', ' + def.title;
+      $('bossBar').hidden = false;
+      $('bossBar').style.setProperty('--c', def.color);
+    },
+
+    /* ================================================================ reward cards */
+    showChoice(spec) {
+      curSpec = spec;
+      banishMode = false;
+      padCard = Math.min(1, spec.cards.length - 1);
+      choiceAt = performance.now();
+      const ov = $('ovChoice');
+      ov.hidden = false;
+      ov.className = 'overlay kind-' + spec.kind;
+      $('choiceTitle').textContent = spec.title;
+      $('choiceSub').textContent = spec.sub;
+      this.renderCards();
+      PS.Audio.play(spec.kind === 'talent' ? 'shrine' : 'pick', { vol: 0.4 });
+    },
+    renderCards() {
+      const spec = curSpec, p = PS.G.player;
+      const box = $('choiceCards');
+      box.innerHTML = spec.cards.map((c, i) => {
+        const rar = D.RARITY[c.tier] || D.RARITY[0];
+        const col = c.color || (c.el ? elColor(c.el) : rar.color);
+        const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : rar.name;
+        const canBan = spec.kind === 'level' && (c.type === 'skill' || c.type === 'tome');
+        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' ? col : rar.color};--c:${col};--d:${i * 70}ms">
+          <span class="card-key">${i + 1}</span>
+          <span class="card-ban">${ico('ban', 22)}</span>
+          <span class="card-tag">${esc(c.tag)}</span>
+          <span class="card-ico">${ico(c.icon, 44)}</span>
+          <span class="card-title">${esc(c.title)}</span>
+          ${c.el ? `<span class="card-el">${ico(D.ELEMENTS[c.el].icon, 13)} ${D.ELEMENTS[c.el].name}</span>` : ''}
+          <span class="card-desc">${esc(c.desc)}</span>
+          ${c.lines.map((l) => `<span class="card-line">${esc(l)}</span>`).join('')}
+          <span class="card-rar">${kind}</span>
+        </button>`;
+      }).join('');
+      box.querySelectorAll('.card').forEach((b) => {
+        b.addEventListener('click', () => this.pickCard(+b.dataset.i));
+      });
+      const act = $('choiceActions');
+      if (spec.kind === 'level') {
+        act.innerHTML = `
+          <button class="btn btn-small" id="actReroll" ${p.rerolls <= 0 && p.gold < PS.Game.rerollCost() ? 'disabled' : ''}>${ico('dice', 16)} Reroll ${p.rerolls > 0 ? `<b>${p.rerolls}</b>` : `for <b>${PS.Game.rerollCost()}</b> gold`} <kbd>R</kbd></button>
+          <button class="btn btn-small${banishMode ? ' on' : ''}" id="actBanish" ${p.banishes <= 0 ? 'disabled' : ''}>${ico('ban', 16)} ${banishMode ? 'Pick a card to banish' : 'Banish'} <b>${p.banishes}</b> <kbd>B</kbd></button>
+          <button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Skip for 10 gold</button>`;
+        click($('actReroll'), () => this.rerollCards());
+        click($('actBanish'), () => { banishMode = !banishMode; this.renderCards(); });
+        click($('actSkip'), () => { if (performance.now() - choiceAt > 350) PS.Game.choose(curSpec, null); });
+      } else act.innerHTML = '';
+      box.classList.toggle('banishing', banishMode);
+    },
+    rerollCards() {
+      if (PS.Game.reroll(curSpec)) { PS.Audio.play('uiClick'); this.renderCards(); }
+    },
+    pickCard(i) {
+      if (PS.Game.state !== 'choice' || !curSpec || performance.now() - choiceAt < 350) return;
+      const card = curSpec.cards[i];
+      if (!card) return;
+      if (banishMode) {
+        if (PS.Game.banish(curSpec, card)) { banishMode = false; PS.Audio.play('uiBack'); this.renderCards(); }
+        else PS.Audio.play('deny', { vol: 0.5 });
+        return;
+      }
+      PS.Audio.play('pick');
+      PS.Game.choose(curSpec, card);
+    },
+    hideChoice() {
+      $('ovChoice').hidden = true;
+      curSpec = null;
+      loadoutSig = '';
+    },
+
+    /* ================================================================ pause sheet */
+    showPause() {
+      const q = $('pauseQuit');
+      delete q.dataset.armed; q.textContent = 'End run';
+      $('pauseBody').innerHTML = this.buildSheet(PS.G);
+      $('ovPause').hidden = false;
+    },
+    hidePause() {
+      $('ovPause').hidden = true;
+      $('ovSettings').hidden = true;
+    },
+    dmgBars(G, limit) {
+      const rows = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, limit || 10);
+      if (!rows.length) return '<p class="muted">No damage dealt yet.</p>';
+      const max = rows[0][1], total = G.dmgTotal || 1;
+      return `<ul class="dmg">${rows.map(([name, v]) => `<li><span class="dmg-name">${esc(name)}</span><span class="dmg-bar"><i style="width:${((v / max) * 100).toFixed(1)}%"></i></span><span class="dmg-val">${U.fmtNum(v)}</span><span class="dmg-pct">${Math.round((v / total) * 100)}%</span></li>`).join('')}</ul>`;
+    },
+    buildSheet(G) {
+      const p = G.player, s = p.stats, c = p.cls;
+      const pct = (v) => Math.round(v * 100) + '%';
+      const stats = [
+        ['Damage', pct(p.dm)], ['Attack speed', pct(p.as)], ['Critical chance', pct(Math.min(1, s.crit))], ['Critical damage', pct(s.critMult)],
+        ['Area', pct(s.area)], ['Extra projectiles', '+' + s.proj], ['Max health', s.maxHp], ['Regeneration', s.regen.toFixed(1) + '/s'],
+        ['Armor', Math.round(s.armor) + ' (' + pct(1 - 60 / (60 + Math.max(0, s.armor))) + ' less damage)'], ['Move speed', Math.round(s.speed)],
+        ['Luck', Math.round(s.luck)], ['Experience', pct(s.xp)], ['Gold', pct(s.gold)], ['Lifesteal', (s.lifesteal * 100).toFixed(1) + '%'],
+      ];
+      return `
+        <div class="sheet-col">
+          <h3>Skills <small>and damage dealt</small></h3>
+          <div class="sk-list">${p.skills.map((k) => `<div class="sk" style="--c:${elColor(k.def.el)}"><span class="sk-ico">${ico(k.def.icon, 22)}</span><div><b>${esc(k.name)}</b><small>${D.ELEMENTS[k.def.el].name}, level ${k.level}${k.evolved ? ', evolved' : ''}${k.over > 0 ? `, +${Math.round(k.over * 100)}% damage` : ''}</small></div></div>`).join('')}</div>
+          ${this.dmgBars(G, 10)}
+        </div>
+        <div class="sheet-col">
+          <h3>${c.name} paths</h3>
+          <div class="paths">${c.branches.map((br, bi) => `<div class="path" style="--c:${br.color}"><b>${br.name}</b><span>${br.nodes.map((n, i) => `<i class="${i < p.talents[bi] ? 'on' : ''}" data-tip="<b>${esc(n.name)}</b><br>${esc(n.desc)}">${ico(n.icon, 16)}</i>`).join('')}</span></div>`).join('')}</div>
+          <h3>Affinities</h3>
+          <div class="aff-list">${D.ELEMENT_IDS.filter((e) => p.aff[e] > 0).map((e) => `<div class="affrow" style="--c:${D.ELEMENTS[e].color}"><b>${ico(D.ELEMENTS[e].icon, 15)} ${D.ELEMENTS[e].name} ${p.aff[e]}</b>${D.AFFINITY[e].map((a) => `<span class="${p.aff[e] >= a.n ? 'on' : ''}">${a.n}: ${a.text}</span>`).join('')}</div>`).join('') || '<p class="muted">Collect skills of the same element to unlock set bonuses.</p>'}</div>
+        </div>
+        <div class="sheet-col">
+          <h3>Tomes</h3>
+          <div class="chips">${p.tomes.map((t) => `<span class="chip" data-tip="+${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 15)} ${t.def.name.replace('Tome of ', '')} <em>${t.level}</em></span>`).join('') || '<span class="muted">None yet.</span>'}</div>
+          <h3>Relics</h3>
+          <div class="chips">${p.relicOrder.map((id) => { const r = D.RELICS[id]; return `<span class="chip r-${D.RARITY[r.tier].id}" style="--rc:${D.RARITY[r.tier].color}" data-tip="${esc(r.desc)}">${ico(r.icon, 15)} ${esc(r.name)}${p.relics[id] > 1 ? ` <em>×${p.relics[id]}</em>` : ''}</span>`; }).join('') || '<span class="muted">Open chests to find relics.</span>'}</div>
+          ${Object.keys(p.boons).length ? `<h3>Blessings</h3><div class="chips">${Object.keys(p.boons).map((id) => { const b = D.BOONS[id]; return `<span class="chip">${ico(b.icon, 15)} +${b.fmt(p.boons[id])} ${b.stat.toLowerCase()}</span>`; }).join('')}</div>` : ''}
+          <h3>Stats</h3>
+          <dl class="statlist">${stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+        </div>`;
+    },
+
+    /* ================================================================ results */
+    showOver(res) {
+      const G = PS.G, r = res.run, c = D.CLASSES[r.cls], d = PS.Save.data;
+      $('ovChoice').hidden = true; $('ovPause').hidden = true;
+      $('hud').hidden = true; $('touch').hidden = true;
+      const title = r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
+      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.` : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}.`;
+      $('overBody').innerHTML = `
+        <header class="over-head${r.won ? ' won' : ''}">
+          <h2>${title}</h2>
+          <p>${sub}</p>
+        </header>
+        <div class="over-score">
+          <div class="score-num" id="scoreNum">0</div>
+          <div class="score-tags">
+            ${res.best ? '<span class="tag gold">New best score</span>' : ''}
+            ${res.rank ? `<span class="tag">Rank ${res.rank} on your board</span>` : ''}
+            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence</span>
+          </div>
+        </div>
+        <div class="over-grid">
+          <dl class="over-stats">
+            <div><dt>Class</dt><dd style="color:${c.color}">${c.name}</dd></div>
+            <div><dt>Survived</dt><dd>${U.fmtTime(r.time)}</dd></div>
+            <div><dt>Level</dt><dd>${r.level}</dd></div>
+            <div><dt>Enemies slain</dt><dd>${U.fmtNum(r.kills)}</dd></div>
+            <div><dt>Bosses slain</dt><dd>${r.bosses}</dd></div>
+            <div><dt>Damage dealt</dt><dd>${U.fmtNum(G.dmgTotal)}</dd></div>
+          </dl>
+          <div class="over-dmg"><h3>Where your damage came from</h3>${this.dmgBars(G, 6)}</div>
+        </div>
+        <div class="over-name">
+          <label for="overName">Name for the leaderboard</label>
+          <input id="overName" type="text" maxlength="14" value="${esc(d.name)}" placeholder="Wanderer">
+        </div>
+        <div class="over-btns">
+          <button class="btn btn-primary btn-big" id="overAgain">Play again</button>
+          <button class="btn" id="overTree">Spend Essence</button>
+          <button class="btn" id="overBoard">Leaderboard</button>
+          <button class="btn btn-ghost" id="overMenu">Main menu</button>
+        </div>`;
+      $('ovOver').hidden = false;
+      // count the score up
+      const el = $('scoreNum'), t0 = performance.now(), target = r.score;
+      const tick = () => {
+        const t = Math.min(1, (performance.now() - t0) / 1200);
+        el.textContent = Math.round(target * U.easeOutCubic(t)).toLocaleString('en-US');
+        if (t < 1 && !$('ovOver').hidden) requestAnimationFrame(tick);
+      };
+      tick();
+      const nm = $('overName');
+      nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); r.name = d.name || 'Wanderer'; PS.Save.save(); });
+      click($('overAgain'), () => PS.Game.start(r.cls));
+      click($('overTree'), () => { PS.Game.toMenu(); this.showScreen('scrTree'); });
+      click($('overBoard'), () => { PS.Game.toMenu(); this.showScreen('scrBoard'); });
+      click($('overMenu'), () => PS.Game.toMenu());
+    },
+
+    /* ================================================================ gamepad (menus, cards, pause) */
+    onPad(btn) {
+      const st = PS.Game.state;
+      if (btn === 'start') { this.onEscape(); return; }
+      if (st === 'choice' && curSpec) {
+        const n = curSpec.cards.length;
+        if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
+        else if (btn === 'a') this.pickCard(padCard);
+        else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
+        else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
+      } else if (st === 'paused') {
+        if (btn === 'b' || btn === 'a') PS.Game.resume();
+      } else if (st === 'over') {
+        if (btn === 'a') PS.Game.start(PS.G.cls);
+        else if (btn === 'b') PS.Game.toMenu();
+      } else if (st === 'menu') {
+        if (lastScreen === 'scrTitle') { if (btn === 'a') this.showScreen('scrClass'); else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard'); }
+        else if (btn === 'b') this.showScreen('scrTitle');
+        else if (lastScreen === 'scrClass') {
+          const ids = D.CLASS_IDS, i = ids.indexOf(selClass);
+          if (btn === 'left' || btn === 'right') { selClass = ids[(i + (btn === 'left' ? ids.length - 1 : 1)) % ids.length]; this.renderClasses(); PS.Audio.play('uiHover'); }
+          else if (btn === 'a' && PS.Save.data.unlocked[selClass]) PS.Game.start(selClass);
+        } else if (lastScreen === 'scrTree' && btn === 'a') this.buyNode(selNode);
+        else if (lastScreen === 'scrTree' && (btn === 'left' || btn === 'right')) {
+          const i = D.META.findIndex((m) => m.id === selNode);
+          selNode = D.META[(i + (btn === 'left' ? D.META.length - 1 : 1)) % D.META.length].id;
+          this.renderTree();
+        }
+      }
+    },
+
+    /* ================================================================ keys */
+    onEscape() {
+      const st = PS.Game.state;
+      if (!$('ovSettings').hidden) { $('ovSettings').hidden = true; return; }
+      if (st === 'play') PS.Game.pause();
+      else if (st === 'paused') PS.Game.resume();
+      else if (st === 'menu' && lastScreen !== 'scrTitle') this.showScreen('scrTitle');
+    },
+    onKey(code) {
+      const st = PS.Game.state;
+      if (st === 'choice' && curSpec) {
+        if (code === 'Digit1' || code === 'Numpad1') this.pickCard(0);
+        else if (code === 'Digit2' || code === 'Numpad2') this.pickCard(1);
+        else if (code === 'Digit3' || code === 'Numpad3') this.pickCard(2);
+        else if (code === 'KeyR' && curSpec.kind === 'level') this.rerollCards();
+        else if (code === 'KeyB' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
+      } else if (st === 'over' && code === 'Enter' && (!document.activeElement || document.activeElement === document.body)) {
+        PS.Game.start(PS.G.cls);
+      }
+    },
+  };
+
+  PS.UI = UI;
+})();
