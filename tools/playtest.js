@@ -53,6 +53,7 @@ const { chromium } = require('playwright');
           talents: p.talents.join('/'), aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
           killedBy: G.over && G.boss ? G.boss.def.name : null, bossLog: G.bossLog.map((b) => b.name + '@' + b.at + ' ' + b.took + 's').join(', '), taken: Math.round(G.dmgTaken), hp: Math.round(p.hp) + '/' + p.stats.maxHp };
         if (!G.over) PS.Game.endRun(true);
+        summary.essence = G.result.essence;
         PS.Game.state = 'menu'; PS.G = null;
         return { out, summary };
       }, { cls, minutes, flags });

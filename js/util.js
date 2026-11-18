@@ -128,7 +128,7 @@
     /** call fn(o) for every object whose circle may overlap (x,y,r). fn returning true stops early. */
     query(x, y, r, fn) {
       const c = this.cell;
-      const pad = 40; // max entity radius allowance
+      const pad = 60; // must cover the largest entity radius (bosses reach 54)
       const x0 = Math.floor((x - r - pad) / c), x1 = Math.floor((x + r + pad) / c);
       const y0 = Math.floor((y - r - pad) / c), y1 = Math.floor((y + r + pad) / c);
       for (let cx = x0; cx <= x1; cx++) {

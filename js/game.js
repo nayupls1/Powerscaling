@@ -87,6 +87,7 @@
       this.last = ts;
       if (!(dt > 0)) dt = 0.016;
       if (dt > 0.05) dt = 0.05;
+      PS.Input.pollPad();
       const G = PS.G;
       if (!G) {
         this.idleT += dt;
@@ -139,8 +140,6 @@
         G.choiceDelay = 0.3;
         PS.FX.levelUp(p);
         PS.Audio.play('levelup');
-        const heal = p.stats.m.levelHeal;
-        if (heal) p.heal(p.stats.maxHp * heal, true);
       }
       if (G.choiceDelay > 0) {
         G.choiceDelay -= dt;
@@ -178,6 +177,8 @@
         }
         if (!spec) {
           p.pendingLevels--;
+          const heal = p.stats.m.levelHeal; // once per level, however the levels were batched
+          if (heal) p.heal(p.stats.maxHp * heal, true);
           spec = { kind: 'level', title: 'Level ' + (p.level - p.pendingLevels), sub: 'Choose one.', cards: R.levelChoices(p) };
         }
       }
@@ -209,16 +210,24 @@
       PS.UI.hideChoice();
       this.last = performance.now();
     },
+    rerollCost() { return Math.round(20 * Math.pow(1.5, PS.G.player.rerollsBought)); },
     reroll(spec) {
       const G = PS.G, p = G.player;
-      if (p.rerolls <= 0 || spec.kind !== 'level') return null;
-      p.rerolls--;
+      if (spec.kind !== 'level') return null;
+      if (p.rerolls > 0) p.rerolls--;
+      else {
+        // out of free rerolls: gold buys more, at a rising price
+        const cost = this.rerollCost();
+        if (p.gold < cost) return null;
+        p.gold -= cost;
+        p.rerollsBought++;
+      }
       spec.cards = PS.Rewards.levelChoices(p);
       return spec;
     },
     banish(spec, card) {
       const p = PS.G.player;
-      if (p.banishes <= 0 || spec.kind !== 'level' || (card.type !== 'skill' && !(card.type === 'tome' && !p.hasTome(card.id)))) return false;
+      if (p.banishes <= 0 || spec.kind !== 'level' || (card.type !== 'skill' && card.type !== 'tome')) return false;
       p.banishes--;
       p.banned.add(card.id);
       const i = spec.cards.indexOf(card);
@@ -231,6 +240,7 @@
     /* ------------------------------------------------------------ outcomes */
     bossKilled() {
       const d = PS.Save.data;
+      PS.G.player.rerolls++; // every boss is worth a reroll
       d.stats.bosses++;
       if (!d.unlocked.reaper) {
         d.unlocked.reaper = true;
@@ -249,7 +259,7 @@
       PS.Audio.play('evolve');
     },
     finalScore(G) {
-      return Math.round(G.score + Math.floor(G.time) * 5 + (G.player.level - 1) * 100);
+      return Math.round(G.score + Math.floor(G.time) * 60 + (G.player.level - 1) * 100);
     },
     playerDied() {
       this.endRun(false);
@@ -260,7 +270,8 @@
       G.over = true;
       const p = G.player, d = PS.Save.data;
       const score = this.finalScore(G);
-      const essence = Math.round((score / 90 + G.bossesKilled * 15) * (1 + (p.stats.m.essence || 0)));
+      // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
+      const essence = Math.round((G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0)) * (1 + (p.stats.m.essence || 0)));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
         name: d.name || 'Wanderer', cls: G.cls, score, time: Math.floor(G.time), level: p.level, kills: G.kills, bosses: G.bossesKilled,

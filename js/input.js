@@ -11,15 +11,16 @@
 
     init(canvas) {
       window.addEventListener('keydown', (e) => {
-        if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
         const k = e.code;
+        // typing in a text field must not drive the game, but Escape always works
+        if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) && k !== 'Escape') return;
         if (PS.Game.state === 'play') {
           if (k === 'Space' || k === 'ShiftLeft' || k === 'ShiftRight') { this.dashQ = true; e.preventDefault(); }
           if (k === 'KeyQ' || k === 'KeyE') this.abilityQ = true;
           if (k === 'KeyT') PS.UI.toggleAutoAim();
           if (k.startsWith('Arrow')) e.preventDefault();
         }
-        if (k === 'Escape' || k === 'KeyP') PS.UI.onEscape();
+        if (!e.repeat && (k === 'Escape' || k === 'KeyP')) PS.UI.onEscape();
         if (!e.repeat) PS.UI.onKey(k);
         keys.add(k);
       });
@@ -35,6 +36,9 @@
       });
       window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouseDown = false; });
       canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      // any touch anywhere (menus included) switches to touch controls
+      document.addEventListener('touchstart', () => this.setTouch(true), { passive: true, capture: true });
 
       // ---- touch: left side of the screen is a floating stick
       const stickEl = document.getElementById('stick'), knob = document.getElementById('stickKnob');
@@ -85,6 +89,34 @@
       document.body.classList.toggle('is-touch', on);
     },
 
+    /** read gamepad buttons once per frame; routes presses to the game or to the menus depending on state */
+    pollPad() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = null;
+      for (const g of pads) if (g && g.connected) { gp = g; break; }
+      this.gp = gp;
+      if (!gp) return;
+      const b = gp.buttons, prev = this._prev || (this._prev = {});
+      const down = (i) => !!(b[i] && b[i].pressed);
+      const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0;
+      const now = {
+        a: down(0), b: down(1), x: down(2), y: down(3), lb: down(4), rb: down(5), lt: down(6), rt: down(7), start: down(9),
+        left: down(14) || lx < -0.6, right: down(15) || lx > 0.6, up: down(12) || ly < -0.6, down: down(13) || ly > 0.6,
+      };
+      const playing = PS.Game.state === 'play';
+      for (const k in now) {
+        if (now[k] && !prev[k]) {
+          this.pad = true;
+          if (k === 'start') PS.UI.onPad('start');
+          else if (playing) {
+            if (k === 'a' || k === 'lb' || k === 'lt') this.dashQ = true;
+            else if (k === 'x' || k === 'rb' || k === 'rt') this.abilityQ = true;
+          } else PS.UI.onPad(k);
+        }
+        prev[k] = now[k];
+      }
+    },
+
     /** fill the control object the simulation reads */
     read(ctrl, G) {
       let mx = 0, my = 0;
@@ -97,27 +129,16 @@
       let fire = set.autoFire || this.mouseDown;
       let padAim = false;
 
-      // gamepad
-      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-      for (const gp of pads) {
-        if (!gp || !gp.connected) continue;
-        const dz = 0.22;
+      // gamepad sticks (buttons are handled in pollPad, which runs in every game state)
+      const gp = this.gp;
+      if (gp) {
         const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0, rx = gp.axes[2] || 0, ry = gp.axes[3] || 0;
-        if (Math.hypot(lx, ly) > dz) { mx = lx; my = ly; this.pad = true; }
+        if (Math.hypot(lx, ly) > 0.22) { mx = lx; my = ly; this.pad = true; }
         if (Math.hypot(rx, ry) > 0.35) {
           const p = G.player;
           ctrl.aimX = p.x + rx * 220; ctrl.aimY = p.y + ry * 220;
           padAim = true; fire = true; this.pad = true;
         }
-        const b = gp.buttons;
-        const pressed = (i) => b[i] && b[i].pressed;
-        if ((pressed(0) || pressed(4) || pressed(6)) && !this._pd) this.dashQ = true;
-        if ((pressed(2) || pressed(5) || pressed(7)) && !this._pa) this.abilityQ = true;
-        this._pd = pressed(0) || pressed(4) || pressed(6);
-        this._pa = pressed(2) || pressed(5) || pressed(7);
-        if (pressed(9) && !this._ps) PS.UI.onEscape();
-        this._ps = pressed(9);
-        break;
       }
       if (this.touch && this.stick.id !== null) { mx = this.stick.x; my = this.stick.y; }
       const l = Math.hypot(mx, my);

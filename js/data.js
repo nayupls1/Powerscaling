@@ -24,6 +24,11 @@
     { id: 'legendary', name: 'Legendary', mult: 3.5,  color: '#ffb43d', w: 0.8 },
   ];
   /** luck 0..300ish. Every 100 luck roughly doubles each step up the ladder. */
+  /** how much one pick of a tome or boon adds at a given rarity (flat stats are whole numbers) */
+  D.incFor = function (def, tier) {
+    const v = def.per * (def.fixed ? 1 : D.RARITY[tier].mult);
+    return def.whole ? Math.round(v) : v;
+  };
   D.rollRarity = function (luck, minTier) {
     const f = 1 + Math.max(0, luck) / 100;
     let total = 0;
@@ -48,9 +53,9 @@
       { n: 6, text: 'Every hit you deal applies Burn, and Burn ticks twice as fast.' },
     ],
     frost: [
-      { n: 2, text: 'Chill slows 20% harder and lasts longer.' },
+      { n: 2, text: 'Chill slows harder and lasts longer. Chilled enemies take 12% more damage.' },
       { n: 4, text: 'Chilled enemies shatter on death, chilling and damaging others.' },
-      { n: 6, text: 'Chilled enemies take 35% more damage. Freeze chance doubled.' },
+      { n: 6, text: 'Chilled enemies take 35% more damage instead. Freeze chance doubled.' },
     ],
     storm: [
       { n: 2, text: 'Shocked enemies take 30% more damage instead of 15%.' },
@@ -60,7 +65,7 @@
     venom: [
       { n: 2, text: 'Poison deals 50% more damage and stacks 3 higher.' },
       { n: 4, text: 'Poisoned enemies spread their poison when they die.' },
-      { n: 6, text: 'Poison also eats 1.5% of max health per second.' },
+      { n: 6, text: 'Poison also eats 0.6% of max health per second (a tenth of that on bosses).' },
     ],
     steel: [
       { n: 2, text: '+12% critical chance and +6 armor.' },
@@ -81,26 +86,26 @@
     precision: { name: 'Tome of Precision', icon: 'crosshair', max: 10, per: 0.05, stat: 'Critical chance', fmt: pc, apply: (s, v) => { s.crit += v; s.critMult += v * 2; }, extra: 'Also adds twice that much critical damage.' },
     reach:     { name: 'Tome of Reach',     icon: 'expand',    max: 8,  per: 0.08, stat: 'Area of effect',  fmt: pc, apply: (s, v) => { s.area += v; } },
     multishot: { name: 'Tome of Volleys',   icon: 'multishot', max: 3,  per: 1,    stat: 'Projectiles',     fmt: (v) => r1(v), fixed: true, minRar: 2, apply: (s, v) => { s.proj += v; } },
-    duration:  { name: 'Tome of Lingering', icon: 'clock',     max: 8,  per: 0.10, stat: 'Effect duration', fmt: pc, apply: (s, v) => { s.duration += v; s.statusDmg += v * 0.5; }, extra: 'Burn, Poison and Bleed gain half as much damage.' },
-    vitality:  { name: 'Tome of Vitality',  icon: 'heart',     max: 10, per: 18,   stat: 'Max health',      fmt: (v) => r1(v), apply: (s, v) => { s.maxHp += v; s.regen += v * 0.015; }, extra: 'Also adds a little regeneration.' },
-    plating:   { name: 'Tome of Plating',   icon: 'shield',    max: 8,  per: 4,    stat: 'Armor',           fmt: (v) => r1(v), apply: (s, v) => { s.armor += v; } },
+    duration:  { name: 'Tome of Lingering', icon: 'clock',     max: 8,  per: 0.10, stat: 'Effect duration', fmt: pc, apply: (s, v) => { s.duration += v; s.statusDmg += v * 0.5; }, extra: 'Burn, Poison and Bleed also deal more damage.' },
+    vitality:  { name: 'Tome of Vitality',  icon: 'heart',     max: 10, per: 18,   whole: true, stat: 'Max health', fmt: (v) => r1(v), apply: (s, v) => { s.maxHp += v; s.regen += v * 0.015; }, extra: 'Also adds a little regeneration.' },
+    plating:   { name: 'Tome of Plating',   icon: 'shield',    max: 8,  per: 4,    whole: true, stat: 'Armor',  fmt: (v) => r1(v), apply: (s, v) => { s.armor += v; } },
     swiftness: { name: 'Tome of Swiftness', icon: 'boot',      max: 8,  per: 0.06, stat: 'Move speed',      fmt: pc, apply: (s, v) => { s.speed *= 1 + v; } },
     magnet:    { name: 'Tome of Pull',      icon: 'magnet',    max: 6,  per: 0.25, stat: 'Pickup range',    fmt: pc, apply: (s, v) => { s.pickup *= 1 + v; } },
     wisdom:    { name: 'Tome of Wisdom',    icon: 'book',      max: 8,  per: 0.08, stat: 'Experience',      fmt: pc, apply: (s, v) => { s.xp += v; } },
-    fortune:   { name: 'Tome of Fortune',   icon: 'clover',    max: 8,  per: 10,   stat: 'Luck',            fmt: (v) => r1(v), apply: (s, v) => { s.luck += v; s.gold += v * 0.01; }, extra: 'Luck improves reward rarity. Also adds gold gain.' },
+    fortune:   { name: 'Tome of Fortune',   icon: 'clover',    max: 8,  per: 10,   whole: true, stat: 'Luck',   fmt: (v) => r1(v), apply: (s, v) => { s.luck += v; s.gold += v * 0.01; }, extra: 'Luck improves reward rarity. Also adds gold gain.' },
   };
 
   /* ---------- Shrine boons: small permanent blessings, no slots ---------- */
   D.BOONS = {
     b_dmg:   { name: 'Blessing of Wrath',   icon: 'swords',  per: 0.06, stat: 'Damage',          fmt: pc, apply: (s, v) => { s.dmg += v; } },
-    b_hp:    { name: 'Blessing of Life',    icon: 'heart',   per: 12,   stat: 'Max health',      fmt: r1, apply: (s, v) => { s.maxHp += v; } },
+    b_hp:    { name: 'Blessing of Life',    icon: 'heart',   per: 12,   whole: true, stat: 'Max health', fmt: r1, apply: (s, v) => { s.maxHp += v; } },
     b_crit:  { name: 'Blessing of Fate',    icon: 'star',    per: 0.03, stat: 'Critical chance', fmt: pc, apply: (s, v) => { s.crit += v; } },
     b_spd:   { name: 'Blessing of Wind',    icon: 'wings',   per: 0.04, stat: 'Move speed',      fmt: pc, apply: (s, v) => { s.speed *= 1 + v; } },
     b_atk:   { name: 'Blessing of Fury',    icon: 'bolt',    per: 0.05, stat: 'Attack speed',    fmt: pc, apply: (s, v) => { s.atkSpd += v; } },
     b_area:  { name: 'Blessing of Tides',   icon: 'wave',    per: 0.05, stat: 'Area of effect',  fmt: pc, apply: (s, v) => { s.area += v; } },
-    b_armor: { name: 'Blessing of Stone',   icon: 'mountain', per: 2.5, stat: 'Armor',           fmt: r1, apply: (s, v) => { s.armor += v; } },
+    b_armor: { name: 'Blessing of Stone',   icon: 'mountain', per: 3, whole: true, stat: 'Armor',      fmt: r1, apply: (s, v) => { s.armor += v; } },
     b_xp:    { name: 'Blessing of Insight', icon: 'eye',     per: 0.06, stat: 'Experience',      fmt: pc, apply: (s, v) => { s.xp += v; } },
-    b_luck:  { name: 'Blessing of Fortune', icon: 'clover',  per: 8,    stat: 'Luck',            fmt: r1, apply: (s, v) => { s.luck += v; } },
+    b_luck:  { name: 'Blessing of Fortune', icon: 'clover',  per: 8,    whole: true, stat: 'Luck',   fmt: r1, apply: (s, v) => { s.luck += v; } },
     b_cdr:   { name: 'Blessing of Focus',   icon: 'hourglass', per: 0.08, stat: 'Ability haste', fmt: pc, apply: (s, v) => { s.abilityHaste += v; } },
   };
 
@@ -112,7 +117,7 @@
   });
   D.RELICS = {
     // common — stackable stat pieces
-    whetstone:  { name: 'Whetstone',       icon: 'anvil',     tier: 0, max: 99, desc: '+10% damage.',            apply: (s, n) => { s.dmg += 0.10 * n; } },
+    whetstone:  { name: 'Whetstone',       icon: 'anvil',     tier: 0, max: 99, desc: '+6% damage.',             apply: (s, n) => { s.dmg += 0.06 * n; } },
     boots:      { name: 'Traveler\'s Boots', icon: 'boot',    tier: 0, max: 6,  desc: '+7% move speed.',         apply: (s, n) => { s.speed *= 1 + 0.07 * n; } },
     ironheart:  { name: 'Iron Heart',      icon: 'heart',     tier: 0, max: 99, desc: '+25 max health.',         apply: (s, n) => { s.maxHp += 25 * n; } },
     luckycoin:  { name: 'Lucky Coin',      icon: 'clover',    tier: 0, max: 99, desc: '+12 luck.',               apply: (s, n) => { s.luck += 12 * n; } },
@@ -135,15 +140,15 @@
     battery:    { name: 'Rift Battery',    icon: 'battery', tier: 1, max: 3, desc: '+20% ability haste.',   apply: (s, n) => { s.abilityHaste += 0.20 * n; } },
     plate:      { name: 'Scale Plate',     icon: 'armor',   tier: 1, max: 99, desc: '+6 armor.',            apply: (s, n) => { s.armor += 6 * n; } },
     // rare
-    chainspark: { name: 'Arc Coil',        icon: 'chain',   tier: 2, max: 4, desc: 'Hits have a 10% chance to chain lightning to nearby enemies.', apply: (s, n) => { s.f.chainProc = (s.f.chainProc || 0) + 0.10 * n; } },
+    chainspark: { name: 'Arc Coil',        icon: 'chain',   tier: 2, max: 4, desc: 'Hits have a 6% chance to chain lightning to nearby enemies.', apply: (s, n) => { s.f.chainProc = (s.f.chainProc || 0) + 0.06 * n; } },
     volatile:   { name: 'Volatile Ichor',  icon: 'bomb',    tier: 2, max: 4, desc: 'Slain enemies have a 12% chance to explode.', apply: (s, n) => { s.f.corpseBoom = (s.f.corpseBoom || 0) + 0.12 * n; } },
-    echo:       { name: 'Echo Stone',      icon: 'echo',    tier: 2, max: 3, desc: 'Skills have a 15% chance to fire twice.', apply: (s, n) => { s.f.echo = (s.f.echo || 0) + 0.15 * n; } },
+    echo:       { name: 'Echo Stone',      icon: 'echo',    tier: 2, max: 3, desc: 'Skills that fire on a cooldown have a 15% chance to fire twice.', apply: (s, n) => { s.f.echo = (s.f.echo || 0) + 0.15 * n; } },
     giantsbelt: { name: 'Giant\'s Belt',   icon: 'belt',    tier: 2, max: 3, desc: '+20% area of effect and +15% max health.', apply: (s, n) => { s.area += 0.2 * n; s.hpMult += 0.15 * n; } },
-    ricochet:   { name: 'Splinter Prism',  icon: 'prism',   tier: 2, max: 3, desc: 'Projectiles pierce 1 more enemy and fly 15% faster.', apply: (s, n) => { s.pierce += n; s.projSpd += 0.15 * n; } },
+    ricochet:   { name: 'Splinter Prism',  icon: 'prism',   tier: 2, max: 3, desc: 'Arrows, shards, spores and bolts pierce 1 more enemy. All projectiles fly 15% faster.', apply: (s, n) => { s.pierce += n; s.projSpd += 0.15 * n; } },
     slayer:     { name: 'Giantslayer',     icon: 'skull',   tier: 2, max: 3, desc: '+30% damage to elites and bosses.', apply: (s, n) => { s.bossDmg += 0.30 * n; } },
     frostbite:  { name: 'Frostbite Ring',  icon: 'crystal', tier: 2, max: 3, desc: 'Hits have an 8% chance to freeze enemies solid.', apply: (s, n) => { s.f.freezeProc = (s.f.freezeProc || 0) + 0.08 * n; } },
     venomous:   { name: 'Serpent Tooth',   icon: 'spores',  tier: 2, max: 3, desc: 'Hits have a 20% chance to poison.', apply: (s, n) => { s.f.poisonProc = (s.f.poisonProc || 0) + 0.20 * n; } },
-    souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 250 enemies slain this run.', apply: (s, n, p) => { s.dmg += Math.floor((p.kills || 0) / 250) * 0.01 * n; }, dynamic: true },
+    souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 1,000 enemies slain this run, up to +50%.', apply: (s, n, p) => { s.dmg += Math.min(0.5, Math.floor((p.kills || 0) / 1000) * 0.01) * n; }, dynamic: true },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },
@@ -154,7 +159,7 @@
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
-    phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death in a blaze.', apply: (s) => { s.revives += 1; } },
+    phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },
     infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+1.5% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.015 * (p.level || 1); }, dynamic: true },
     paradox:    { name: 'Paradox Engine',  icon: 'gear',    tier: 4, max: 1, desc: '+30% attack speed and +40% ability haste.', apply: (s) => { s.atkSpd += 0.3; s.abilityHaste += 0.4; } },
     colossus:   { name: 'Heart of the Colossus', icon: 'mountain', tier: 4, max: 1, desc: '+100 max health, +10 armor, +25% area of effect.', apply: (s) => { s.maxHp += 100; s.armor += 10; s.area += 0.25; } },

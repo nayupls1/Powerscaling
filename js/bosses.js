@@ -213,6 +213,7 @@
       const e = PS.Enemies.spawn(def, pos.x, pos.y, { hpMult });
       const dm = PS.Director.dmgMult();
       e.atk = def.atk * dm * (endlessK ? 1.15 : 1);
+      e.atkBase = e.atk; e.dmgBase = e.dmg;
       e.spawnT = 1.4;
       e.bs = { t: 2.2, atk: null, at: 0, n: 0, rage: endlessK > 0, phase2: false };
       e.endlessK = endlessK;
@@ -229,6 +230,15 @@
       const G = PS.G, p = G.player, def = e.def, bs = e.bs;
       if (e.spawnT > 0) return;
       e.ang = Math.atan2(dy, dx);
+
+      // overlong fights escalate both ways so they always resolve: the boss hits harder and its guard crumbles
+      const late = Math.floor((G.time - e.bornAt - 75) / 10);
+      if (late >= 0) {
+        if (!bs.frenzy) { bs.frenzy = true; PS.UI.toast(def.name + ' is done toying with you', 'skull'); PS.Audio.play('bossWarn', { vol: 0.5, pitch: 1.2 }); }
+        e.atk = e.atkBase * (1.1 + late * 0.1);
+        e.dmg = e.dmgBase * (1.1 + late * 0.1);
+        e.taken = 1.15 + late * 0.15;
+      }
 
       // enrage / phase change
       if (!bs.rage && e.hp < e.maxHp * 0.4) {

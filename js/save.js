@@ -35,6 +35,9 @@
           this.data.stats = Object.assign(defaults().stats, d.stats || {});
           this.data.unlocked = Object.assign(defaults().unlocked, d.unlocked || {});
           if (!Array.isArray(this.data.board)) this.data.board = [];
+          this.data.board = this.data.board.filter((r) => r && typeof r === 'object' && typeof r.score === 'number' && isFinite(r.score));
+          if (typeof this.data.essence !== 'number' || !isFinite(this.data.essence)) this.data.essence = 0;
+          if (typeof this.data.name !== 'string') this.data.name = '';
           if (!this.data.tree || typeof this.data.tree !== 'object') this.data.tree = {};
         } catch (e) {
           this.data = defaults();

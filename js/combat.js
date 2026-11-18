@@ -13,7 +13,7 @@
     /** scaling baseline for proc/affinity damage so it keeps pace with the player's build */
     power(el) {
       const p = PS.G.player;
-      return (14 + p.level) * p.dm * (el ? p.stats.el[el] : 1);
+      return (14 + p.level * 0.35) * p.dm * (el ? p.stats.el[el] : 1);
     },
     affN(el) {
       return PS.G.player.aff[el] || 0;
@@ -63,7 +63,7 @@
       }
       let m = 1;
       if (e.shockT > 0) m += aff.storm >= 2 ? 0.30 : 0.15;
-      if (e.chillT > 0 && aff.frost >= 6) m += 0.35;
+      if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
       if (e.markT > 0) m += 0.4;
       if (e.big) m += s.bossDmg;
       dmg *= m * (e.taken || 1);
@@ -72,7 +72,7 @@
       // stats and lifesteal count only the health actually removed, not overkill
       const eff = dmg < e.hp ? dmg : Math.max(0, e.hp);
       e.hp -= dmg;
-      e.flash = 0.1;
+      if (!o.dot && G.time >= e.flashAt) { e.flash = 0.07; e.flashAt = G.time + (e.big ? 0.28 : 0.16); }
       const src = o.src || 'Other';
       G.dmgBy[src] = (G.dmgBy[src] || 0) + eff;
       G.dmgTotal += eff;
@@ -176,7 +176,7 @@
       }
       if (f.chainProc && Math.random() < f.chainProc) {
         G.procN++;
-        C.chain(e.x, e.y, e, Math.max(dmg * 0.5, C.power('storm') * 0.6), 3, 170, { src: 'Arc Coil', noProc: true, skipFirst: true });
+        C.chain(e.x, e.y, e, dmg * 0.5, 3, 170, { src: 'Arc Coil', noProc: true, skipFirst: true });
       }
     },
 
@@ -392,6 +392,7 @@
       if (pr.spin) o.ang = Math.atan2(pr.vy, pr.vx);
       pr.hits++;
       if (pr.hit) pr.hit.add(e.id);
+      const wasBurning = e.burnT > 0; // sampled before this hit applies its own burn
       if (pr.explode) {
         PS.FX.explosion(pr.x, pr.y, pr.explode, pr.color);
         C.aoe(pr.x, pr.y, pr.explode, pr.dmg, o);
@@ -400,7 +401,7 @@
         C.damage(e, pr.dmg, o);
         PS.FX.hitSpark(pr.x, pr.y, pr.color);
       }
-      if (pr.onHit) pr.onHit(pr, e);
+      if (pr.onHit) pr.onHit(pr, e, wasBurning);
       if (pr.boomerang) return;
       if (pr.pierce > 0) { pr.pierce--; return; }
       if (pr.bounce > 0) {
@@ -435,7 +436,8 @@
       if (G.zones.length > 140) {
         // drop the oldest plain zone
         for (let i = 0; i < G.zones.length; i++) {
-          if (!G.zones[i].onEnd && !G.zones[i].follow) { G.zones[i].dead = true; break; }
+          const old = G.zones[i];
+          if (!old.dead && !old.onEnd && !old.follow) { old.dead = true; break; }
         }
       }
       const z = {

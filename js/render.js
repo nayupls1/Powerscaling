@@ -402,10 +402,10 @@
       const fade = Math.min(1, z.life / 0.4, z.age / 0.2);
       const k = z.kind;
       if (k === 'poison' || k === 'pool') {
-        ctx.globalAlpha = 0.3 * fade;
+        ctx.globalAlpha = 0.13 * fade;
         ctx.fillStyle = '#5fb82e';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.6 * fade;
+        ctx.globalAlpha = 0.5 * fade;
         ctx.strokeStyle = '#b8f078'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.94 + 0.04 * Math.sin(t * 5 + z.x)), 0, TAU); ctx.stroke();
         ctx.fillStyle = '#c8ff8a';
@@ -415,13 +415,13 @@
         }
       } else if (k === 'fire') {
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(z.x, z.y, z.r * 1.2, '#ff6a2a', 0.55 * fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
+        drawGlow(z.x, z.y, z.r * 1.15, '#ff6a2a', 0.3 * fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 0.5 * fade;
         ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
       } else if (k === 'blizzard') {
-        ctx.globalAlpha = 0.22 * fade;
+        ctx.globalAlpha = 0.09 * fade;
         ctx.fillStyle = '#9fe6ff';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
         ctx.globalAlpha = 0.7 * fade;
@@ -430,11 +430,11 @@
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
       } else if (k === 'rift' || k === 'implode') {
-        ctx.globalAlpha = 0.55 * fade;
+        ctx.globalAlpha = 0.4 * fade;
         ctx.fillStyle = '#12061f';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 0.45, 0, TAU); ctx.fill();
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.4 * fade);
+        drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.22 * fade);
         ctx.strokeStyle = '#dba6ff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.8 * fade;
         for (let i = 0; i < 3; i++) {
           const a = -t * 4 + (i * TAU) / 3, rr = z.r * (0.35 + 0.22 * i);
@@ -442,7 +442,7 @@
         }
         ctx.globalCompositeOperation = 'source-over';
       } else if (k === 'arrows') {
-        ctx.globalAlpha = 0.16 * fade;
+        ctx.globalAlpha = 0.07 * fade;
         ctx.fillStyle = '#f1e7cf';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
         ctx.globalAlpha = 0.7 * fade;
@@ -647,10 +647,13 @@
       const spr = SPR[e.def.sprite];
       const sc = e.r / e.def.r;
       const wob = e.freezeT > 0 ? 0 : Math.sin(t * 9 + e.wob) * 0.06;
-      const img = e.flash > 0 ? spr.white : e.freezeT > 0 ? spr.ice : spr.img;
+      // small enemies pop white when hit; elites and bosses only tint so their art stays readable under sustained fire
+      const flash = e.flash > 0;
+      const img = flash && !e.big ? spr.white : e.freezeT > 0 ? spr.ice : spr.img;
       ctx.globalAlpha = e.spawnT > 0 ? Math.max(0.15, 1 - e.spawnT / 0.35) : 1;
       spriteTf(e.x, e.y, e.ang, sc * (1 + wob), sc * (1 - wob));
       ctx.drawImage(img, -spr.size / 2, -spr.size / 2, spr.size, spr.size);
+      if (flash && e.big) { ctx.globalAlpha = 0.4; ctx.drawImage(spr.white, -spr.size / 2, -spr.size / 2, spr.size, spr.size); }
     }
     ctx.globalAlpha = 1;
     worldTf();
@@ -721,7 +724,7 @@
     // inferno aura
     if (p.auraR > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      drawGlow(x, y, p.auraR * 1.15, '#ff5a1f', 0.22 + 0.05 * Math.sin(t * 9));
+      drawGlow(x, y, p.auraR * 1.15, '#ff5a1f', 0.14 + 0.04 * Math.sin(t * 9));
       ctx.globalAlpha = 0.6; ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2.5;
       ctx.setLineDash([14, 10]); ctx.lineDashOffset = -t * 60;
       ctx.beginPath(); ctx.arc(x, y, p.auraR, 0, TAU); ctx.stroke();
@@ -971,14 +974,18 @@
   /* ------------------------------------------------------------------ screen-space overlays */
   function drawIndicators(G) {
     const p = G.player;
+    const narrow = W / dpr < 760, short = H / dpr < 520;
+    const safe = { l: (narrow ? 84 : 128) * dpr, r: W - 48 * dpr, t: (short ? 62 : narrow ? 92 : 104) * dpr, b: H - (short ? 100 : narrow ? 190 : 132) * dpr };
     const mark = (x, y, color, icon) => {
       if (visible(x, y, -30)) return;
       const cx = W / 2, cy = H / 2;
       const a = Math.atan2(y - p.y, x - p.x);
-      const pad = 46 * dpr;
-      const kx = (W / 2 - pad) / Math.abs(Math.cos(a) || 1e-6), ky = (H / 2 - pad) / Math.abs(Math.sin(a) || 1e-6);
+      // project onto the edge of a safe rectangle that sits inside the HUD (tracker on the left, bars below, clock above)
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const kx = ca > 0 ? (safe.r - cx) / ca : ca < 0 ? (safe.l - cx) / ca : 1e9;
+      const ky = sa > 0 ? (safe.b - cy) / sa : sa < 0 ? (safe.t - cy) / sa : 1e9;
       const k = Math.min(kx, ky);
-      const sx = cx + Math.cos(a) * k, sy = cy + Math.sin(a) * k;
+      const sx = cx + ca * k, sy = cy + sa * k;
       ctx.setTransform(dpr, 0, 0, dpr, sx, sy);
       ctx.globalAlpha = 0.92;
       ctx.fillStyle = 'rgba(16,10,34,0.85)';
@@ -1062,7 +1069,7 @@
       const k = Math.min(1, G.rdt * 7);
       G.cam.x += (tx - G.cam.x) * k;
       G.cam.y += (ty - G.cam.y) * k;
-      const sh = G.shake;
+      const sh = PS.Game.state === 'play' ? G.shake : 0; // no jitter behind menus and cards
       const sx = sh ? (Math.random() - 0.5) * sh * 2 : 0, sy = sh ? (Math.random() - 0.5) * sh * 2 : 0;
       const vw = W / scale, vh = H / scale;
       G.viewW = vw; G.viewH = vh;

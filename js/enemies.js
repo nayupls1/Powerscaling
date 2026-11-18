@@ -23,7 +23,7 @@
     // bloaters burst — dangerous to the player, and to the horde around them
     const x = e.x, y = e.y, r = e.def.explode.r * (e.elite ? 1.4 : 1);
     C.hazard({ kind: 'circle', x, y, r, delay: 0.45, dmg: e.def.explode.dmg * PS.Director.dmgMult(), color: '#d6c14a',
-      onLand() { C.aoe(x, y, r, e.maxHp * 0.6, { src: 'Bloater burst', noCrit: true, noProc: true, noStatus: true, knock: 200 }); } });
+      onLand() { C.aoe(x, y, r, e.maxHp * 0.1, { src: 'Bloater burst', noCrit: true, noProc: true, noStatus: true, knock: 200 }); } });
   };
   DEFS.slime.onDeath = function (e) {
     const sp = e.def.split;
@@ -48,7 +48,7 @@
       if (opts.elite) { hp *= 7 + Dr.minutes() * 0.6; r *= 1.45; dmg *= 1.4; mass *= 3.5; xp *= 12; }
       const e = {
         id: nextId++, def, x, y, r, hp, maxHp: hp, dmg, speed: def.spd * Dr.speedMult(), xp, mass,
-        score: Math.round(xp * 10), kx: 0, ky: 0, flash: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,
+        score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,
         burnT: 0, burnDps: 0, poisT: 0, poisStacks: 0, poisDps: 0, bleedT: 0, bleedDps: 0,
         chillT: 0, freezeT: 0, freezeImm: 0, shockT: 0, markT: 0, dotT: Math.random() * 0.25, dotAcc: 0, dotEl: null, dotShow: 0,
         icd: {}, elite: !!opts.elite, boss: !!def.boss, big: !!opts.elite || !!def.boss, taken: def.taken || 1,
@@ -88,7 +88,7 @@
           if (e.burnT > 0) C.damage(e, e.burnDps * 0.25 * burnMul, DOT_BURN);
           if (!e.dead && e.poisStacks > 0) {
             let d = e.poisStacks * e.poisDps * 0.25 * poisMul;
-            if (venom6) d += e.maxHp * (e.boss ? 0.0015 : 0.015) * 0.25;
+            if (venom6) d += e.maxHp * (e.boss ? 0.0006 : 0.006) * 0.25;
             C.damage(e, d, DOT_POISON);
           }
           if (!e.dead && e.bleedT > 0) C.damage(e, e.bleedDps * 0.25 * s.statusDmg, DOT_BLEED);
@@ -201,7 +201,8 @@
         e.st = def.shotCd * (0.8 + Math.random() * 0.4);
         const a = Math.atan2(dy, dx);
         const n = def.burst || 1;
-        const dmg = def.shotDmg * PS.Director.dmgMult();
+        const weak = e.poisStacks > 0 && p.stats.f.pandemic ? 0.75 : 1;
+        const dmg = def.shotDmg * PS.Director.dmgMult() * weak;
         for (let k = 0; k < n; k++) {
           C.ebullet({ x: e.x, y: e.y, ang: a + (k - (n - 1) / 2) * 0.22, speed: def.shotSpd, dmg, r: 7, color: def.burst ? '#ff6bd6' : '#b6ff5a', life: 4.5 });
         }

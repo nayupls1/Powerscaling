@@ -9,7 +9,7 @@
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe' };
 
   let hudT = 0, loadoutSig = '', affSig = '', curSpec = null, choiceAt = 0, banishMode = false;
-  let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle';
+  let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
     (root || document).querySelectorAll('i[data-icon]').forEach((el) => {
@@ -66,7 +66,7 @@
         if (e.target.closest && e.target.closest('button') && e.relatedTarget && !e.target.closest('button').contains(e.relatedTarget)) PS.Audio.play('uiHover', { vol: 0.25 });
       });
 
-      selClass = PS.Save.data.lastClass || 'vanguard';
+      selClass = D.CLASSES[PS.Save.data.lastClass] && PS.Save.data.unlocked[PS.Save.data.lastClass] ? PS.Save.data.lastClass : 'vanguard';
       this.showMenu();
       if (/[?&]bot=1/.test(location.search)) setTimeout(() => PS.Game.start(selClass, { bot: {} }), 300);
     },
@@ -132,6 +132,7 @@
             <span>${ico('heart', 16)} ${base.maxHp} health</span>
             <span>${ico('boot', 16)} ${base.speed} speed</span>
             ${base.armor ? `<span>${ico('shield', 16)} ${base.armor} armor</span>` : ''}
+            <span>${ico('swords', 16)} ${c.difficulty} to play</span>
           </div>
           <div class="cd-kit">
             <div class="kit"><span class="kit-ico" style="--c:${el.color}">${ico(prim.icon, 26)}</span><div><b>${prim.name}</b><small>Attack, ${el.name}</small><p>${prim.desc}</p></div></div>
@@ -141,7 +142,7 @@
           <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : 'Begin run'}</button>
         </div>
         <div class="cd-tree">
-          <h3>Ascension paths <small>one talent every 5 levels</small></h3>
+          <h3>Ascension paths <small>one talent every 6 levels, and only one path can reach its final tier</small></h3>
           <div class="branches">${c.branches.map((br) => `
             <div class="branch" style="--c:${br.color}">
               <h4>${ico(br.icon, 18)} ${br.name}</h4>
@@ -251,8 +252,8 @@
           return `<tr class="${i < 3 ? 'top' + (i + 1) : ''}">
             <td>${i + 1}</td><td class="nm">${esc(r.name)}${r.won ? ` <span class="won" data-tip="Slew the Rift Lord">${ico('crown', 14)}</span>` : ''}</td>
             <td style="color:${c.color}">${c.name}</td>
-            <td class="num score">${U.fmtNum(r.score)}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td>
-            <td class="num">${U.fmtNum(r.kills)}</td><td class="num">${r.bosses}</td>
+            <td class="num score">${Math.round(r.score).toLocaleString('en-US')}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td>
+            <td class="num">${Math.round(r.kills).toLocaleString('en-US')}</td><td class="num">${r.bosses}</td>
             <td class="muted">${esc((r.build || []).slice(0, 2).join(', '))}</td>
             <td class="muted">${new Date(r.date).toLocaleDateString()}</td></tr>`;
         }).join('')}</tbody></table>`;
@@ -272,12 +273,12 @@
             <li>${k('Esc')}<span>Pause and inspect your build</span></li>
             <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
           </ul>
-          <p class="muted">Touch screens get a movement stick and auto-aim. Gamepads work too.</p>
+          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
         </div>
         <div class="help-col">
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger.</p>
-          <p>Every 5 levels your class ascends: pick which of its three paths to advance.</p>
+          <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
         </div>
@@ -285,7 +286,7 @@
           <h3>Building power</h3>
           <p>Each skill belongs to one of six elements. Owning 2, 4 and 6 skills of the same element unlocks set bonuses, so a focused build is far stronger than a scattered one.</p>
           <ul class="els">${D.ELEMENT_IDS.map((id) => `<li style="--c:${D.ELEMENTS[id].color}">${ico(D.ELEMENTS[id].icon, 16)}<b>${D.ELEMENTS[id].name}</b><span>${D.AFFINITY[id][1].text}</span></li>`).join('')}</ul>
-          <p>A skill at level 6 evolves if you own its matching tome. After that it can be overcharged without limit.</p>
+          <p>A skill at level 6 evolves if you own its matching tome. An evolved skill counts twice toward its element, and can then be overcharged without limit.</p>
         </div>`;
     },
 
@@ -297,8 +298,8 @@
         <label class="set-row"><span><b>Name</b><small>Shown on the leaderboard</small></span><input type="text" maxlength="14" value="${esc(d.name)}" placeholder="Wanderer" data-name></label>
         ${sl('sfx', 'Sound effects')}
         ${sl('music', 'Music')}
-        ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of the cursor')}
-        ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding the mouse button')}
+        ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
+        ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
         ${PS.Game.state === 'menu' ? `<div class="set-row"><span><b>Erase progress</b><small>Deletes Essence, upgrades, unlocks and the leaderboard</small></span><button class="btn btn-danger" data-reset>Erase</button></div>` : ''}`;
@@ -351,7 +352,7 @@
       if (!PS.Save.data.seenTutorial) {
         PS.Save.data.seenTutorial = true;
         PS.Save.save();
-        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Q for your ability.', 6);
+        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Q for your ability.', 4.5);
       }
     },
     updateHud(dt) {
@@ -417,7 +418,8 @@
       el.className = 'toast';
       el.innerHTML = `${icon ? ico(icon, 16) : ''}<span>${esc(text)}</span>`;
       box.appendChild(el);
-      while (box.children.length > 4) box.removeChild(box.firstChild);
+      const max = window.innerWidth < 760 || window.innerHeight < 520 ? 2 : 4;
+      while (box.children.length > max) box.removeChild(box.firstChild);
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 3200);
     },
     banner(title, sub, dur) {
@@ -430,7 +432,7 @@
       bannerT = dur || 3.5;
     },
     bossIntro(def) {
-      this.banner(def.name, def.title, 3.5);
+      this.banner(def.name, def.title, 2.6);
       $('banner').classList.add('boss');
       $('bossName').textContent = def.name + ', ' + def.title;
       $('bossBar').hidden = false;
@@ -441,6 +443,7 @@
     showChoice(spec) {
       curSpec = spec;
       banishMode = false;
+      padCard = Math.min(1, spec.cards.length - 1);
       choiceAt = performance.now();
       const ov = $('ovChoice');
       ov.hidden = false;
@@ -457,8 +460,10 @@
         const rar = D.RARITY[c.tier] || D.RARITY[0];
         const col = c.color || (c.el ? elColor(c.el) : rar.color);
         const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : rar.name;
-        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''}" data-i="${i}" style="--rc:${c.special === 'talent' ? col : rar.color};--c:${col};--d:${i * 70}ms">
+        const canBan = spec.kind === 'level' && (c.type === 'skill' || c.type === 'tome');
+        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' ? col : rar.color};--c:${col};--d:${i * 70}ms">
           <span class="card-key">${i + 1}</span>
+          <span class="card-ban">${ico('ban', 22)}</span>
           <span class="card-tag">${esc(c.tag)}</span>
           <span class="card-ico">${ico(c.icon, 44)}</span>
           <span class="card-title">${esc(c.title)}</span>
@@ -474,7 +479,7 @@
       const act = $('choiceActions');
       if (spec.kind === 'level') {
         act.innerHTML = `
-          <button class="btn btn-small" id="actReroll" ${p.rerolls <= 0 ? 'disabled' : ''}>${ico('dice', 16)} Reroll <b>${p.rerolls}</b> <kbd>R</kbd></button>
+          <button class="btn btn-small" id="actReroll" ${p.rerolls <= 0 && p.gold < PS.Game.rerollCost() ? 'disabled' : ''}>${ico('dice', 16)} Reroll ${p.rerolls > 0 ? `<b>${p.rerolls}</b>` : `for <b>${PS.Game.rerollCost()}</b> gold`} <kbd>R</kbd></button>
           <button class="btn btn-small${banishMode ? ' on' : ''}" id="actBanish" ${p.banishes <= 0 ? 'disabled' : ''}>${ico('ban', 16)} ${banishMode ? 'Pick a card to banish' : 'Banish'} <b>${p.banishes}</b> <kbd>B</kbd></button>
           <button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Skip for 10 gold</button>`;
         click($('actReroll'), () => this.rerollCards());
@@ -559,7 +564,7 @@
       $('ovChoice').hidden = true; $('ovPause').hidden = true;
       $('hud').hidden = true; $('touch').hidden = true;
       const title = r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
-      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}.`;
+      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.` : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}.`;
       $('overBody').innerHTML = `
         <header class="over-head${r.won ? ' won' : ''}">
           <h2>${title}</h2>
@@ -611,6 +616,37 @@
       click($('overMenu'), () => PS.Game.toMenu());
     },
 
+    /* ================================================================ gamepad (menus, cards, pause) */
+    onPad(btn) {
+      const st = PS.Game.state;
+      if (btn === 'start') { this.onEscape(); return; }
+      if (st === 'choice' && curSpec) {
+        const n = curSpec.cards.length;
+        if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
+        else if (btn === 'a') this.pickCard(padCard);
+        else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
+        else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
+      } else if (st === 'paused') {
+        if (btn === 'b' || btn === 'a') PS.Game.resume();
+      } else if (st === 'over') {
+        if (btn === 'a') PS.Game.start(PS.G.cls);
+        else if (btn === 'b') PS.Game.toMenu();
+      } else if (st === 'menu') {
+        if (lastScreen === 'scrTitle') { if (btn === 'a') this.showScreen('scrClass'); else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard'); }
+        else if (btn === 'b') this.showScreen('scrTitle');
+        else if (lastScreen === 'scrClass') {
+          const ids = D.CLASS_IDS, i = ids.indexOf(selClass);
+          if (btn === 'left' || btn === 'right') { selClass = ids[(i + (btn === 'left' ? ids.length - 1 : 1)) % ids.length]; this.renderClasses(); PS.Audio.play('uiHover'); }
+          else if (btn === 'a' && PS.Save.data.unlocked[selClass]) PS.Game.start(selClass);
+        } else if (lastScreen === 'scrTree' && btn === 'a') this.buyNode(selNode);
+        else if (lastScreen === 'scrTree' && (btn === 'left' || btn === 'right')) {
+          const i = D.META.findIndex((m) => m.id === selNode);
+          selNode = D.META[(i + (btn === 'left' ? D.META.length - 1 : 1)) % D.META.length].id;
+          this.renderTree();
+        }
+      }
+    },
+
     /* ================================================================ keys */
     onEscape() {
       const st = PS.Game.state;
@@ -627,7 +663,7 @@
         else if (code === 'Digit3' || code === 'Numpad3') this.pickCard(2);
         else if (code === 'KeyR' && curSpec.kind === 'level') this.rerollCards();
         else if (code === 'KeyB' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
-      } else if (st === 'over' && code === 'Enter' && document.activeElement && document.activeElement.id !== 'overName') {
+      } else if (st === 'over' && code === 'Enter' && (!document.activeElement || document.activeElement === document.body)) {
         PS.Game.start(PS.G.cls);
       }
     },

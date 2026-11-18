@@ -38,23 +38,24 @@
       this.chestCost = 30;
       this.chestsOpened = 0;
       this.victory = false;
+      this.healAt = 0; this.magnetAt = 0; this.bombAt = 30;
     },
     minutes() { return PS.G.time / 60; },
     endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       // player power grows roughly exponentially while slots fill, then levels off — the horde follows the same curve
-      return Math.exp(0.62 * t - 0.011 * t * t) * Math.pow(1.6, o);
+      return Math.exp(0.62 * t - 0.011 * t * t) * Math.pow(1.75, o);
     },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (1 + 0.11 * t) * (1 + 0.3 * o);
+      return (0.75 + 0.13 * t) * (1 + 0.35 * o); // gentle opening, same bite by the final boss
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
     xpMult() { return 1 + this.endless() * 0.1; },
     targetCount() {
       const t = this.minutes();
-      return Math.min(MAX_ENEMIES, 36 + 30 * t + 1.4 * t * t);
+      return Math.min(MAX_ENEMIES, 42 + 30 * t + 1.4 * t * t);
     },
     spawnRate() {
       const t = this.minutes();
@@ -92,6 +93,8 @@
     update(dt) {
       const G = PS.G, p = G.player;
       const bossAlive = !!G.boss;
+      // a boss holds back the horde for a while; drag the fight out and the rift stops waiting
+      const bossHold = bossAlive && G.time - G.boss.bornAt < 75;
 
       // ---- bosses
       if (this.bossIdx < BOSS_TIMES.length) {
@@ -110,8 +113,8 @@
       }
 
       // ---- trickle spawns toward the target population
-      const target = this.targetCount() * (bossAlive ? 0.55 : 1);
-      this.spawnAcc += this.spawnRate() * dt * (bossAlive ? 0.6 : 1);
+      const target = this.targetCount() * (bossHold ? 0.55 : 1);
+      this.spawnAcc += this.spawnRate() * dt * (bossHold ? 0.6 : 1);
       if (this.spawnAcc > 20) this.spawnAcc = 20;
       while (this.spawnAcc >= 1) {
         this.spawnAcc -= 1;
@@ -122,7 +125,7 @@
 
       // ---- elites
       this.eliteT -= dt;
-      if (this.eliteT <= 0 && !bossAlive) {
+      if (this.eliteT <= 0 && !bossHold) {
         this.eliteT = Math.max(32, 58 - this.minutes() * 1.5);
         const pos = this.ringPos();
         const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith'].filter((id) => {
@@ -135,7 +138,7 @@
 
       // ---- hordes
       this.hordeT -= dt;
-      if (this.hordeT <= 0 && !bossAlive) {
+      if (this.hordeT <= 0 && !bossHold) {
         this.hordeT = 80;
         this.horde(this.hordeN++);
       }
@@ -216,19 +219,28 @@
         return;
       }
       const r = Math.random();
-      if (r < 0.085) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.3) * s.gold)));
-      else if (r < 0.0885) this.pickup('heal', e.x, e.y, 0);
-      else if (r < 0.0895) this.pickup('magnet', e.x, e.y, 0);
-      else if (r < 0.0902) this.pickup('bomb', e.x, e.y, 0);
+      if (r < 0.085) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.15) * s.gold)));
+      // rare drops are rate-limited: kill counts late in a run would otherwise rain them
+      else if (r < 0.0885) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
+      else if (r < 0.0895) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
+      else if (r < 0.0902) { if (G.time > this.bombAt) { this.bombAt = G.time + 90; this.pickup('bomb', e.x, e.y, 0); } }
     },
     gem(x, y, val) {
       const G = PS.G;
       if (G.gemCount >= MAX_GEMS) {
-        // fold the value into an existing gem so nothing is lost
-        for (let k = 0; k < 6; k++) {
-          const g = G.pickups[(Math.random() * G.pickups.length) | 0];
-          if (g && g.kind === 'xp' && !g.dead) { g.val += val; return; }
+        // at the cap: merge into a gem close to the kill, or drag the most distant stray gem here, so fresh XP always lands nearby
+        const p = G.player, list = G.pickups;
+        let near = null, nd = 220 * 220, far = null, fd = 0;
+        for (let i = 0; i < list.length; i++) {
+          const g = list[i];
+          if (g.kind !== 'xp' || g.dead) continue;
+          const d = U.dist2(g.x, g.y, x, y);
+          if (d < nd) { nd = d; near = g; }
+          const pd = U.dist2(g.x, g.y, p.x, p.y);
+          if (pd > fd) { fd = pd; far = g; }
         }
+        if (near) { near.val += val; return; }
+        if (far) { far.val += val; far.x = x; far.y = y; far.vx = 0; far.vy = 0; far.pull = false; far.age = 0; return; }
       }
       G.gemCount++;
       G.pickups.push({ kind: 'xp', x: x + U.rand(-6, 6), y: y + U.rand(-6, 6), val, r: 6, vx: U.rand(-40, 40), vy: U.rand(-40, 40), pull: false, dead: false, age: 0 });
@@ -296,7 +308,7 @@
           PS.FX.shake(10);
           PS.Audio.play('bomb');
           for (const e of G.enemies.slice()) {
-            if (U.dist2(e.x, e.y, p.x, p.y) < 800 * 800) PS.Combat.damage(e, e.boss ? e.maxHp * 0.05 : e.elite ? e.maxHp * 0.5 : e.maxHp * 2, { src: 'Bomb', noCrit: true, noProc: true, noStatus: true });
+            if (U.dist2(e.x, e.y, p.x, p.y) < 800 * 800) PS.Combat.damage(e, e.boss ? e.maxHp * 0.03 : e.elite ? e.maxHp * 0.4 : e.maxHp * 2, { src: 'Bomb', noCrit: true, noProc: true, noStatus: true });
           }
           break;
         case 'chest':

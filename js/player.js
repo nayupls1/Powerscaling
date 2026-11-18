@@ -41,8 +41,9 @@
       this.recalc(true);
       this.hp = this.stats.maxHp;
       this.dashCharges = this.stats.dashCharges;
-      this.rerolls = 2 + (this.stats.m.rerolls || 0);
-      this.banishes = 1 + (this.stats.m.banishes || 0);
+      this.rerolls = 3 + (this.stats.m.rerolls || 0);
+      this.banishes = 2 + (this.stats.m.banishes || 0);
+      this.rerollsBought = 0;
     }
 
     get tomeSlots() { return 6 + (this.stats.m.tomeSlots || 0); }
@@ -75,7 +76,7 @@
 
       // affinities = owned skills per element + bonus points
       const aff = Object.assign({}, s.aff);
-      for (const sk of this.skills) aff[sk.def.el] += 1;
+      for (const sk of this.skills) aff[sk.def.el] += sk.evolved ? 2 : 1; // an evolved skill counts twice
       if (aff.steel >= 2) { s.crit += 0.12; s.armor += 6; }
       if (aff.steel >= 4) s.critMult += 0.5;
       if (aff.steel >= 6) s.dmgMore *= 1.3;
@@ -299,7 +300,10 @@
       const G = PS.G, s = this.stats;
       if (s.revives - this.revivesUsed > 0) {
         this.revivesUsed++;
-        this.hp = s.maxHp * (this.relics.phoenix ? 1 : 0.5);
+        // the Phoenix Plume's own revive is the one that restores full health; it is spent first
+        const plume = this.relics.phoenix && !this.plumeUsed;
+        if (plume) this.plumeUsed = true;
+        this.hp = s.maxHp * (plume ? 1 : 0.5);
         this.inv = 3;
         PS.FX.flash('#ffd06b', 0.6);
         PS.FX.explosion(this.x, this.y, 320, '#ffb061', true);
@@ -323,7 +327,7 @@
         this.level++;
         this.xpNext = xpFor(this.level);
         this.pendingLevels++;
-        if (this.level % 5 === 0) this.talentsDue++;
+        if (this.level % 6 === 0) this.talentsDue++;
       }
     }
     onKill(e, o, canProc) {
@@ -341,7 +345,7 @@
     }
     addTome(id, tier) {
       const def = D.TOMES[id];
-      const inc = def.per * (def.fixed ? 1 : D.RARITY[tier].mult);
+      const inc = D.incFor(def, tier);
       let t = this.hasTome(id);
       if (!t) { t = { id, def, level: 0, val: 0 }; this.tomes.push(t); }
       t.level++;
@@ -356,7 +360,7 @@
     }
     addBoon(id, tier) {
       const def = D.BOONS[id];
-      this.boons[id] = (this.boons[id] || 0) + def.per * D.RARITY[tier].mult;
+      this.boons[id] = (this.boons[id] || 0) + D.incFor(def, tier);
       this.recalc();
     }
     talentTotal() { return this.talents[0] + this.talents[1] + this.talents[2]; }

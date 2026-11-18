@@ -39,11 +39,11 @@
         for (const id of S.poolIds()) {
           if (p.hasSkill(id) || p.banned.has(id)) continue;
           const el = S.DEFS[id].el;
-          cands.push({ w: p.aff[el] > 0 ? 1.7 : 1, type: 'skill', id });
+          cands.push({ w: p.aff[el] > 0 ? 0.9 : 0.45, type: 'skill', id });
         }
       }
       for (const t of p.tomes) {
-        if (t.level < t.def.max) cands.push({ w: evoTomes.has(t.id) ? 1.1 : 1.5, type: 'tome', id: t.id });
+        if (t.level < t.def.max && !p.banned.has(t.id)) cands.push({ w: evoTomes.has(t.id) ? 1.1 : 1.5, type: 'tome', id: t.id });
       }
       if (p.tomes.length < p.tomeSlots) {
         for (const id in D.TOMES) {
@@ -54,7 +54,7 @@
 
       let picks = sample(cands, 3);
       // the first few levels should always offer at least one new skill while slots are open
-      if (p.level <= 8 && p.skills.length < Math.min(p.skillSlots, 3) && !picks.some((c) => c.type === 'skill')) {
+      if (p.level <= 4 && p.skills.length < 3 && !picks.some((c) => c.type === 'skill')) {
         const sk = cands.filter((c) => c.type === 'skill');
         if (sk.length && picks.length) picks[picks.length - 1] = U.weighted(sk);
       }
@@ -99,7 +99,7 @@
       } else if (type === 'tome') {
         const def = D.TOMES[id], t = p.hasTome(id);
         card.tier = def.fixed ? 3 : D.rollRarity(luck, def.minRar || 0);
-        const inc = def.per * (def.fixed ? 1 : D.RARITY[card.tier].mult);
+        const inc = D.incFor(def, card.tier);
         card.icon = def.icon; card.title = def.name;
         card.tag = t ? `Level ${t.level} to ${t.level + 1}` : 'New tome';
         card.desc = `+${def.fmt(inc)} ${def.stat.toLowerCase()}.`;
@@ -119,13 +119,17 @@
     /** one option per branch: the next unlearned node */
     talentChoices(p) {
       const cards = [];
+      // only one path may reach its final tier: taking a capstone closes the other two
+      const capped = p.talents.some((r, i) => r >= p.cls.branches[i].nodes.length);
       p.cls.branches.forEach((br, bi) => {
         const rank = p.talents[bi];
         if (rank >= br.nodes.length) return;
+        if (capped && rank >= br.nodes.length - 1) return;
         const node = br.nodes[rank];
         cards.push({
           type: 'talent', id: bi, tier: 3, special: 'talent', icon: node.icon, title: node.name, color: br.color,
-          tag: `${br.name}, tier ${rank + 1} of ${br.nodes.length}`, desc: node.desc, lines: [],
+          tag: `${br.name}, tier ${rank + 1} of ${br.nodes.length}`, desc: node.desc,
+          lines: rank === br.nodes.length - 1 ? ['Final tier. Choosing it closes the other two capstones.'] : [],
         });
       });
       return cards;
@@ -166,7 +170,7 @@
       const ids = U.shuffle(Object.keys(D.BOONS)).slice(0, 3);
       return ids.map((id) => {
         const def = D.BOONS[id], tier = D.rollRarity(p.stats.luck + 25);
-        return { type: 'boon', id, tier, icon: def.icon, title: def.name, tag: 'Shrine blessing', desc: `+${def.fmt(def.per * D.RARITY[tier].mult)} ${def.stat.toLowerCase()}, permanently.`, lines: [] };
+        return { type: 'boon', id, tier, icon: def.icon, title: def.name, tag: 'Shrine blessing', desc: `+${def.fmt(D.incFor(def, tier))} ${def.stat.toLowerCase()}, permanently.`, lines: [] };
       });
     },
 

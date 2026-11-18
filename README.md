@@ -28,7 +28,7 @@ Touch screens get a floating movement stick with auto-aim, and gamepads are supp
 
 ## What is in it
 
-- **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 5 levels.
+- **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
 - **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
@@ -75,5 +75,11 @@ tools/batch.sh "--sloppy" 14               # two runs per class in parallel
 ```
 
 Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--quiet`.
+
+`tools/stress.js` runs every class with all talents, every relic and every evolved skill at once and fails on any page error or invalid number:
+
+```sh
+node tools/stress.js 3
+```
 
 Appending `?bot=1` to the page URL lets you watch the bot play.

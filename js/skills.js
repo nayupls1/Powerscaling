@@ -126,7 +126,7 @@
       desc: 'A burst of cold around you that can freeze enemies solid.',
       base: { dmg: 20, cd: 4.5, area: 1 },
       up: [{ dmg: 8 }, { area: 0.2 }, { cd: -0.6 }, { dmg: 10 }, { area: 0.25, cd: -0.5 }],
-      evo: { name: 'Absolute Zero', tome: 'plating', desc: 'Always freezes, hits twice as hard, and leaves a blizzard.', mod: { dmg: 22 } },
+      evo: { name: 'Absolute Zero', tome: 'plating', desc: 'Always freezes, hits twice as hard, and leaves a blizzard.', mod: { dmg: 38 } },
       fire(inst, s, p) {
         const r = 150 * s.area, ev = inst.evolved;
         PS.FX.ring(p.x, p.y, r, EL.frost.glow, 0.4);
@@ -240,7 +240,7 @@
       desc: 'Lobs a flask that shatters into a pool of poison.',
       base: { dmg: 6, cd: 3.0, count: 1, area: 1, dur: 1 },
       up: [{ dmg: 2 }, { area: 0.2 }, { count: 1 }, { dur: 0.4, dmg: 2 }, { count: 1 }],
-      evo: { name: 'Miasma', tome: 'vitality', desc: 'Pools are far larger, slow enemies, and hit twice as hard.', mod: { area: 0.6, dmg: 8 } },
+      evo: { name: 'Miasma', tome: 'vitality', desc: 'Pools are far larger, slow enemies, and hit twice as hard.', mod: { area: 0.6, dmg: 10 } },
       fire(inst, s, p) {
         if (!PS.G.enemies.length) return false;
         const dmg = s.dmg, r = 75 * s.area, life = 4 * s.dur, ev = inst.evolved;
@@ -273,7 +273,7 @@
         if (!C.nearest(p.x, p.y, 520)) return false;
         const base = Math.random() * TAU, ev = inst.evolved;
         for (let i = 0; i < s.count; i++) {
-          C.proj({ x: p.x, y: p.y, ang: base + (i * TAU) / s.count, speed: s.speed, dmg: s.dmg, el: 'venom', src: inst.name, r: 6, life: 2.6, kind: 'spore', color: EL.venom.color, homing: 6.5, accel: 160, bounce: ev ? 2 : 0, opts: { poison: 2 } });
+          C.proj({ x: p.x, y: p.y, ang: base + (i * TAU) / s.count, speed: s.speed, dmg: s.dmg, el: 'venom', src: inst.name, r: 6, life: 2.6, kind: 'spore', color: EL.venom.color, homing: 6.5, accel: 160, pierce: s.pierce, bounce: ev ? 2 : 0, opts: { poison: 2 } });
         }
         PS.Audio.play('poison', { vol: 0.3 });
       },
@@ -384,7 +384,7 @@
             x: e.x, y: e.y, r, life: 2.6 * s.dur, tick: 0.25, dmg, el: 'void', src: inst.name, kind: 'rift', color: EL.void.color, pull: ev ? 420 : 260,
             onEnd: ev ? (z) => {
               PS.FX.explosion(z.x, z.y, z.r * 0.9, '#c06bff', true);
-              C.aoe(z.x, z.y, z.r * 0.9, dmg * 14, { el: 'void', src: inst.name, knock: 240 });
+              C.aoe(z.x, z.y, z.r * 0.9, dmg * 8, { el: 'void', src: inst.name, knock: 240 });
               PS.Audio.play('bigExplode', { vol: 0.5 });
               PS.FX.shake(4);
             } : null,
@@ -413,7 +413,7 @@
           inst.qt += 0.06;
           const side = inst.queue % 2 ? 1 : -1;
           const a = p.aim + Math.PI + side * U.rand(0.5, 1.4);
-          C.proj({ x: p.x, y: p.y, ang: a, speed: s.speed, dmg: s.dmg, el: 'void', src: inst.name, r: 6, life: 2.4, kind: 'missile', color: EL.void.color, homing: 8, accel: 420, explode: inst.evolved ? 42 * s.area : 0, trail: '#c06bff' });
+          C.proj({ x: p.x, y: p.y, ang: a, speed: s.speed, dmg: s.dmg, el: 'void', src: inst.name, r: 6, life: 2.4, kind: 'missile', color: EL.void.color, homing: 8, accel: 420, pierce: inst.evolved ? 0 : s.pierce, explode: inst.evolved ? 42 * s.area : 0, trail: '#c06bff' });
           PS.Audio.play('shoot', { vol: 0.2, pitch: 1.3 });
         }
       },
@@ -434,7 +434,7 @@
           m.shot = (fam, t) => {
             const cur = S.stats(inst);
             fam.atkCd = cur.cd;
-            C.proj({ x: fam.x, y: fam.y, ang: fam.ang, speed: 620, dmg: cur.dmg, el: 'void', src: inst.name, r: 6, life: 1, kind: 'bolt', color: EL.void.color, pierce: inst.evolved ? 3 : 0, opts: inst.evolved ? { critBonus: 0.3 } : null });
+            C.proj({ x: fam.x, y: fam.y, ang: fam.ang, speed: 620, dmg: cur.dmg, el: 'void', src: inst.name, r: 6, life: 1, kind: 'bolt', color: EL.void.color, pierce: cur.pierce + (inst.evolved ? 3 : 0), opts: inst.evolved ? { critBonus: 0.3 } : null });
             PS.Audio.play('shoot', { vol: 0.15, pitch: 1.5 });
           };
           inst.fams.push(m);
@@ -447,12 +447,12 @@
     cleave: {
       name: 'Cleave', el: 'steel', icon: 'cleave', primary: true, unit: 'swing',
       desc: 'A wide sword sweep in the direction you aim.',
-      base: { dmg: 20, cd: 0.6, area: 1 },
-      up: [{ dmg: 6 }, { area: 0.15 }, { cd: -0.06, dmg: 4 }, { dmg: 8 }, { area: 0.2, dmg: 8 }],
+      base: { dmg: 26, cd: 0.54, area: 1 },
+      up: [{ dmg: 7 }, { area: 0.15 }, { cd: -0.06, dmg: 5 }, { dmg: 9 }, { area: 0.2, dmg: 9 }],
       fire(inst, s, p) {
         const f = p.stats.f;
         const rampage = f.rampage && p.frenzy >= p.frenzyMax;
-        const range = 104 * (0.55 + 0.45 * s.area) + (f.sweeping ? 18 : 0);
+        const range = 116 * (0.55 + 0.45 * s.area) + (f.sweeping ? 18 : 0);
         const half = rampage ? Math.PI : 1.05 + (f.sweeping ? 0.3 : 0);
         const dmg = s.dmg * (rampage ? 1.3 : 1);
         const n = C.arc(p.x, p.y, p.aim, half, range, dmg, { el: 'steel', src: inst.name, knock: 150 });
@@ -486,8 +486,8 @@
           C.proj({
             x: p.x + Math.cos(p.aim) * 14, y: p.y + Math.sin(p.aim) * 14, ang: p.aim + off, speed: s.speed * (big ? 0.8 : 1), dmg, el: 'fire', src: inst.name,
             r: 8 * size, size, life: 1.1, kind: 'fireball', color: EL.fire.color, explode: r, knock: big ? 200 : 70, trail: '#ff9a4d',
-            onHit: f.hotStreak ? (pr, e) => {
-              if (e.burnT > 0 && Math.random() < 0.3) {
+            onHit: f.hotStreak ? (pr, e, wasBurning) => {
+              if (wasBurning && Math.random() < 0.3) {
                 PS.FX.explosion(e.x, e.y, r * 1.3, '#ffd06b');
                 C.aoe(e.x, e.y, r * 1.3, dmg, { el: 'fire', src: 'Hot Streak', noProc: true });
               }
@@ -501,16 +501,17 @@
     longbow: {
       name: 'Longbow', el: 'steel', icon: 'bow', primary: true, usesProj: true, unit: 'arrow',
       desc: 'Fast, piercing arrows loosed where you aim.',
-      base: { dmg: 13, cd: 0.42, count: 1, speed: 860, pierce: 1 },
+      base: { dmg: 14, cd: 0.42, count: 1, speed: 860, pierce: 2 },
       up: [{ dmg: 4 }, { pierce: 1, dmg: 2 }, { count: 1 }, { cd: -0.05, dmg: 3 }, { dmg: 6 }],
       fire(inst, s, p, isEcho, extra) {
         const f = p.stats.f;
         inst.shots = (inst.shots || 0) + 1;
         const head = f.headshot && inst.shots % 6 === 0;
         const count = s.count + (p.galeT > 0 ? 1 : 0) + (extra || 0);
-        const baseDmg = s.dmg;
+        // copy what the closures below need: `s` is a shared scratch object and will be stale by the time an arrow lands
+        const baseDmg = s.dmg, spd = s.speed, basePierce = s.pierce;
         const mk = (ang, dmg, pierce, isHead, isSplit) => C.proj({
-          x: p.x + Math.cos(ang) * 12, y: p.y + Math.sin(ang) * 12, ang, speed: s.speed * (isHead ? 1.4 : 1), dmg, el: 'steel', src: isHead ? 'Headshot' : inst.name,
+          x: p.x + Math.cos(ang) * 12, y: p.y + Math.sin(ang) * 12, ang, speed: spd * (isHead ? 1.4 : 1), dmg, el: 'steel', src: isHead ? 'Headshot' : inst.name,
           r: isHead ? 9 : 5, size: isHead ? 1.6 : 1, life: 0.95, pierce, kind: 'arrow', color: isHead ? '#ffe9a8' : (f.poisonTips ? '#b8f078' : '#f1e7cf'), knock: isHead ? 160 : 50,
           opts: { crit: isHead ? true : undefined, poison: f.poisonTips ? 1 : 0 },
           onHit: (pr, e) => {
@@ -523,7 +524,7 @@
             }
           },
         });
-        fan(count, 0.09, (off) => mk(p.aim + off, head ? baseDmg * 3 : baseDmg, head ? 99 : s.pierce + (f.piercing ? 2 : 0), head, false));
+        fan(count, 0.09, (off) => mk(p.aim + off, head ? baseDmg * 3 : baseDmg, head ? 99 : basePierce + (f.piercing ? 2 : 0), head, false));
         p.swing = 1;
         PS.Audio.play('arrow', { vol: 0.4 });
       },
@@ -589,6 +590,8 @@
       const p = PS.G.player, s = p.stats, b = inst.b, def = inst.def;
       st.b = b;
       st.dmg = b.dmg * (1 + inst.over) * p.dm * s.el[def.el] * (def.summon ? s.summon : 1);
+      // class attacks cannot evolve, so they grow with the hero instead and stay the heart of the build
+      if (def.primary) st.dmg *= 1 + 0.03 * (p.level - 1);
       st.cd = Math.max(0.07, (b.cd || 1) / p.as);
       st.count = (b.count || 1) + (def.usesProj ? s.proj : 0);
       st.area = (b.area || 1) * s.area;

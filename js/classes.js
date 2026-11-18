@@ -42,7 +42,7 @@
   const CLASSES = {
     /* ============================================================ VANGUARD */
     vanguard: {
-      name: 'Vanguard', title: 'Frontline bruiser', color: '#ff8a5a', accent: '#ffd3b0', primary: 'cleave',
+      name: 'Vanguard', title: 'Frontline bruiser', difficulty: 'Forgiving', color: '#ff8a5a', accent: '#ffd3b0', primary: 'cleave',
       blurb: 'Wades into the horde with wide sword sweeps. Tough, simple, and brutal up close.',
       base: { maxHp: 150, speed: 205, armor: 6, regen: 0.6, dashCd: 2.4 },
       dashName: 'Shoulder Charge',
@@ -64,7 +64,7 @@
           const r = 128 * s.area;
           if (p.whirlTick <= 0) {
             p.whirlTick = 0.14;
-            C.aoe(p.x, p.y, r, abil(p, 9, 'steel'), { el: 'steel', src: 'Whirlwind', knock: f.cyclone ? 0 : 60 });
+            C.aoe(p.x, p.y, r, abil(p, 11, 'steel'), { el: 'steel', src: 'Whirlwind', knock: f.cyclone ? 0 : 60 });
             PS.FX.whirl(p.x, p.y, r);
           }
           if (f.cyclone) {
@@ -148,9 +148,9 @@
 
     /* ============================================================ PYROMANCER */
     pyromancer: {
-      name: 'Pyromancer', title: 'Glass-cannon caster', color: '#ff6b3d', accent: '#ffd06b', primary: 'firebolt',
+      name: 'Pyromancer', title: 'Glass-cannon caster', difficulty: 'Moderate', color: '#ff6b3d', accent: '#ffd06b', primary: 'firebolt',
       blurb: 'Explosive firebolts and a screen-clearing meteor. Fragile — keep your distance.',
-      base: { maxHp: 85, speed: 210, dashCd: 2.2, crit: 0.08 },
+      base: { maxHp: 95, speed: 210, dashCd: 2.2, crit: 0.08 },
       dashName: 'Blink',
       ability: {
         name: 'Cataclysm', icon: 'meteor', cd: 15,
@@ -234,9 +234,9 @@
 
     /* ============================================================ RANGER */
     ranger: {
-      name: 'Ranger', title: 'Mobile sharpshooter', color: '#9be36b', accent: '#f1e7cf', primary: 'longbow',
+      name: 'Ranger', title: 'Mobile sharpshooter', difficulty: 'Demanding', color: '#9be36b', accent: '#f1e7cf', primary: 'longbow',
       blurb: 'Rapid piercing arrows and the fastest feet in the rift. Thrives on kiting and crits.',
-      base: { maxHp: 100, speed: 232, dashCd: 1.7, crit: 0.1 },
+      base: { maxHp: 105, speed: 232, dashCd: 1.7, crit: 0.1 },
       dashName: 'Tumble',
       ability: {
         name: 'Arrow Storm', icon: 'multishot', cd: 12,
@@ -304,9 +304,9 @@
 
     /* ============================================================ REAPER */
     reaper: {
-      name: 'Reaper', title: 'Soul-harvesting summoner', color: '#c06bff', accent: '#e3b8ff', primary: 'scythe',
+      name: 'Reaper', title: 'Soul-harvesting summoner', difficulty: 'Moderate', color: '#c06bff', accent: '#e3b8ff', primary: 'scythe',
       blurb: 'A returning scythe and an army raised from the fallen. Every kill feeds the next.',
-      base: { maxHp: 95, speed: 212, dashCd: 2.2, regen: 0.3 },
+      base: { maxHp: 105, speed: 212, dashCd: 2.2, regen: 0.4 },
       dashName: 'Shade Step',
       unlock: { text: 'Defeat any boss to unlock', check: (save) => save.stats.bosses >= 1 },
       passive: 'Every 10 kills raises a skeleton to fight for you.',
@@ -353,7 +353,7 @@
           name: 'Harvester', icon: 'scythe', color: '#ff7aa8',
           nodes: [
             { name: 'Soul Siphon', icon: 'heart', desc: 'Kills restore health and you heal for 2% of damage dealt.', apply: (s) => { s.f.siphon = 1; s.lifesteal += 0.02; } },
-            { name: 'Reaping', icon: 'jar', desc: '+1% damage for every 200 enemies you have slain this run. No limit.', apply: (s, p) => { s.f.reaping = 1; s.dmg += Math.floor((p.kills || 0) / 200) * 0.01; }, dynamic: true },
+            { name: 'Reaping', icon: 'jar', desc: '+1.5% damage for every 1,000 enemies you have slain this run, up to +60%.', apply: (s, p) => { s.f.reaping = 1; s.dmg += Math.min(0.6, Math.floor((p.kills || 0) / 1000) * 0.015); }, dynamic: true },
             { name: 'Death\'s Door', icon: 'skull', desc: 'Throw an extra scythe. Scythes execute enemies below 20% health.', apply: (s) => { s.f.deathsDoor = 1; } },
           ],
         },

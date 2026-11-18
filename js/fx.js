@@ -196,12 +196,12 @@
           continue;
         }
         const r = b.r * (0.35 + 0.65 * U.easeOutCubic(t));
-        ctx.globalAlpha = (1 - t) * (b.big ? 0.55 : 0.4);
+        ctx.globalAlpha = (1 - t) * (b.big ? 0.3 : 0.2);
         ctx.fillStyle = b.color;
         ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = (1 - t) * 0.9;
+        ctx.globalAlpha = (1 - t) * 0.7;
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = (b.big ? 5 : 3) * (1 - t) + 1;
+        ctx.lineWidth = (b.big ? 4 : 2.5) * (1 - t) + 1;
         ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, TAU); ctx.stroke();
       }
       // rings
