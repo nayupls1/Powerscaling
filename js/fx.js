@@ -3,7 +3,7 @@
   'use strict';
   const PS = (window.PS = window.PS || {});
   const U = PS.U, TAU = U.TAU;
-  const MAX_PARTS = 900, MAX_NUMS = 110;
+  const MAX_PARTS = 900, MAX_NUMS = 90;
   const EL_COL = { fire: '#ffb061', frost: '#9fe6ff', storm: '#ffe14d', venom: '#b8f078', steel: '#f4f6ff', void: '#dba6ff' };
 
   let parts = [], nums = [], bolts = [], rings = [], slashes = [], ghosts = [], booms = [];
@@ -63,12 +63,15 @@
         if (dot || !crit) return;
         nums.shift();
       }
-      if (dot && nums.length > MAX_NUMS * 0.6) return;
+      // thin the stream out as the screen fills so numbers stay readable
+      const load = nums.length / MAX_NUMS;
+      if (dot && load > 0.5) return;
+      if (load > 0.45 && Math.random() < load) return;
       const txt = dmg >= 10000 ? U.fmtNum(dmg) : String(Math.max(1, Math.round(dmg)));
       nums.push({
         x: x + U.rand(-10, 10), y: y + U.rand(-6, 6), vx: U.rand(-18, 18), vy: dot ? -45 : -95, text: crit ? txt + '!' : txt,
         color: crit ? '#fff06b' : (EL_COL[el] || '#ffffff'), life: dot ? 0.5 : crit ? 0.85 : 0.6, max: dot ? 0.5 : crit ? 0.85 : 0.6,
-        size: dot ? 12 : crit ? 24 : 15, crit,
+        size: dot ? 12 : crit ? 20 : 15, crit,
       });
     },
     text(x, y, text, color) {

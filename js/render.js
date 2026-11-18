@@ -19,7 +19,6 @@
   let camL = 0, camT = 0; // world coords of the screen's top-left
   const view = { x0: 0, y0: 0, x1: 0, y1: 0 };
   const tiles = [], SPR = {}, glows = {};
-  let vignette = null;
 
   function mk(w, h) {
     const c = document.createElement('canvas');
@@ -101,20 +100,28 @@
     g.globalAlpha = 1;
     return c;
   }
+  /** ground tile pre-scaled to device pixels so the full-screen fill is a plain 1:1 blit */
+  let tilePx = 512;
   function tilePattern(i) {
-    if (!tiles[i]) tiles[i] = ctx.createPattern(makeTile(BIOMES[i], 1337 + i * 77), 'repeat');
-    return tiles[i];
+    const t = tiles[i];
+    if (t && t.px === tilePx) return t.pat;
+    const base = t ? t.base : makeTile(BIOMES[i], 1337 + i * 77);
+    const c = mk(tilePx, tilePx);
+    c.getContext('2d').drawImage(base, 0, 0, tilePx, tilePx);
+    tiles[i] = { base, px: tilePx, pat: ctx.createPattern(c, 'repeat') };
+    return tiles[i].pat;
   }
   function drawGround(G) {
     const t = G.time / 180;
     const bi = Math.min(BIOMES.length - 1, Math.floor(t));
     const into = (t - Math.floor(t)) * 180; // seconds into this biome
-    const offX = -((camL * scale) % (512 * scale)), offY = -((camT * scale) % (512 * scale));
+    const k = tilePx / 512;
+    const offX = -Math.round((((camL * k) % tilePx) + tilePx) % tilePx), offY = -Math.round((((camT * k) % tilePx) + tilePx) % tilePx);
     const fill = (idx, alpha) => {
       ctx.globalAlpha = alpha;
-      ctx.setTransform(scale, 0, 0, scale, offX, offY);
+      ctx.setTransform(1, 0, 0, 1, offX, offY);
       ctx.fillStyle = tilePattern(idx);
-      ctx.fillRect(-512, -512, W / scale + 1024, H / scale + 1024);
+      ctx.fillRect(0, 0, W + tilePx, H + tilePx);
     };
     if (bi > 0 && into < 5 && t < BIOMES.length) { fill(bi - 1, 1); fill(bi, into / 5); }
     else fill(bi, 1);
@@ -408,8 +415,7 @@
         }
       } else if (k === 'fire') {
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(z.x, z.y, z.r * 1.25, '#ff5a1f', 0.5 * fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
-        drawGlow(z.x, z.y, z.r * 0.7, '#ffd06b', 0.35 * fade);
+        drawGlow(z.x, z.y, z.r * 1.2, '#ff6a2a', 0.55 * fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 0.5 * fade;
         ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2;
@@ -726,8 +732,14 @@
     ctx.globalAlpha = 0.3; ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(x, y + r * 0.7, r * 1.05, r * 0.45, 0, 0, TAU); ctx.fill();
     ctx.globalCompositeOperation = 'lighter';
-    drawGlow(x, y, 44, cls.color, 0.28);
+    drawGlow(x, y, 52, cls.color, 0.4);
     ctx.globalCompositeOperation = 'source-over';
+    // a steady ground ring keeps the hero findable in a crowd
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = 'rgba(10,6,22,0.7)'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, r * 1.55, r * 0.95, 0, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, r * 1.55, r * 0.95, 0, 0, TAU); ctx.stroke();
     // blink while invulnerable after a hit
     const blink = p.hurtFlash > 0 || (p.inv > 0 && p.dashT <= 0 && Math.floor(t * 18) % 2 === 0);
     ctx.globalAlpha = blink ? 0.55 : 1;
@@ -925,10 +937,10 @@
     for (const s of G.strikes) {
       const t = Math.min(1, s.t / s.delay);
       if (s.kind === 'meteor') {
-        ctx.globalAlpha = 0.14 + 0.16 * t;
+        ctx.globalAlpha = 0.05 + 0.1 * t;
         ctx.fillStyle = '#ff7a3d';
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.45;
         ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (1.25 - 0.25 * t), 0, TAU); ctx.stroke();
         // falling rock
@@ -997,40 +1009,28 @@
     for (const e of G.enemies) if (e.elite) mark(e.x, e.y, '#ff9a4d', 'skull');
     ctx.globalAlpha = 1;
   }
+  // vignette, hurt pulse and flashes are DOM layers: the compositor blends them for free
+  let elHurt = null, elFlash = null, lastRed = -1, lastFlash = -1, lastFlashCol = '';
   function drawOverlays(G) {
     const p = G.player;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (!vignette || vignette.width !== 256) {
-      vignette = mk(256, 256);
-      const g = vignette.getContext('2d');
-      const gr = g.createRadialGradient(128, 128, 60, 128, 128, 180);
-      gr.addColorStop(0, 'rgba(0,0,0,0)');
-      gr.addColorStop(1, 'rgba(6,3,16,0.72)');
-      g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
-    }
-    ctx.globalAlpha = 1;
-    ctx.drawImage(vignette, 0, 0, W, H);
-    // low health / hurt
+    if (!elHurt) { elHurt = document.getElementById('fxHurt'); elFlash = document.getElementById('fxFlash'); }
     const low = p.hp / p.stats.maxHp;
     let red = p.hurtFlash > 0 ? p.hurtFlash * 1.6 : 0;
     if (low < 0.3 && p.hp > 0) red = Math.max(red, (0.3 - low) * 1.6 * (0.7 + 0.3 * Math.sin(G.time * 7)));
-    if (red > 0) {
-      const gr = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
-      gr.addColorStop(0, 'rgba(255,40,70,0)');
-      gr.addColorStop(1, `rgba(255,40,70,${Math.min(0.6, red)})`);
-      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-    }
-    if (G.flashA > 0) {
-      ctx.globalAlpha = Math.min(0.7, G.flashA);
-      ctx.fillStyle = G.flashCol || '#fff';
-      ctx.fillRect(0, 0, W, H);
-      ctx.globalAlpha = 1;
-    }
+    red = Math.round(Math.min(0.6, red) * 50) / 50;
+    if (red !== lastRed) { lastRed = red; elHurt.style.opacity = red; }
+    const fl = Math.round(Math.min(0.7, Math.max(0, G.flashA)) * 50) / 50;
+    if (fl !== lastFlash) { lastFlash = fl; elFlash.style.opacity = fl; }
+    if (fl > 0 && G.flashCol !== lastFlashCol) { lastFlashCol = G.flashCol; elFlash.style.background = G.flashCol; }
+  }
+  function clearOverlays() {
+    if (elHurt) { elHurt.style.opacity = 0; elFlash.style.opacity = 0; lastRed = 0; lastFlash = 0; }
   }
 
   /* ------------------------------------------------------------------ public */
   const Render = {
     BIOMES,
+    prof: null, // set to {} to collect per-layer draw timings (ms)
     init(cv) {
       canvas = cv;
       ctx = canvas.getContext('2d', { alpha: false });
@@ -1045,6 +1045,7 @@
       H = Math.max(1, Math.round(ch * dpr));
       canvas.width = W; canvas.height = H;
       scale = Math.min(H / VIEW_H, W / MIN_VIEW_W);
+      tilePx = Math.max(64, Math.round(512 * scale));
       if (PS.G) { PS.G.viewW = W / scale; PS.G.viewH = H / scale; }
     },
     viewSize() { return { w: W / scale, h: H / scale }; },
@@ -1069,39 +1070,60 @@
       view.x0 = camL; view.y0 = camT; view.x1 = camL + vw; view.y1 = camT + vh;
 
       ctx.globalCompositeOperation = 'source-over';
-      drawGround(G);
+      const prof = Render.prof;
+      let t0 = prof ? performance.now() : 0;
+      const lap = (name) => {
+        if (!prof) return;
+        ctx.getImageData(0, 0, 1, 1); // force the rasterizer to flush so timings are attributed correctly
+        const t1 = performance.now();
+        prof[name] = (prof[name] || 0) + t1 - t0;
+        t0 = t1;
+      };
+      drawGround(G); lap('ground');
       worldTf();
-      drawZones(G);
+      drawZones(G); lap('zones');
       drawHazards(G);
-      drawProps(G);
-      drawPickups(G);
+      drawProps(G); lap('hazards+props');
+      drawPickups(G); lap('pickups');
       drawMinions(G);
-      drawEnemies(G);
+      drawEnemies(G); lap('enemies');
       worldTf();
       drawStrikes(G);
-      drawPlayer(G);
       drawOrbits(G);
       drawProjs(G);
-      drawBallZones(G);
-      PS.FX.draw(ctx, view);
-      drawEBullets(G);
-      PS.FX.drawNums(ctx);
-      drawOverlays(G);
-      drawIndicators(G);
+      drawBallZones(G); lap('projs');
+      PS.FX.draw(ctx, view); lap('fx');
+      drawPlayer(G); // above the effects so you never lose yourself in your own fireworks
+      drawEBullets(G); lap('player+bullets');
+      PS.FX.drawNums(ctx); lap('nums');
+      drawOverlays(G); lap('overlays');
+      drawIndicators(G); lap('indicators');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     },
     /** idle backdrop behind the menus */
+    clearOverlays,
     drawIdle(t) {
       if (!ctx) return;
+      clearOverlays();
       const fake = { time: t * 6 };
       camL = t * 18; camT = t * 9;
       view.x0 = camL; view.y0 = camT; view.x1 = camL + W / scale; view.y1 = camT + H / scale;
       ctx.globalCompositeOperation = 'source-over';
       drawGround(fake);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.5;
       ctx.fillStyle = '#0d0920';
       ctx.fillRect(0, 0, W, H);
+      // slow embers drifting up behind the menus
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 46; i++) {
+        const sp = 0.03 + U.hash2(i, 3) * 0.05;
+        const ph = (t * sp + U.hash2(i, 7)) % 1;
+        const x = (U.hash2(i, 11) + Math.sin(t * 0.4 + i) * 0.02) * W, y = (1 - ph) * (H + 80) - 40;
+        const r = (5 + U.hash2(i, 5) * 16) * dpr;
+        drawGlow(x, y, r, i % 3 ? '#ff7a3d' : '#9b6bff', Math.sin(ph * Math.PI) * 0.5);
+      }
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     },
   };

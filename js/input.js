@@ -27,7 +27,7 @@
       window.addEventListener('blur', () => { keys.clear(); this.mouseDown = false; if (PS.Game.state === 'play') PS.Game.pause(); });
       document.addEventListener('visibilitychange', () => { if (document.hidden && PS.Game.state === 'play') PS.Game.pause(); });
 
-      canvas.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; this.touch = false; });
+      canvas.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; this.pad = false; if (this.touch && e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents && (e.movementX || e.movementY)) this.setTouch(false); });
       canvas.addEventListener('mousedown', (e) => {
         this.mouseX = e.clientX; this.mouseY = e.clientY;
         if (e.button === 0) this.mouseDown = true;
@@ -124,9 +124,10 @@
       if (l > 1) { mx /= l; my /= l; }
       else if (l < 0.15) { mx = 0; my = 0; }
       ctrl.mx = mx; ctrl.my = my;
-      if (this.pad && !padAim && !this.touch && this._padMode) autoAim = true;
-      if (padAim) { autoAim = false; this._padMode = true; }
-      else if (!autoAim) {
+      // on a gamepad, attacks auto-aim unless the right stick is held
+      if (padAim) autoAim = false;
+      else if (this.pad && !this.touch) autoAim = true;
+      if (!padAim && !autoAim) {
         const w = PS.Render.toWorld(this.mouseX, this.mouseY);
         ctrl.aimX = w.x; ctrl.aimY = w.y;
       }

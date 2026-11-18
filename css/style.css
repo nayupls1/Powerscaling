@@ -25,6 +25,10 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none;
 }
 #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+.fxlayer { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+.fx-vignette { background: radial-gradient(ellipse at center, transparent 42%, rgba(6, 3, 16, 0.7) 100%); }
+.fx-hurt { opacity: 0; background: radial-gradient(ellipse at center, transparent 35%, rgb(255, 40, 70) 100%); }
+.fx-flash { opacity: 0; background: #fff; mix-blend-mode: screen; }
 h1, h2, h3, h4, p { margin: 0; }
 h2 { font-family: var(--display); font-weight: 400; font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1.1; letter-spacing: 0.01em; }
 h3 { font-size: 1.05rem; font-weight: 700; }
