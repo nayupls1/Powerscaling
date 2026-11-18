@@ -14,7 +14,7 @@
     brute:    { name: 'Brute',        r: 24, hp: 85, spd: 44,  dmg: 16, xp: 8, mass: 5,   ai: 'chase',   color: '#8a3b2a' },
     bloater:  { name: 'Bloater',      r: 18, hp: 32, spd: 56,  dmg: 9,  xp: 4, mass: 1.8, ai: 'chase',   color: '#b5a13a', explode: { r: 95, dmg: 20 } },
     wraith:   { name: 'Wraith',       r: 13, hp: 26, spd: 104, dmg: 11, xp: 4, mass: 0.9, ai: 'wraith',  color: '#8fb6ff' },
-    mortar:   { name: 'Bombardier',   r: 15, hp: 26, spd: 56,  dmg: 8,  xp: 5, mass: 1.4, ai: 'mortar',  color: '#d98a2b', range: 430, shotCd: 3.8, blast: { r: 74, dmg: 14 } },
+    mortar:   { name: 'Bombardier',   r: 15, hp: 26, spd: 56,  dmg: 8,  xp: 5, mass: 1.4, ai: 'mortar',  color: '#d98a2b', range: 300, shotCd: 3.8, blast: { r: 74, dmg: 14 } },
     hexer:    { name: 'Hexer',        r: 14, hp: 30, spd: 60,  dmg: 8,  xp: 5, mass: 1,   ai: 'ranged',  color: '#c04bb0', range: 330, shotCd: 3.4, shotDmg: 9, shotSpd: 190, burst: 3 },
     knight:   { name: 'Dread Knight', r: 16, hp: 72, spd: 66,  dmg: 17, xp: 8, mass: 2.6, ai: 'chase',   color: '#5b6485', taken: 0.75 },
   };
@@ -181,7 +181,7 @@
         e.y += (dx / d) * sp * 0.4 * dir * dt;
       }
       e.st -= dt;
-      if (e.st <= 0 && d < 720) {
+      if (e.st <= 0 && d < 390 && Math.abs(dx) < PS.G.viewW * 0.5 - 10 && Math.abs(dy) < PS.G.viewH * 0.5 - 10) {
         e.st = def.shotCd * (0.8 + Math.random() * 0.4);
         e.flash = 0.1;
         C.hazard({ kind: 'circle', x: p.x, y: p.y, r: def.blast.r * (e.elite ? 1.3 : 1), delay: 1.1, dmg: def.blast.dmg * PS.Director.dmgMult(), color: '#ffa53d', owner: e });

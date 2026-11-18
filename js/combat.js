@@ -610,8 +610,16 @@
     bulletReward(n, fromWard) {
       const G = PS.G, p = G.player;
       G.deflected += n;
-      if (p.abilityCd > 0) p.abilityCd = Math.max(0, p.abilityCd - 0.15 * n);
-      if (!fromWard && p.wardCd > 0) p.wardCd = Math.max(0, p.wardCd - 0.1 * n);
+      // refunds draw from a budget set when the ability / Ward was used, and never tick while the ability is still running,
+      // so bullets shorten cooldowns without ever chaining into permanent uptime
+      if (p.abilityCd > 0 && p.whirlT <= 0 && p.abilityRefund > 0) {
+        const r = Math.min(0.15 * n, p.abilityRefund, p.abilityCd);
+        p.abilityCd -= r; p.abilityRefund -= r;
+      }
+      if (p.wardCd > 0 && p.wardRefund > 0) {
+        const r = Math.min((fromWard ? 0.4 : 0.1) * n, p.wardRefund, p.wardCd);
+        p.wardCd -= r; p.wardRefund -= r;
+      }
       PS.Audio.play('frost', { vol: 0.3, pitch: 1.5 });
     },
     /** send an enemy bullet back as a friendly, lightly homing bolt */
@@ -622,7 +630,7 @@
       const ang = t ? Math.atan2(t.y - b.y, t.x - b.x) : Math.atan2(-b.vy, -b.vx);
       C.proj({
         x: b.x, y: b.y, ang, speed: 620, dmg: C.power('steel') * 5 * (s.f.mirror ? 1.6 : 1), el: 'steel', src: src || 'Reflected',
-        r: b.r + 1, life: 1.6, kind: 'reflect', color: '#bfe6ff', homing: 6, knock: 60, trail: '#bfe6ff', opts: { minBossPct: 0.004 },
+        r: b.r + 1, life: 1.6, kind: 'reflect', color: '#bfe6ff', homing: 6, knock: 60, trail: '#bfe6ff', opts: { minBossPct: 0.0015 },
       });
       PS.FX.hitSpark(b.x, b.y, '#bfe6ff');
     },

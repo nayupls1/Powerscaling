@@ -489,7 +489,7 @@
         </button>`;
       }).join('');
       box.querySelectorAll('.card').forEach((b) => {
-        b.addEventListener('click', () => this.pickCard(+b.dataset.i));
+        b.addEventListener('click', () => this.pickCard(+b.dataset.i, true));
       });
       const act = $('choiceActions');
       if (spec.kind === 'level') {
@@ -497,17 +497,20 @@
           <button class="btn btn-small" id="actReroll" ${p.rerolls <= 0 && p.gold < PS.Game.rerollCost() ? 'disabled' : ''}>${ico('dice', 16)} Reroll ${p.rerolls > 0 ? `<b>${p.rerolls}</b>` : `for <b>${PS.Game.rerollCost()}</b> gold`} <kbd>R</kbd></button>
           <button class="btn btn-small${banishMode ? ' on' : ''}" id="actBanish" ${p.banishes <= 0 ? 'disabled' : ''}>${ico('ban', 16)} ${banishMode ? 'Pick a card to banish' : 'Banish'} <b>${p.banishes}</b> <kbd>B</kbd></button>
           <button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Skip for 10 gold</button>`;
-        click($('actReroll'), () => this.rerollCards());
-        click($('actBanish'), () => { banishMode = !banishMode; this.renderCards(); });
-        click($('actSkip'), () => { if (performance.now() - choiceAt > 350) PS.Game.choose(curSpec, null); });
+        click($('actReroll'), () => { if (!this.clickGuard()) this.rerollCards(); });
+        click($('actBanish'), () => { if (!this.clickGuard()) { banishMode = !banishMode; this.renderCards(); } });
+        click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
       } else act.innerHTML = '';
       box.classList.toggle('banishing', banishMode);
     },
     rerollCards() {
       if (PS.Game.reroll(curSpec)) { PS.Audio.play('uiClick'); this.renderCards(); }
     },
-    pickCard(i) {
+    /** mouse clicks need a longer settle time and must not be part of a click burst, so attack spam never takes a card */
+    clickGuard() { return performance.now() - choiceAt < 600 || PS.Input.spamClick(); },
+    pickCard(i, viaMouse) {
       if (PS.Game.state !== 'choice' || !curSpec || performance.now() - choiceAt < 350) return;
+      if (viaMouse && this.clickGuard()) return;
       const card = curSpec.cards[i];
       if (!card) return;
       if (banishMode) {

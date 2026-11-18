@@ -6,7 +6,7 @@
   const keys = new Set();
   const I = {
     mouseX: 0, mouseY: 0, mouseDown: false, touch: false, pad: false,
-    dashQ: false, abilityQ: false, wardQ: false, fireBuf: 0,
+    dashQ: false, abilityQ: false, wardQ: false, fireBuf: 0, lastDown: -1e9, prevDown: -1e9,
     stick: { id: null, ox: 0, oy: 0, x: 0, y: 0 },
 
     init(canvas) {
@@ -36,6 +36,8 @@
         this.mouseX = e.clientX; this.mouseY = e.clientY; this.pad = false;
         if (this.touch && e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents && (e.movementX || e.movementY)) this.setTouch(false);
       });
+      // every press is timestamped (in all game states) so menus can tell a deliberate click from attack spam
+      window.addEventListener('mousedown', () => { this.prevDown = this.lastDown; this.lastDown = performance.now(); }, true);
       window.addEventListener('mousedown', (e) => {
         if (!live() || isControl(e.target)) return;
         this.mouseX = e.clientX; this.mouseY = e.clientY;
@@ -136,6 +138,9 @@
       }
     },
 
+    /** true when the current click is part of a rapid burst (someone hammering the attack button) rather than a deliberate press */
+    spamClick() { return this.lastDown - this.prevDown < 320; },
+
     /** fill the control object the simulation reads */
     read(ctrl, G) {
       let mx = 0, my = 0;
@@ -147,8 +152,9 @@
       let autoAim = set.autoAim || this.touch;
       // manual attack: holding fires continuously, and each click is remembered briefly so spam-clicking never drops a swing
       if (this.fireBuf > 0) this.fireBuf -= G.rdt;
-      let fire = set.autoFire || this.mouseDown || this.fireBuf > 0;
-      ctrl.manual = !set.autoFire && !this.touch;
+      const manual = !set.autoFire && !this.touch && !this.pad;
+      let fire = !manual || this.mouseDown || this.fireBuf > 0;
+      ctrl.manual = manual;
       let padAim = false;
 
       // gamepad sticks (buttons are handled in pollPad, which runs in every game state)

@@ -207,6 +207,7 @@
       }
       this.state = 'play';
       p.inv = Math.max(p.inv, 0.8);
+      p.hitInv = false;
       PS.UI.hideChoice();
       this.last = performance.now();
     },

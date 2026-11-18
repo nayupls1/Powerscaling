@@ -40,7 +40,7 @@
       this.chestsOpened = 0;
       this.victory = false;
       this.healAt = 0; this.magnetAt = 0; this.bombAt = 30;
-      this.tremorT = 150;
+      this.tremorT = 150; this.tremorX = 1e9; this.tremorY = 1e9; this.linger = 0;
     },
     minutes() { return PS.G.time / 60; },
     endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
@@ -129,7 +129,10 @@
       this.tremorT -= dt;
       if (this.tremorT <= 0) {
         const tm = this.minutes();
-        this.tremorT = Math.max(3, 8.5 - tm * 0.42) * (bossAlive ? 1.5 : 1);
+        // the longer you stay put, the faster the ground breaks up; moving on resets it
+        if (U.dist2(p.x, p.y, this.tremorX, this.tremorY) < 170 * 170) this.linger++; else this.linger = 0;
+        this.tremorX = p.x; this.tremorY = p.y;
+        this.tremorT = Math.max(3, 8.5 - tm * 0.42) * (bossAlive ? 1.5 : 1) * Math.max(0.3, Math.pow(0.65, this.linger));
         PS.Combat.hazard({ kind: 'circle', x: p.x, y: p.y, r: 80, delay: 1.2, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
         const extra = tm > 6 ? 2 : 1;
         for (let i = 0; i < extra; i++) {
