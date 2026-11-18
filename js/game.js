@@ -32,10 +32,10 @@
         time: 0, frame: 0, rdt: 0.016, cls: clsId,
         enemies: [], projs: [], eprojs: [], zones: [], strikes: [], hazards: [], minions: [], pickups: [], props: [], orbits: [],
         grid: new U.Grid(72),
-        kills: 0, score: 0, bossesKilled: 0, dmgBy: {}, dmgTotal: 0, dmgTaken: 0, goldEarned: 0, gemCount: 0, procN: 0,
+        kills: 0, score: 0, bossesKilled: 0, dmgBy: {}, dmgTotal: 0, dmgTaken: 0, goldEarned: 0, gemCount: 0, procN: 0, deflected: 0,
         cam: { x: 0, y: 0 }, shake: 0, flashA: 0, flashCol: '#fff', hitstop: 0, slowmo: 0, boss: null, over: false,
         viewW: vs.w || 1280, viewH: vs.h || 800, biome: 0,
-        ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, autoAim: false },
+        ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
         picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
       PS.G = G;

@@ -266,20 +266,22 @@
           <h3>Controls</h3>
           <ul class="keys">
             <li>${k('W')}${k('A')}${k('S')}${k('D')}<span>Move</span></li>
-            <li>${k('Mouse')}<span>Aim your attack. It fires on its own.</span></li>
+            <li>${k('Mouse')}<span>Aim your attack. It fires on its own, or on click if you turn auto-attack off.</span></li>
             <li>${k('Space')}<span>Dash. Nothing can hurt you mid-dash.</span></li>
+            <li>${k('Shift')} or ${k('F')}<span>Ward. A shield pulse that reflects bullets and staggers the crowd.</span></li>
             <li>${k('Q')} or ${k('Right click')}<span>Class ability</span></li>
             <li>${k('T')}<span>Toggle auto-aim</span></li>
             <li>${k('Esc')}<span>Pause and inspect your build</span></li>
             <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
           </ul>
-          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
+          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
         </div>
         <div class="help-col">
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
         </div>
         <div class="help-col">
@@ -352,7 +354,7 @@
       if (!PS.Save.data.seenTutorial) {
         PS.Save.data.seenTutorial = true;
         PS.Save.save();
-        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Q for your ability.', 4.5);
+        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Shift to ward off bullets, Q for your ability.', 5.5);
       }
     },
     updateHud(dt) {
@@ -366,6 +368,10 @@
       const dp = p.dashCharges > 0 ? 0 : p.dashRecharge / s.dashCd;
       da.style.setProperty('--p', dp.toFixed(3));
       da.classList.toggle('ready', p.dashCharges > 0);
+      const wa = $('actWard'), wp = p.wardCd > 0 ? Math.min(1, p.wardCd / p.wardMax) : 0;
+      wa.style.setProperty('--p', wp.toFixed(3));
+      wa.classList.toggle('ready', wp <= 0);
+      if (PS.Input.touch) $('tWard').classList.toggle('cooling', wp > 0);
       if (G.boss) $('bossFill').style.transform = `scaleX(${Math.max(0, G.boss.hp / G.boss.maxHp).toFixed(4)})`;
 
       if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $('banner').hidden = true; }

@@ -25,11 +25,14 @@ const { chromium } = require('playwright');
         S.unlocked.reaper = true;
         if (flags.tree === 'full') for (const n of PS.Data.META) S.tree[n.id] = n.max; else if (!flags.keeptree) S.tree = {};
         const bot = { random: !!flags.random, element: flags.el || null, branch: flags.branch !== undefined ? +flags.branch : null, noDash: !!flags.nodash, sloppy: !!flags.sloppy };
+        if (flags.afk !== undefined) bot.afkAt = +flags.afk;
+        if (flags.want) bot.want = String(flags.want).split(',');
+        if (flags.tomes) bot.wantTomes = String(flags.tomes).split(',');
         PS.Game.start(cls, { bot });
         PS.Game.state = 'sim'; // stop the rAF loop from stepping; we drive it
         const G = PS.G, dt = 1 / 60, out = [];
         let nextSample = 30, lastDmg = 0, lastKills = 0, maxStep = 0, t0 = performance.now(), frames = 0;
-        const limit = minutes * 60;
+        const limit = flags.afk !== undefined ? +flags.afk + 120 : minutes * 60; // idle tests stop two minutes after letting go
         while (G.time < limit && !G.over) {
           const a = performance.now();
           PS.Bot.drive(G);

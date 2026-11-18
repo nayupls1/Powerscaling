@@ -61,6 +61,7 @@
           dmg *= s.critMult;
         }
       }
+      if (o.minBossPct && e.boss) dmg = Math.max(dmg, e.maxHp * o.minBossPct);
       let m = 1;
       if (e.shockT > 0) m += aff.storm >= 2 ? 0.30 : 0.15;
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
@@ -78,7 +79,11 @@
       G.dmgTotal += eff;
 
       if (o.knock && e.mass < 50) {
-        const k = (o.knock * s.knock) / e.mass;
+        // a shove lands in full once, then the enemy braces: repeat knocks inside the window barely move it,
+        // so auras and orbit skills thin the horde but cannot hold it at arm's length forever
+        let k = (o.knock * s.knock) / e.mass;
+        if (G.time < e.braceT) k *= 0.35;
+        else e.braceT = G.time + 0.5;
         const a = o.ang !== undefined ? o.ang : Math.atan2(e.y - p.y, e.x - p.x);
         e.kx += Math.cos(a) * k;
         e.ky += Math.sin(a) * k;
@@ -316,7 +321,7 @@
         boomerang: o.boomerang || 0, returning: false, spin: o.spin || 0, rot: ang,
         onHit: o.onHit || null, onEnd: o.onEnd || null, opts: o.opts || null,
         hit: null, dead: false, bounce: o.bounce || 0, accel: o.accel || 0, growth: o.growth || 0,
-        hits: 0, wobble: o.wobble || 0, trail: o.trail || null, ox: o.x, oy: o.y, maxDist: o.maxDist || 0,
+        hits: 0, wobble: o.wobble || 0, trail: o.trail || null, ox: o.x, oy: o.y, maxDist: o.maxDist || 0, cut: o.cut || false,
         noHit: o.noHit || false, data: o.data || null,
       };
       if (pr.pierce > 0 || pr.boomerang || pr.bounce) pr.hit = new Set();
@@ -374,6 +379,19 @@
         if (pr.trail && Math.random() < 0.5) PS.FX.spark(pr.x, pr.y, pr.trail);
         if (pr.noHit) continue;
 
+        // class attacks cut enemy bullets out of the air
+        if (pr.cut && G.eprojs.length) {
+          const eb = G.eprojs;
+          let n = 0;
+          for (let j = 0; j < eb.length; j++) {
+            const b = eb[j];
+            if (b.dead) continue;
+            const rr = pr.r + b.r + 5, dx = b.x - pr.x, dy = b.y - pr.y;
+            if (dx * dx + dy * dy < rr * rr) { b.dead = true; n++; PS.FX.hitSpark(b.x, b.y, '#ffffff'); }
+          }
+          if (n) C.bulletReward(n, false);
+        }
+
         // collisions
         let done = false;
         G.grid.query(pr.x, pr.y, pr.r, (e) => {
@@ -396,6 +414,7 @@
       if (pr.explode) {
         PS.FX.explosion(pr.x, pr.y, pr.explode, pr.color);
         C.aoe(pr.x, pr.y, pr.explode, pr.dmg, o);
+        if (pr.cut) C.deflect(pr.x, pr.y, pr.explode, false); // the blast burns bullets away too
         if (pr.el === 'fire') PS.Audio.play('explode', { vol: 0.3 });
       } else {
         C.damage(e, pr.dmg, o);
@@ -586,6 +605,48 @@
       U.compact(list);
     },
 
+    /* ------------------------------------------------------------------ deflecting enemy bullets */
+    /** payoff for every bullet destroyed or reflected: your ability (and Ward) come back sooner */
+    bulletReward(n, fromWard) {
+      const G = PS.G, p = G.player;
+      G.deflected += n;
+      if (p.abilityCd > 0) p.abilityCd = Math.max(0, p.abilityCd - 0.15 * n);
+      if (!fromWard && p.wardCd > 0) p.wardCd = Math.max(0, p.wardCd - 0.1 * n);
+      PS.Audio.play('frost', { vol: 0.3, pitch: 1.5 });
+    },
+    /** send an enemy bullet back as a friendly, lightly homing bolt */
+    reflectBullet(b, src) {
+      const G = PS.G, p = G.player, s = p.stats;
+      b.dead = true;
+      const t = C.nearest(b.x, b.y, 520);
+      const ang = t ? Math.atan2(t.y - b.y, t.x - b.x) : Math.atan2(-b.vy, -b.vx);
+      C.proj({
+        x: b.x, y: b.y, ang, speed: 620, dmg: C.power('steel') * 5 * (s.f.mirror ? 1.6 : 1), el: 'steel', src: src || 'Reflected',
+        r: b.r + 1, life: 1.6, kind: 'reflect', color: '#bfe6ff', homing: 6, knock: 60, trail: '#bfe6ff', opts: { minBossPct: 0.004 },
+      });
+      PS.FX.hitSpark(b.x, b.y, '#bfe6ff');
+    },
+    /**
+     * Deal with every enemy bullet inside a circle (optionally only inside an arc): reflect it or just destroy it.
+     * Returns how many were caught.
+     */
+    deflect(x, y, r, reflect, ang, half, src, fromWard) {
+      const list = PS.G.eprojs;
+      if (!list.length) return 0;
+      let n = 0;
+      for (let i = 0, len = list.length; i < len; i++) {
+        const b = list[i];
+        if (b.dead) continue;
+        const dx = b.x - x, dy = b.y - y, rr = r + b.r;
+        if (dx * dx + dy * dy > rr * rr) continue;
+        if (half !== undefined && half < Math.PI && Math.abs(U.angDiff(ang, Math.atan2(dy, dx))) > half + 0.15) continue;
+        if (reflect) C.reflectBullet(b, src); else { b.dead = true; PS.FX.hitSpark(b.x, b.y, '#ffffff'); }
+        n++;
+      }
+      if (n) C.bulletReward(n, fromWard);
+      return n;
+    },
+
     /* ------------------------------------------------------------------ enemy bullets */
     ebullet(o) {
       const G = PS.G;
@@ -599,6 +660,7 @@
       const G = PS.G, p = G.player, list = G.eprojs;
       for (let i = 0; i < list.length; i++) {
         const b = list[i];
+        if (b.dead) continue;
         b.life -= dt;
         b.age += dt;
         if (b.curve) {
@@ -636,7 +698,13 @@
             PS.FX.explosion(h.x, h.y, h.r, h.color, h.r > 90);
             if (h.r > 90) { PS.FX.shake(5); PS.Audio.play('explode', { vol: 0.5 }); }
             const rr = h.r + p.r * 0.5;
-            if (U.dist2(h.x, h.y, p.x, p.y) < rr * rr) p.hurt(h.dmg, 'hazard');
+            if (U.dist2(h.x, h.y, p.x, p.y) < rr * rr) {
+              if (h.pct) {
+                // tremors escalate if you keep standing in them: one slip stings, lingering is fatal
+                if (G.time - p.tremorAt > 14) p.tremorN = 0;
+                if (p.hurt(p.stats.maxHp * h.pct * Math.pow(1.6, p.tremorN), 'tremor', true) === 'hit') { p.tremorN++; p.tremorAt = G.time; }
+              } else p.hurt(h.dmg, 'hazard');
+            }
             if (h.onLand) h.onLand(h);
           }
           if (h.t >= h.delay + 0.2) h.dead = true;

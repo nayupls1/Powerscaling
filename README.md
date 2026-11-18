@@ -17,14 +17,15 @@ It also works as-is on any static host (GitHub Pages, Netlify, itch.io).
 | Input | Action |
 | --- | --- |
 | `W` `A` `S` `D` / arrows | Move |
-| Mouse | Aim (attacks fire on their own) |
-| `Space` / `Shift` | Dash, invulnerable while dashing |
+| Mouse | Aim. Attacks fire on their own, or on click/hold with auto-attack off |
+| `Space` | Dash, invulnerable while dashing |
+| `Shift` / `F` / middle click | Ward: a shield pulse that reflects bullets and staggers the crowd |
 | `Q` / `E` / right click | Class ability |
 | `T` | Toggle auto-aim |
 | `1` `2` `3` | Pick a reward card (`R` reroll, `B` banish) |
 | `Esc` / `P` | Pause and inspect your build |
 
-Touch screens get a floating movement stick with auto-aim, and gamepads are supported (left stick move, right stick aim, A/LB dash, X/RB ability).
+Touch screens get a floating movement stick with auto-aim, and gamepads are supported (left stick move, right stick aim, A/LB dash, B/Y ward, X/RB ability).
 
 ## What is in it
 
@@ -32,6 +33,8 @@ Touch screens get a floating movement stick with auto-aim, and gamepads are supp
 - **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
+- **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
+- **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
 - **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. It is stored in the browser's local storage, so it is per device.
@@ -72,9 +75,10 @@ node tools/playtest.js all 14 1            # every class, 14 minutes each
 node tools/playtest.js ranger 20 3 --quiet # summaries only
 node tools/playtest.js reaper 14 1 --sloppy --el=venom --tree=full
 tools/batch.sh "--sloppy" 14               # two runs per class in parallel
+tools/afk.sh "300 600"                   # idle test: play to T seconds, then let go of the controls
 ```
 
-Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--quiet`.
+Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--quiet`.
 
 `tools/stress.js` runs every class with all talents, every relic and every evolved skill at once and fails on any page error or invalid number:
 

@@ -10,9 +10,14 @@
     /** writes movement/aim/dash/ability decisions into G.ctrl */
     drive(G) {
       const p = G.player, c = G.ctrl, cfg = G.bot;
+      if (cfg.afkAt !== undefined && G.time >= cfg.afkAt) {
+        // idle test: hands off the controls entirely — a healthy difficulty curve should kill this quickly
+        c.mx = 0; c.my = 0; c.dash = false; c.ability = false; c.ward = false; c.autoAim = true; c.fire = true;
+        return;
+      }
       if (cfg.sloppy) {
         // a distracted human: slow to react, sometimes blind to danger, drifts a little
-        c.dash = false; c.ability = false;
+        c.dash = false; c.ability = false; c.ward = false;
         if (G.time < (cfg.until || 0)) return;
         cfg.until = G.time + 0.22 + Math.random() * 0.25;
         cfg.blind = Math.random() < 0.45;
@@ -111,6 +116,10 @@
 
       c.autoAim = true;
       c.fire = true;
+      // raise the Ward when bullets are about to land or the crowd is on top of us
+      let incoming = 0;
+      for (const b of G.eprojs) if (U.dist2(b.x, b.y, p.x, p.y) < 110 * 110) incoming++;
+      c.ward = p.wardCd <= 0 && (incoming >= 2 || close >= 5) && (!cfg.sloppy || Math.random() < 0.35);
       if (cfg.sloppy) {
         const a = Math.random() * 6.283, n = 0.35;
         c.mx += Math.cos(a) * n; c.my += Math.sin(a) * n;
@@ -140,6 +149,8 @@
           if (p.hp < p.stats.maxHp * 0.5 && (card.id === 'vitality' || card.id === 'plating')) s += 8;
         }
         if (card.type === 'talent' && cfg.branch === card.id) s += 20;
+        if (cfg.want && cfg.want.includes(card.id)) s += card.type === 'skill' || card.type === 'evolve' ? 120 : card.type === 'skillup' ? 40 : 0;
+        if (cfg.wantTomes && card.type === 'tome' && cfg.wantTomes.includes(card.id)) s += 30;
         if (card.type === 'heal' && p.hp < p.stats.maxHp * 0.4) s += 40;
         s += Math.random() * 4;
         if (s > bs) { bs = s; best = i; }

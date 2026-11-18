@@ -14,6 +14,7 @@
     brute:    { name: 'Brute',        r: 24, hp: 85, spd: 44,  dmg: 16, xp: 8, mass: 5,   ai: 'chase',   color: '#8a3b2a' },
     bloater:  { name: 'Bloater',      r: 18, hp: 32, spd: 56,  dmg: 9,  xp: 4, mass: 1.8, ai: 'chase',   color: '#b5a13a', explode: { r: 95, dmg: 20 } },
     wraith:   { name: 'Wraith',       r: 13, hp: 26, spd: 104, dmg: 11, xp: 4, mass: 0.9, ai: 'wraith',  color: '#8fb6ff' },
+    mortar:   { name: 'Bombardier',   r: 15, hp: 26, spd: 56,  dmg: 8,  xp: 5, mass: 1.4, ai: 'mortar',  color: '#d98a2b', range: 430, shotCd: 3.8, blast: { r: 74, dmg: 14 } },
     hexer:    { name: 'Hexer',        r: 14, hp: 30, spd: 60,  dmg: 8,  xp: 5, mass: 1,   ai: 'ranged',  color: '#c04bb0', range: 330, shotCd: 3.4, shotDmg: 9, shotSpd: 190, burst: 3 },
     knight:   { name: 'Dread Knight', r: 16, hp: 72, spd: 66,  dmg: 17, xp: 8, mass: 2.6, ai: 'chase',   color: '#5b6485', taken: 0.75 },
   };
@@ -45,10 +46,11 @@
       const Dr = PS.Director;
       let hp = def.hp * (def.boss ? 1 : Dr.hpMult()) * (opts.hpMult || 1);
       let r = def.r, dmg = def.dmg * Dr.dmgMult(), mass = def.mass, xp = def.xp * Dr.xpMult();
+      mass *= 1 + Dr.minutes() * 0.06; // the horde gets harder to shove around as the run goes on
       if (opts.elite) { hp *= 7 + Dr.minutes() * 0.6; r *= 1.45; dmg *= 1.4; mass *= 3.5; xp *= 12; }
       const e = {
         id: nextId++, def, x, y, r, hp, maxHp: hp, dmg, speed: def.spd * Dr.speedMult(), xp, mass,
-        score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,
+        score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, braceT: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,
         burnT: 0, burnDps: 0, poisT: 0, poisStacks: 0, poisDps: 0, bleedT: 0, bleedDps: 0,
         chillT: 0, freezeT: 0, freezeImm: 0, shockT: 0, markT: 0, dotT: Math.random() * 0.25, dotAcc: 0, dotEl: null, dotShow: 0,
         icd: {}, elite: !!opts.elite, boss: !!def.boss, big: !!opts.elite || !!def.boss, taken: def.taken || 1,
@@ -167,6 +169,25 @@
   }
 
   const AI = {
+    mortar(e, dt, sp, dx, dy, d, p) {
+      // hangs back out of reach and shells wherever you are standing right now: harmless if you keep moving
+      const def = e.def;
+      e.ang = Math.atan2(dy, dx);
+      if (d > def.range) moveTo(e, dx, dy, d, sp, dt);
+      else if (d < def.range * 0.6) moveTo(e, -dx, -dy, d, sp * 0.8, dt);
+      else {
+        const dir = e.id & 1 ? 1 : -1;
+        e.x += (-dy / d) * sp * 0.4 * dir * dt;
+        e.y += (dx / d) * sp * 0.4 * dir * dt;
+      }
+      e.st -= dt;
+      if (e.st <= 0 && d < 720) {
+        e.st = def.shotCd * (0.8 + Math.random() * 0.4);
+        e.flash = 0.1;
+        C.hazard({ kind: 'circle', x: p.x, y: p.y, r: def.blast.r * (e.elite ? 1.3 : 1), delay: 1.1, dmg: def.blast.dmg * PS.Director.dmgMult(), color: '#ffa53d', owner: e });
+        PS.FX.bolt(e.x, e.y, e.x + (p.x - e.x) * 0.25, e.y + (p.y - e.y) * 0.25 - 60, '#ffa53d');
+      }
+    },
     chase(e, dt, sp, dx, dy, d) {
       moveTo(e, dx, dy, d, sp, dt);
     },
