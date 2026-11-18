@@ -137,6 +137,7 @@
           PS.Combat.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, delay: 1.2 + i * 0.15, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
         }
         PS.Audio.play('telegraph', { vol: 0.35, pitch: 0.7 });
+        PS.UI.tip('tremor', 'The ground is giving way. Keep moving', 'mountain');
       }
 
       // ---- elites

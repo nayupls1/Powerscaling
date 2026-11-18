@@ -650,6 +650,7 @@
     /* ------------------------------------------------------------------ enemy bullets */
     ebullet(o) {
       const G = PS.G;
+      PS.UI.tip('ward', PS.Input.touch ? 'Bullets incoming: your attacks cut them down, and the shield button reflects them' : 'Bullets incoming: your attacks cut them down, and Shift raises a Ward that reflects them', 'shield');
       if (G.eprojs.length > 420) return;
       G.eprojs.push({
         x: o.x, y: o.y, vx: Math.cos(o.ang) * o.speed, vy: Math.sin(o.ang) * o.speed, r: o.r || 7, dmg: o.dmg,

@@ -428,6 +428,15 @@
       while (box.children.length > max) box.removeChild(box.firstChild);
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 3200);
     },
+    /** one-time hint the first time a mechanic shows up (remembered across runs) */
+    tip(key, text, icon) {
+      const d = PS.Save.data;
+      if (!d.tips) d.tips = {};
+      if (d.tips[key] || !PS.G || PS.G.bot) return;
+      d.tips[key] = 1;
+      PS.Save.save();
+      this.toast(text, icon);
+    },
     banner(title, sub, dur) {
       $('bannerTitle').textContent = title;
       $('bannerSub').textContent = sub || '';

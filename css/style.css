@@ -134,7 +134,7 @@ i[data-icon], .count i { display: inline-flex; }
 .tbtn { --c: #bcd0ff; pointer-events: auto; position: absolute; right: 22px; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: rgba(15, 11, 34, 0.6); border: 3px solid var(--c); color: var(--c); }
 .tbtn-dash { bottom: 120px; }
 .tbtn-ability { bottom: 210px; right: 70px; }
-.tbtn-ward { --c: #bfe6ff; bottom: 34px; right: 112px; width: 66px; height: 66px; }
+.tbtn-ward { --c: #bfe6ff; bottom: 126px; right: 112px; width: 66px; height: 66px; }
 .tbtn.cooling { opacity: 0.4; }
 .is-touch .hud-bottom { bottom: 10px; }
 .is-touch .actions { display: none; }
