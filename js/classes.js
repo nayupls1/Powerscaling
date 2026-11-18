@@ -336,7 +336,7 @@
         if (f.siphon) p.heal(0.4, true);
         if (f.corpseEx && canProc && Math.random() < 0.22) {
           PS.FX.explosion(e.x, e.y, 88 * p.stats.area, '#8fe04a');
-          C.aoe(e.x, e.y, 88 * p.stats.area, C.power('venom') * 2.2, { el: 'venom', src: 'Corpse Explosion', noProc: true, poison: 2 });
+          C.aoe(e.x, e.y, 88 * p.stats.area, C.power('venom') * 1.6, { el: 'venom', src: 'Corpse Explosion', noProc: true, poison: 2 });
           PS.Audio.play('poison', { vol: 0.35 });
         }
       },
@@ -353,7 +353,7 @@
           name: 'Harvester', icon: 'scythe', color: '#ff7aa8',
           nodes: [
             { name: 'Soul Siphon', icon: 'heart', desc: 'Kills restore health and you heal for 2% of damage dealt.', apply: (s) => { s.f.siphon = 1; s.lifesteal += 0.02; } },
-            { name: 'Reaping', icon: 'jar', desc: '+1% damage for every 30 enemies you have slain this run. No limit.', apply: (s, p) => { s.f.reaping = 1; s.dmg += Math.floor((p.kills || 0) / 30) * 0.01; }, dynamic: true },
+            { name: 'Reaping', icon: 'jar', desc: '+1% damage for every 200 enemies you have slain this run. No limit.', apply: (s, p) => { s.f.reaping = 1; s.dmg += Math.floor((p.kills || 0) / 200) * 0.01; }, dynamic: true },
             { name: 'Death\'s Door', icon: 'skull', desc: 'Throw an extra scythe. Scythes execute enemies below 20% health.', apply: (s) => { s.f.deathsDoor = 1; } },
           ],
         },

@@ -13,7 +13,7 @@
     /** scaling baseline for proc/affinity damage so it keeps pace with the player's build */
     power(el) {
       const p = PS.G.player;
-      return (12 + p.level * 1.7) * p.dm * (el ? p.stats.el[el] : 1);
+      return (14 + p.level) * p.dm * (el ? p.stats.el[el] : 1);
     },
     affN(el) {
       return PS.G.player.aff[el] || 0;
@@ -69,11 +69,13 @@
       dmg *= m * (e.taken || 1);
       if (dmg <= 0) return 0;
 
+      // stats and lifesteal count only the health actually removed, not overkill
+      const eff = dmg < e.hp ? dmg : Math.max(0, e.hp);
       e.hp -= dmg;
       e.flash = 0.1;
       const src = o.src || 'Other';
-      G.dmgBy[src] = (G.dmgBy[src] || 0) + dmg;
-      G.dmgTotal += dmg;
+      G.dmgBy[src] = (G.dmgBy[src] || 0) + eff;
+      G.dmgTotal += eff;
 
       if (o.knock && e.mass < 50) {
         const k = (o.knock * s.knock) / e.mass;
@@ -91,7 +93,7 @@
         if (!o.noProc) C.procs(e, dmg, o, crit);
         if (crit) PS.Audio.play('crit', { vol: 0.5 });
         else PS.Audio.play('hit', { vol: 0.35 });
-        if (s.lifesteal > 0) p.leech(dmg * s.lifesteal);
+        if (s.lifesteal > 0) p.leech(eff * s.lifesteal);
         // Iron 6: execute
         if (aff.steel >= 6 && !e.boss && e.hp > 0 && e.hp < e.maxHp * 0.15) e.hp = 0;
         if (o.execute && !e.boss && e.hp > 0 && e.hp < e.maxHp * o.execute) e.hp = 0;
@@ -159,7 +161,7 @@
           p.hitCounter = 0;
           G.procN++;
           PS.FX.bolt(e.x, e.y - 260, e.x, e.y, '#ffe14d');
-          C.aoe(e.x, e.y, 55 * s.area, C.power('storm') * 2.2, { el: 'storm', src: 'Tempest', noProc: true, shock: 1 });
+          C.aoe(e.x, e.y, 55 * s.area, C.power('storm') * 1.7, { el: 'storm', src: 'Tempest', noProc: true, shock: 1 });
           PS.Audio.play('thunder', { vol: 0.4 });
         }
       }
@@ -198,12 +200,12 @@
         if (aff.fire >= 4 && e.burnT > 0) {
           G.procN++;
           PS.FX.ring(e.x, e.y, 70 * area, '#ff7a3d');
-          C.aoe(e.x, e.y, 70 * area, C.power('fire') * 1.3, { el: 'fire', src: 'Ember burst', noProc: true });
+          C.aoe(e.x, e.y, 70 * area, C.power('fire') * 1.0, { el: 'fire', src: 'Ember burst', noProc: true });
         }
         if (aff.frost >= 4 && (e.chillT > 0 || e.freezeT > 0)) {
           G.procN++;
           PS.FX.shatter(e.x, e.y, '#bdf0ff');
-          C.aoe(e.x, e.y, 80 * area, C.power('frost') * 1.1, { el: 'frost', src: 'Shatter', noProc: true, freeze: 0.12 });
+          C.aoe(e.x, e.y, 80 * area, C.power('frost') * 0.9, { el: 'frost', src: 'Shatter', noProc: true, freeze: 0.12 });
         }
         if ((aff.venom >= 4 || f.pandemic) && e.poisStacks > 0) {
           G.procN++;
@@ -221,7 +223,7 @@
         if (f.corpseBoom && Math.random() < f.corpseBoom) {
           G.procN++;
           PS.FX.explosion(e.x, e.y, 85 * area, '#ffb061');
-          C.aoe(e.x, e.y, 85 * area, Math.min(e.maxHp * 0.25, C.power('fire') * 4) + C.power('fire'), { el: 'fire', src: 'Volatile Ichor', noProc: true });
+          C.aoe(e.x, e.y, 85 * area, C.power('fire') * 1.6, { el: 'fire', src: 'Volatile Ichor', noProc: true });
           PS.Audio.play('explode', { vol: 0.4 });
         }
       }

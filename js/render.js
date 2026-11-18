@@ -4,8 +4,8 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U, TAU = U.TAU;
 
-  const VIEW_H = 800;     // world units visible vertically
-  const MIN_VIEW_W = 760; // never show less than this horizontally (portrait phones)
+  const VIEW_H = 720;     // world units visible vertically
+  const MIN_VIEW_W = 700; // never show less than this horizontally (portrait phones)
 
   const BIOMES = [
     { name: 'Ashen Threshold', base: '#1c1838', hi: '#2b2554', lo: '#141029', accent: '#8a7bff' },
@@ -981,11 +981,18 @@
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
     for (const pr of G.props) if (!pr.dead) mark(pr.x, pr.y, pr.kind === 'chest' ? '#ffcf5c' : '#ffe9a8', pr.kind === 'chest' ? 'chest' : 'spark');
+    // only the nearest heal/magnet is worth pointing at, and heals only when hurt
+    let heal = null, hd = 1e12, mag = null, md = 1e12;
     for (const k of G.pickups) {
       if (k.kind === 'chest' || k.kind === 'bosschest') mark(k.x, k.y, '#c77dff', 'chest');
-      else if (k.kind === 'heal') mark(k.x, k.y, '#ff5a7a', 'heart');
-      else if (k.kind === 'magnet') mark(k.x, k.y, '#8ad1ff', 'magnet');
+      else if (k.kind === 'heal' || k.kind === 'magnet') {
+        const d = U.dist2(k.x, k.y, p.x, p.y);
+        if (k.kind === 'heal') { if (d < hd) { hd = d; heal = k; } }
+        else if (d < md) { md = d; mag = k; }
+      }
     }
+    if (heal && p.hp < p.stats.maxHp * 0.65) mark(heal.x, heal.y, '#ff5a7a', 'heart');
+    if (mag) mark(mag.x, mag.y, '#8ad1ff', 'magnet');
     if (G.boss) mark(G.boss.x, G.boss.y, '#ff4d6d', 'skull');
     for (const e of G.enemies) if (e.elite) mark(e.x, e.y, '#ff9a4d', 'skull');
     ctx.globalAlpha = 1;

@@ -10,6 +10,13 @@
     /** writes movement/aim/dash/ability decisions into G.ctrl */
     drive(G) {
       const p = G.player, c = G.ctrl, cfg = G.bot;
+      if (cfg.sloppy) {
+        // a distracted human: slow to react, sometimes blind to danger, drifts a little
+        c.dash = false; c.ability = false;
+        if (G.time < (cfg.until || 0)) return;
+        cfg.until = G.time + 0.22 + Math.random() * 0.25;
+        cfg.blind = Math.random() < 0.45;
+      }
       let fx = 0, fy = 0;
       let nearest = null, nd = 1e9, close = 0;
 
@@ -26,7 +33,8 @@
 
       // dodge bullets and telegraphs
       let danger = false;
-      for (const b of G.eprojs) {
+      const blind = cfg.sloppy && cfg.blind;
+      for (const b of blind ? [] : G.eprojs) {
         const dx = p.x - b.x, dy = p.y - b.y, d2 = dx * dx + dy * dy;
         if (d2 > 170 * 170) continue;
         const sp = Math.hypot(b.vx, b.vy) || 1;
@@ -41,7 +49,7 @@
           if (along < 60) danger = true;
         }
       }
-      for (const h of G.hazards) {
+      for (const h of blind ? [] : G.hazards) {
         if (h.kind === 'circle') {
           const dx = p.x - h.x, dy = p.y - h.y, d = Math.hypot(dx, dy) || 1;
           if (d < h.r + 40) { const w = 6 * (1 + h.t / h.delay); fx += (dx / d) * w; fy += (dy / d) * w; if (h.t > h.delay - 0.25) danger = true; }
@@ -103,6 +111,15 @@
 
       c.autoAim = true;
       c.fire = true;
+      if (cfg.sloppy) {
+        const a = Math.random() * 6.283, n = 0.35;
+        c.mx += Math.cos(a) * n; c.my += Math.sin(a) * n;
+        const m = Math.hypot(c.mx, c.my) || 1;
+        c.mx /= m; c.my /= m;
+        c.dash = ((danger && Math.random() < 0.5) || (close >= 4 && Math.random() < 0.5)) && p.dashCharges > 0;
+        c.ability = p.abilityCd <= 0 && (close >= 2 || !!G.boss) && Math.random() < 0.6;
+        return;
+      }
       c.dash = (danger || close >= 5 || (p.hp < p.stats.maxHp * 0.35 && close >= 2)) && p.dashCharges > 0 && !cfg.noDash;
       c.ability = p.abilityCd <= 0 && (close >= 3 || !!G.boss || G.enemies.length > 25);
     },
@@ -110,7 +127,7 @@
     /** choose a card index for a reward spec */
     pick(spec, G) {
       const p = G.player, cfg = G.bot || {};
-      if (cfg.random) return (Math.random() * spec.cards.length) | 0;
+      if (cfg.random || (cfg.sloppy && Math.random() < 0.3)) return (Math.random() * spec.cards.length) | 0;
       let best = 0, bs = -1e9;
       spec.cards.forEach((card, i) => {
         let s = PRIORITY[card.type] || 0;

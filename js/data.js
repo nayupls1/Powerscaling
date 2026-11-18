@@ -143,19 +143,19 @@
     slayer:     { name: 'Giantslayer',     icon: 'skull',   tier: 2, max: 3, desc: '+30% damage to elites and bosses.', apply: (s, n) => { s.bossDmg += 0.30 * n; } },
     frostbite:  { name: 'Frostbite Ring',  icon: 'crystal', tier: 2, max: 3, desc: 'Hits have an 8% chance to freeze enemies solid.', apply: (s, n) => { s.f.freezeProc = (s.f.freezeProc || 0) + 0.08 * n; } },
     venomous:   { name: 'Serpent Tooth',   icon: 'spores',  tier: 2, max: 3, desc: 'Hits have a 20% chance to poison.', apply: (s, n) => { s.f.poisonProc = (s.f.poisonProc || 0) + 0.20 * n; } },
-    souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 40 enemies slain this run.', apply: (s, n, p) => { s.dmg += Math.floor((p.kills || 0) / 40) * 0.01 * n; }, dynamic: true },
+    souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 250 enemies slain this run.', apply: (s, n, p) => { s.dmg += Math.floor((p.kills || 0) / 250) * 0.01 * n; }, dynamic: true },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },
     timecrystal: { name: 'Time Crystal',   icon: 'clock',   tier: 3, max: 1, desc: 'Every 25 seconds, freeze every enemy on screen for 2 seconds.', apply: (s) => { s.f.timeStop = 1; } },
-    greed:      { name: 'Dragon\'s Hoard', icon: 'gem',     tier: 3, max: 1, desc: '+1% damage per 15 gold you are holding (up to +150%).', apply: (s, n, p) => { s.dmg += Math.min(1.5, Math.floor((p.gold || 0) / 15) * 0.01); }, dynamic: true },
+    greed:      { name: 'Dragon\'s Hoard', icon: 'gem',     tier: 3, max: 1, desc: '+1% damage per 10 gold you are holding (up to +80%).', apply: (s, n, p) => { s.dmg += Math.min(0.8, Math.floor((p.gold || 0) / 10) * 0.01); }, dynamic: true },
     momentum:   { name: 'Stormstride',     icon: 'wings',   tier: 3, max: 1, desc: '+12% move speed. Bonus move speed also raises your damage.', apply: (s) => { s.speed *= 1.12; s.f.momentum = 1; } },
     twinsouls:  { name: 'Twin Souls',      icon: 'multishot', tier: 3, max: 2, desc: '+1 projectile on every skill that fires projectiles.', apply: (s, n) => { s.proj += n; } },
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death in a blaze.', apply: (s) => { s.revives += 1; } },
-    infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+2% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.02 * (p.level || 1); }, dynamic: true },
+    infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+1.5% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.015 * (p.level || 1); }, dynamic: true },
     paradox:    { name: 'Paradox Engine',  icon: 'gear',    tier: 4, max: 1, desc: '+30% attack speed and +40% ability haste.', apply: (s) => { s.atkSpd += 0.3; s.abilityHaste += 0.4; } },
     colossus:   { name: 'Heart of the Colossus', icon: 'mountain', tier: 4, max: 1, desc: '+100 max health, +10 armor, +25% area of effect.', apply: (s) => { s.maxHp += 100; s.armor += 10; s.area += 0.25; } },
     midas:      { name: 'Midas Sigil',     icon: 'trophy',  tier: 4, max: 1, desc: 'Double gold. Chests cost 30% less.', apply: (s) => { s.gold += 1; s.f.discount = 0.3; } },
@@ -171,40 +171,40 @@
     T.push({ id, arm, name, icon, x, y, max, cost, req, desc, apply });
 
   // Might — up
-  node('m1', 'might', 'Sharpened Edge', 'sword',     0, -1.15, 5, 20,  ['core'], (r) => `+${4 * r}% damage`, (s, r) => { s.dmg += 0.04 * r; });
-  node('m2', 'might', 'Quick Hands',    'hourglass', -1, -2.1, 5, 35,  ['m1'],   (r) => `+${3 * r}% attack speed`, (s, r) => { s.atkSpd += 0.03 * r; });
-  node('m3', 'might', 'Keen Eye',       'crosshair', 1, -2.1,  5, 35,  ['m1'],   (r) => `+${2 * r}% critical chance`, (s, r) => { s.crit += 0.02 * r; });
-  node('m4', 'might', 'Wide Arc',       'expand',    -1, -3.2, 3, 60,  ['m2'],   (r) => `+${4 * r}% area of effect`, (s, r) => { s.area += 0.04 * r; });
-  node('m5', 'might', 'Brutality',      'skull',     1, -3.2,  3, 60,  ['m3'],   (r) => `+${10 * r}% critical damage`, (s, r) => { s.critMult += 0.10 * r; });
-  node('m6', 'might', 'Lingering Pain', 'flame',     0, -3.9,  3, 90,  ['m4', 'm5'], (r) => `+${8 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.08 * r; });
-  node('m7', 'might', 'Giantsbane',     'trophy',    0, -5.0,  1, 400, ['m6'],   () => '+25% damage to elites and bosses', (s, r) => { s.bossDmg += 0.25 * r; });
+  node('m1', 'might', 'Sharpened Edge', 'sword',     0, -1.35, 5, 20,  ['core'], (r) => `+${4 * r}% damage`, (s, r) => { s.dmg += 0.04 * r; });
+  node('m2', 'might', 'Quick Hands',    'hourglass', -1.15, -2.6, 5, 35,  ['m1'],   (r) => `+${3 * r}% attack speed`, (s, r) => { s.atkSpd += 0.03 * r; });
+  node('m3', 'might', 'Keen Eye',       'crosshair', 1.15, -2.6,  5, 35,  ['m1'],   (r) => `+${2 * r}% critical chance`, (s, r) => { s.crit += 0.02 * r; });
+  node('m4', 'might', 'Wide Arc',       'expand',    -1.15, -3.85, 3, 60,  ['m2'],   (r) => `+${4 * r}% area of effect`, (s, r) => { s.area += 0.04 * r; });
+  node('m5', 'might', 'Brutality',      'skull',     1.15, -3.85,  3, 60,  ['m3'],   (r) => `+${10 * r}% critical damage`, (s, r) => { s.critMult += 0.10 * r; });
+  node('m6', 'might', 'Lingering Pain', 'flame',     0, -4.75,  3, 90,  ['m4', 'm5'], (r) => `+${8 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.08 * r; });
+  node('m7', 'might', 'Giantsbane',     'trophy',    0, -5.95,  1, 400, ['m6'],   () => '+25% damage to elites and bosses', (s, r) => { s.bossDmg += 0.25 * r; });
 
   // Vitality — left
-  node('v1', 'vitality', 'Hardy',        'heart',   -1.15, 0,  5, 20,  ['core'], (r) => `+${10 * r} max health`, (s, r) => { s.maxHp += 10 * r; });
-  node('v2', 'vitality', 'Mending',      'plus',    -2.1, -1,  5, 35,  ['v1'],   (r) => `+${(0.25 * r).toFixed(2)} health regeneration`, (s, r) => { s.regen += 0.25 * r; });
-  node('v3', 'vitality', 'Thick Hide',   'shield',  -2.1, 1,   5, 35,  ['v1'],   (r) => `+${2 * r} armor`, (s, r) => { s.armor += 2 * r; });
-  node('v4', 'vitality', 'Second Wind',  'potion',  -3.2, -1,  3, 60,  ['v2'],   (r) => `Level-ups heal ${5 * r}% of max health`, (s, r) => { s.m.levelHeal = 0.05 * r; });
-  node('v5', 'vitality', 'Evasion',      'feather', -3.2, 1,   3, 60,  ['v3'],   (r) => `+${2 * r}% chance to dodge hits`, (s, r) => { s.dodge += 0.02 * r; });
-  node('v6', 'vitality', 'Aegis',        'cross',   -3.9, 0,   2, 90,  ['v4', 'v5'], (r) => `Stay invulnerable ${(0.15 * r).toFixed(2)}s longer after being hit`, (s, r) => { s.m.iframes = 0.15 * r; });
-  node('v7', 'vitality', 'Undying',      'phoenix', -5.0, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });
+  node('v1', 'vitality', 'Hardy',        'heart',   -1.35, 0,  5, 20,  ['core'], (r) => `+${10 * r} max health`, (s, r) => { s.maxHp += 10 * r; });
+  node('v2', 'vitality', 'Mending',      'plus',    -2.6, -1.15,  5, 35,  ['v1'],   (r) => `+${(0.25 * r).toFixed(2)} health regeneration`, (s, r) => { s.regen += 0.25 * r; });
+  node('v3', 'vitality', 'Thick Hide',   'shield',  -2.6, 1.15,   5, 35,  ['v1'],   (r) => `+${2 * r} armor`, (s, r) => { s.armor += 2 * r; });
+  node('v4', 'vitality', 'Second Wind',  'potion',  -3.85, -1.15,  3, 60,  ['v2'],   (r) => `Level-ups heal ${5 * r}% of max health`, (s, r) => { s.m.levelHeal = 0.05 * r; });
+  node('v5', 'vitality', 'Evasion',      'feather', -3.85, 1.15,   3, 60,  ['v3'],   (r) => `+${2 * r}% chance to dodge hits`, (s, r) => { s.dodge += 0.02 * r; });
+  node('v6', 'vitality', 'Aegis',        'cross',   -4.75, 0,   2, 90,  ['v4', 'v5'], (r) => `Stay invulnerable ${(0.15 * r).toFixed(2)}s longer after being hit`, (s, r) => { s.m.iframes = 0.15 * r; });
+  node('v7', 'vitality', 'Undying',      'phoenix', -5.95, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });
 
   // Fortune — right
-  node('f1', 'fortune', 'Scholar',      'book',   1.15, 0,   5, 20,  ['core'], (r) => `+${4 * r}% experience`, (s, r) => { s.xp += 0.04 * r; });
-  node('f2', 'fortune', 'Prospector',   'coin',   2.1, -1,   5, 35,  ['f1'],   (r) => `+${8 * r}% gold found`, (s, r) => { s.gold += 0.08 * r; });
-  node('f3', 'fortune', 'Lucky Star',   'star',   2.1, 1,    5, 35,  ['f1'],   (r) => `+${6 * r} luck`, (s, r) => { s.luck += 6 * r; });
-  node('f4', 'fortune', 'Second Opinion', 'dice', 3.2, -1,   3, 60,  ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = r; });
-  node('f5', 'fortune', 'Exile',        'ban',    3.2, 1,    2, 80,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = r; });
-  node('f6', 'fortune', 'Soul Tithe',   'essence', 3.9, 0,   3, 90,  ['f4', 'f5'], (r) => `+${10 * r}% Essence earned`, (s, r) => { s.m.essence = 0.10 * r; });
-  node('f7', 'fortune', 'Inheritance',  'chest',  5.0, 0,    1, 400, ['f6'],   () => 'Begin every run with a random relic', (s, r) => { s.m.startRelic = r; });
+  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${4 * r}% experience`, (s, r) => { s.xp += 0.04 * r; });
+  node('f2', 'fortune', 'Prospector',   'coin',   2.6, -1.15,   5, 35,  ['f1'],   (r) => `+${8 * r}% gold found`, (s, r) => { s.gold += 0.08 * r; });
+  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${6 * r} luck`, (s, r) => { s.luck += 6 * r; });
+  node('f4', 'fortune', 'Second Opinion', 'dice', 3.85, -1.15,   3, 60,  ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = r; });
+  node('f5', 'fortune', 'Exile',        'ban',    3.85, 1.15,    2, 80,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = r; });
+  node('f6', 'fortune', 'Soul Tithe',   'essence', 4.75, 0,   3, 90,  ['f4', 'f5'], (r) => `+${10 * r}% Essence earned`, (s, r) => { s.m.essence = 0.10 * r; });
+  node('f7', 'fortune', 'Inheritance',  'chest',  5.95, 0,    1, 400, ['f6'],   () => 'Begin every run with a random relic', (s, r) => { s.m.startRelic = r; });
 
   // Mastery — down
-  node('a1', 'mastery', 'Fleet Foot',   'boot',     0, 1.15,  5, 20,  ['core'], (r) => `+${2 * r}% move speed`, (s, r) => { s.speed *= 1 + 0.02 * r; });
-  node('a2', 'mastery', 'Blink Training', 'dash',  -1, 2.1,   3, 40,  ['a1'],   (r) => `Dash recharges ${8 * r}% faster`, (s, r) => { s.dashCd *= 1 - 0.08 * r; });
-  node('a3', 'mastery', 'Focus',        'spark',    1, 2.1,   4, 40,  ['a1'],   (r) => `+${6 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.06 * r; });
-  node('a4', 'mastery', 'Persistence',  'clock',   -1, 3.2,   3, 60,  ['a2'],   (r) => `+${5 * r}% effect duration`, (s, r) => { s.duration += 0.05 * r; });
-  node('a5', 'mastery', 'Prodigy',      'arrowup',  1, 3.2,   2, 120, ['a3'],   (r) => `Begin each run ${r} level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = r; });
-  node('a6', 'mastery', 'Tailwind',     'wings',    0, 3.9,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
-  node('a7', 'mastery', 'Seventh Tome', 'book',     0, 5.0,   1, 400, ['a6'],   () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
+  node('a1', 'mastery', 'Fleet Foot',   'boot',     0, 1.35,  5, 20,  ['core'], (r) => `+${2 * r}% move speed`, (s, r) => { s.speed *= 1 + 0.02 * r; });
+  node('a2', 'mastery', 'Blink Training', 'dash',  -1.15, 2.6,   3, 40,  ['a1'],   (r) => `Dash recharges ${8 * r}% faster`, (s, r) => { s.dashCd *= 1 - 0.08 * r; });
+  node('a3', 'mastery', 'Focus',        'spark',    1.15, 2.6,   4, 40,  ['a1'],   (r) => `+${6 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.06 * r; });
+  node('a4', 'mastery', 'Persistence',  'clock',   -1.15, 3.85,   3, 60,  ['a2'],   (r) => `+${5 * r}% effect duration`, (s, r) => { s.duration += 0.05 * r; });
+  node('a5', 'mastery', 'Prodigy',      'arrowup',  1.15, 3.85,   2, 120, ['a3'],   (r) => `Begin each run ${r} level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = r; });
+  node('a6', 'mastery', 'Tailwind',     'wings',    0, 4.75,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
+  node('a7', 'mastery', 'Seventh Tome', 'book',     0, 5.95,   1, 400, ['a6'],   () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
 
   D.META = T;
   D.META_BY_ID = {};

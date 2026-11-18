@@ -161,7 +161,7 @@
     renderTree() {
       const d = PS.Save.data, tree = d.tree;
       $('treeEssence').textContent = U.fmtNum(d.essence);
-      const SPAN = 5.9; // layout units from centre to edge
+      const SPAN = 6.9; // layout units from centre to edge
       const pos = (v) => (50 + (v / SPAN) * 50).toFixed(2) + '%';
       let lines = '';
       for (const n of D.META) {
@@ -183,7 +183,7 @@
           <div class="tcore" style="left:50%;top:50%">${ico('essence', 30)}</div>
           ${Object.keys(D.META_ARMS).map((k) => {
             const a = D.META_ARMS[k];
-            const p = { might: [0, -5.75], vitality: [-5.0, -0.95], fortune: [5.0, -0.95], mastery: [0, 5.75] }[k];
+            const p = { might: [0, -6.75], vitality: [-5.4, -2.0], fortune: [5.4, -2.0], mastery: [0, 6.75] }[k];
             return `<span class="tarm" style="left:${pos(p[0])};top:${pos(p[1])};color:${a.color}">${a.name}</span>`;
           }).join('')}
           ${nodes}

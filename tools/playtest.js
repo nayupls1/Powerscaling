@@ -24,7 +24,7 @@ const { chromium } = require('playwright');
         const S = PS.Save.data;
         S.unlocked.reaper = true;
         if (flags.tree === 'full') for (const n of PS.Data.META) S.tree[n.id] = n.max; else if (!flags.keeptree) S.tree = {};
-        const bot = { random: !!flags.random, element: flags.el || null, branch: flags.branch !== undefined ? +flags.branch : null, noDash: !!flags.nodash };
+        const bot = { random: !!flags.random, element: flags.el || null, branch: flags.branch !== undefined ? +flags.branch : null, noDash: !!flags.nodash, sloppy: !!flags.sloppy };
         PS.Game.start(cls, { bot });
         PS.Game.state = 'sim'; // stop the rAF loop from stepping; we drive it
         const G = PS.G, dt = 1 / 60, out = [];
@@ -51,7 +51,7 @@ const { chromium } = require('playwright');
         const summary = { cls, time: Math.round(G.time), dead: !!G.over, level: p.level, kills: G.kills, bosses: G.bossesKilled, won: G.won, score: PS.Game.finalScore(G),
           skills: p.skills.map((s) => s.name + ' L' + s.level + (s.evolved ? '*' : '')), tomes: p.tomes.map((t) => t.id + t.level), relics: p.relicOrder.map((id) => id + (p.relics[id] > 1 ? 'x' + p.relics[id] : '')),
           talents: p.talents.join('/'), aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
-          killedBy: G.over && G.boss ? G.boss.def.name : null };
+          killedBy: G.over && G.boss ? G.boss.def.name : null, bossLog: G.bossLog.map((b) => b.name + '@' + b.at + ' ' + b.took + 's').join(', '), taken: Math.round(G.dmgTaken), hp: Math.round(p.hp) + '/' + p.stats.maxHp };
         if (!G.over) PS.Game.endRun(true);
         PS.Game.state = 'menu'; PS.G = null;
         return { out, summary };

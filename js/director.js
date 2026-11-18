@@ -35,7 +35,7 @@
       this.endlessBossT = 0;
       this.chestT = 6;
       this.shrineT = 40;
-      this.chestCost = 25;
+      this.chestCost = 30;
       this.chestsOpened = 0;
       this.victory = false;
     },
@@ -43,21 +43,22 @@
     endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (1 + 0.24 * t + 0.05 * t * t) * Math.pow(1.3, o);
+      // player power grows roughly exponentially while slots fill, then levels off — the horde follows the same curve
+      return Math.exp(0.62 * t - 0.011 * t * t) * Math.pow(1.6, o);
     },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (1 + 0.075 * t) * (1 + 0.14 * o);
+      return (1 + 0.11 * t) * (1 + 0.3 * o);
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
-    xpMult() { return 1 + this.endless() * 0.25; },
+    xpMult() { return 1 + this.endless() * 0.1; },
     targetCount() {
       const t = this.minutes();
-      return Math.min(MAX_ENEMIES, 24 + 20 * t + 1.1 * t * t);
+      return Math.min(MAX_ENEMIES, 36 + 30 * t + 1.4 * t * t);
     },
     spawnRate() {
       const t = this.minutes();
-      return 3.5 + 3.1 * t + Math.max(0, t - 12) * 3;
+      return 6 + 6.5 * t + Math.max(0, t - 12) * 4;
     },
 
     /** a point just off-screen around the player */
@@ -216,9 +217,9 @@
       }
       const r = Math.random();
       if (r < 0.085) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.3) * s.gold)));
-      else if (r < 0.091) this.pickup('heal', e.x, e.y, 0);
-      else if (r < 0.0925) this.pickup('magnet', e.x, e.y, 0);
-      else if (r < 0.0937) this.pickup('bomb', e.x, e.y, 0);
+      else if (r < 0.0885) this.pickup('heal', e.x, e.y, 0);
+      else if (r < 0.0895) this.pickup('magnet', e.x, e.y, 0);
+      else if (r < 0.0902) this.pickup('bomb', e.x, e.y, 0);
     },
     gem(x, y, val) {
       const G = PS.G;
@@ -323,7 +324,7 @@
             const cost = this.chestPrice();
             if (p.gold >= cost) {
               p.gold -= cost;
-              this.chestCost = Math.round(this.chestCost * 1.3 + 4);
+              this.chestCost = Math.round(this.chestCost * 1.22 + 6);
               this.chestsOpened++;
               pr.dead = true;
               PS.Game.openChest(1, 0);

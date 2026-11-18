@@ -9,7 +9,7 @@
 
   /** experience needed to go from `level` to `level + 1` */
   function xpFor(level) {
-    return Math.floor(5 + level * 5 + Math.pow(level, 2.05) * 0.62);
+    return Math.floor(5 + level * 5 + Math.pow(level, 2.2) * 0.5);
   }
 
   class Player {

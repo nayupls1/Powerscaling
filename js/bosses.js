@@ -37,7 +37,7 @@
   const BOSSES = [
     /* ---------------------------------------------------------------- 0: Gorath */
     {
-      id: 'gorath', name: 'Gorath', title: 'the Bonecrusher', r: 46, hp: 3200, spd: 80, dmg: 18, atk: 20, xp: 120, color: '#d1482f', sprite: 'boss0',
+      id: 'gorath', name: 'Gorath', title: 'the Bonecrusher', r: 46, hp: 900, spd: 80, dmg: 18, atk: 20, xp: 120, color: '#d1482f', sprite: 'boss0',
       cd: 2.1, pattern: ['slam', 'charge', 'summon', 'slam', 'charge'],
       attacks: {
         slam(e, bs, dt, p) {
@@ -64,7 +64,7 @@
     },
     /* ---------------------------------------------------------------- 1: Vexara */
     {
-      id: 'vexara', name: 'Vexara', title: 'the Hive Mother', r: 42, hp: 11000, spd: 64, dmg: 20, atk: 24, xp: 300, color: '#8fe04a', sprite: 'boss1',
+      id: 'vexara', name: 'Vexara', title: 'the Hive Mother', r: 42, hp: 1100, spd: 64, dmg: 20, atk: 24, xp: 300, color: '#8fe04a', sprite: 'boss1',
       cd: 1.9, keep: 250, pattern: ['spiral', 'pools', 'brood', 'burst', 'pools'],
       attacks: {
         spiral(e, bs, dt) {
@@ -107,7 +107,7 @@
     },
     /* ---------------------------------------------------------------- 2: Kaelthyr */
     {
-      id: 'kaelthyr', name: 'Kaelthyr', title: 'the Storm Lich', r: 40, hp: 30000, spd: 72, dmg: 24, atk: 30, xp: 700, color: '#6fd8ff', sprite: 'boss2',
+      id: 'kaelthyr', name: 'Kaelthyr', title: 'the Storm Lich', r: 40, hp: 1300, spd: 72, dmg: 24, atk: 30, xp: 700, color: '#6fd8ff', sprite: 'boss2',
       cd: 1.7, keep: 230, pattern: ['beams', 'blink', 'fans', 'field', 'blink'],
       attacks: {
         blink(e, bs, dt, p) {
@@ -160,7 +160,7 @@
     },
     /* ---------------------------------------------------------------- 3: Azhmodai */
     {
-      id: 'azhmodai', name: 'Azhmodai', title: 'the Rift Lord', r: 54, hp: 78000, spd: 68, dmg: 30, atk: 38, xp: 1500, color: '#c06bff', sprite: 'boss3',
+      id: 'azhmodai', name: 'Azhmodai', title: 'the Rift Lord', r: 54, hp: 1700, spd: 68, dmg: 30, atk: 38, xp: 1500, color: '#c06bff', sprite: 'boss3',
       cd: 1.5, pattern: ['cross', 'rain', 'hell', 'charge', 'rain'], final: true,
       attacks: {
         cross(e, bs) {
@@ -208,7 +208,8 @@
     spawn(idx, endlessK) {
       const G = PS.G, def = BOSSES[idx];
       const pos = PS.Director.ringPos(-30);
-      const hpMult = endlessK ? (BOSSES[3].hp / def.hp) * 0.75 * Math.pow(1.5, endlessK) : 1;
+      // boss health is a multiple of the horde's current toughness, so fights stay a similar length all run
+      const hpMult = PS.Director.hpMult() * (endlessK ? (BOSSES[3].hp / def.hp) * 1.15 : 1);
       const e = PS.Enemies.spawn(def, pos.x, pos.y, { hpMult });
       const dm = PS.Director.dmgMult();
       e.atk = def.atk * dm * (endlessK ? 1.15 : 1);
@@ -217,6 +218,7 @@
       e.endlessK = endlessK;
       e.score = 2500 * (idx + 1) * (endlessK ? 1 + endlessK : 1);
       G.boss = e;
+      e.bornAt = G.time;
       PS.UI.bossIntro(def);
       PS.Audio.play('bossWarn');
       PS.Audio.music('boss');
@@ -277,6 +279,7 @@
       const G = PS.G;
       if (G.boss === e) G.boss = null;
       G.bossesKilled++;
+      G.bossLog.push({ name: e.def.name, at: Math.round(e.bornAt), took: Math.round(G.time - e.bornAt) });
       G.eprojs.length = 0;
       for (const h of G.hazards) if (h.owner === e) h.dead = true;
       PS.FX.bossDeath(e);

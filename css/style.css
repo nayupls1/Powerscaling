@@ -194,7 +194,7 @@ i[data-icon], .count i { display: inline-flex; }
 .essence-count b { font-family: var(--display); font-size: 1.5rem; color: var(--bone); }
 .tree-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 22px; align-items: start; }
 .tree-canvas { display: grid; place-items: center; }
-.tree-square { position: relative; width: min(100%, 76vh); aspect-ratio: 1; }
+.tree-square { position: relative; width: min(100%, 80vh); aspect-ratio: 1; }
 .tree-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tree-lines line { stroke: rgba(239, 232, 216, 0.16); stroke-width: 0.07; }
 .tree-lines line.lit { stroke: var(--c); stroke-width: 0.11; }
