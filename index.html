@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0f0b22">
+  <title>Powerscaling</title>
+  <meta name="description" content="A top-down roguelike horde survivor. Pick a class, stack skills, break the rift.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Game view"></canvas>
+
+  <!-- ============================== HUD ============================== -->
+  <div id="hud" class="hud" hidden>
+    <div class="xpbar"><div class="xpbar-fill" id="xpFill"></div></div>
+    <div class="hud-top">
+      <div class="hud-level"><span id="hudLevel">1</span><small>level</small></div>
+      <div class="hud-clock">
+        <div class="clock-time" id="hudTime">00:00</div>
+        <div class="clock-next" id="hudNext"></div>
+      </div>
+      <div class="hud-counts">
+        <span class="count" title="Enemies slain"><i data-icon="skull"></i><b id="hudKills">0</b></span>
+        <span class="count gold" title="Gold"><i data-icon="coin"></i><b id="hudGold">0</b></span>
+        <button class="iconbtn" id="btnPause" title="Pause (Esc)" aria-label="Pause"><i data-icon="pause"></i></button>
+      </div>
+    </div>
+    <div class="bossbar" id="bossBar" hidden>
+      <div class="bossbar-name" id="bossName"></div>
+      <div class="bossbar-track"><div class="bossbar-fill" id="bossFill"></div></div>
+    </div>
+    <div class="banner" id="banner" hidden><div class="banner-title" id="bannerTitle"></div><div class="banner-sub" id="bannerSub"></div></div>
+    <div class="toasts" id="toasts"></div>
+    <div class="affinities" id="hudAff"></div>
+    <div class="hud-bottom">
+      <div class="vitals">
+        <div class="hpbar"><div class="hpbar-fill" id="hpFill"></div><span id="hpText"></span></div>
+        <div class="actions">
+          <div class="action" id="actAbility" title="Ability (Q or right mouse)"><i></i><div class="cd"></div><kbd>Q</kbd></div>
+          <div class="action" id="actDash" title="Dash (Space)"><i data-icon="dash"></i><div class="cd"></div><kbd>Space</kbd></div>
+        </div>
+      </div>
+      <div class="loadout">
+        <div class="slots" id="hudSkills"></div>
+        <div class="slots small" id="hudTomes"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== touch controls ============================== -->
+  <div id="touch" class="touch" hidden>
+    <div class="stick" id="stick"><div class="stick-knob" id="stickKnob"></div></div>
+    <button class="tbtn tbtn-ability" id="tAbility" aria-label="Ability"><i></i></button>
+    <button class="tbtn tbtn-dash" id="tDash" aria-label="Dash"><i data-icon="dash"></i></button>
+  </div>
+
+  <!-- ============================== menus ============================== -->
+  <div id="screens" class="screens">
+    <section class="screen screen-title" id="scrTitle">
+      <div class="title-wrap">
+        <h1 class="logo" id="logo" aria-label="Powerscaling"></h1>
+        <p class="tagline">Start weak. Stack everything. Break the rift.</p>
+        <nav class="mainnav">
+          <button class="btn btn-primary" id="navPlay">Enter the rift</button>
+          <button class="btn" id="navTree">Skill tree <span class="pill" id="navEssence"></span></button>
+          <button class="btn" id="navBoard">Leaderboard</button>
+          <button class="btn" id="navHelp">How to play</button>
+          <button class="btn" id="navSettings">Settings</button>
+        </nav>
+      </div>
+      <aside class="title-side" id="titleSide"></aside>
+    </section>
+
+    <section class="screen" id="scrClass" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Choose your class</h2>
+        <span></span>
+      </header>
+      <div class="class-grid" id="classGrid"></div>
+      <div class="class-detail" id="classDetail"></div>
+    </section>
+
+    <section class="screen" id="scrTree" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Skill tree</h2>
+        <div class="essence-count"><i data-icon="essence"></i><b id="treeEssence">0</b> Essence</div>
+      </header>
+      <div class="tree-layout">
+        <div class="tree-canvas" id="treeCanvas"></div>
+        <aside class="tree-info" id="treeInfo"></aside>
+      </div>
+    </section>
+
+    <section class="screen" id="scrBoard" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Leaderboard</h2>
+        <span class="muted">Saved on this device</span>
+      </header>
+      <div class="tabs" id="boardTabs"></div>
+      <div class="board" id="boardBody"></div>
+    </section>
+
+    <section class="screen" id="scrHelp" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>How to play</h2>
+        <span></span>
+      </header>
+      <div class="help" id="helpBody"></div>
+    </section>
+
+    <section class="screen" id="scrSettings" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Settings</h2>
+        <span></span>
+      </header>
+      <div class="settings" id="settingsBody"></div>
+    </section>
+  </div>
+
+  <!-- ============================== in-run overlays ============================== -->
+  <div class="overlay" id="ovChoice" hidden>
+    <div class="choice">
+      <div class="choice-head">
+        <h2 id="choiceTitle"></h2>
+        <p id="choiceSub"></p>
+      </div>
+      <div class="cards" id="choiceCards"></div>
+      <div class="choice-actions" id="choiceActions"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovPause" hidden>
+    <div class="sheet">
+      <header class="sheet-head">
+        <h2>Paused</h2>
+        <div class="sheet-btns">
+          <button class="btn btn-primary" id="pauseResume">Resume</button>
+          <button class="btn" id="pauseSettings">Settings</button>
+          <button class="btn btn-danger" id="pauseQuit">End run</button>
+        </div>
+      </header>
+      <div class="sheet-body" id="pauseBody"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovOver" hidden>
+    <div class="sheet sheet-over">
+      <div id="overBody"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ovSettings" hidden>
+    <div class="sheet sheet-narrow">
+      <header class="sheet-head"><h2>Settings</h2><div class="sheet-btns"><button class="btn btn-primary" id="ovSettingsClose">Done</button></div></header>
+      <div class="settings" id="ovSettingsBody"></div>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip" hidden></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/skills.js"></script>
+  <script src="js/classes.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/bosses.js"></script>
+  <script src="js/director.js"></script>
+  <script src="js/rewards.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
