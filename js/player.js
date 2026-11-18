@@ -89,6 +89,17 @@
       s.baseSpeed = cls.base.speed || 210;
 
       const prevMax = this.stats ? this.stats.maxHp : s.maxHp;
+      // announce newly reached affinity thresholds — these are the big build moments
+      if (!first && PS.G && PS.G.player === this) {
+        for (const el in aff) {
+          for (const th of D.AFFINITY[el]) {
+            if ((this.aff[el] || 0) < th.n && aff[el] >= th.n) {
+              PS.UI.toast(`${D.ELEMENTS[el].name} ${th.n}: ${th.text}`, D.ELEMENTS[el].icon);
+              PS.Audio.play('shrine', { vol: 0.6 });
+            }
+          }
+        }
+      }
       this.stats = s;
       this.aff = aff;
       if (!first) {

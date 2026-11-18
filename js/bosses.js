@@ -282,6 +282,7 @@
       G.bossLog.push({ name: e.def.name, at: Math.round(e.bornAt), took: Math.round(G.time - e.bornAt) });
       G.eprojs.length = 0;
       for (const h of G.hazards) if (h.owner === e) h.dead = true;
+      for (const k of G.pickups) if (k.kind === 'xp' || k.kind === 'gold') k.pull = true; // the spoils come to you
       PS.FX.bossDeath(e);
       PS.FX.shake(16);
       PS.FX.flash('#ffffff', 0.5);
