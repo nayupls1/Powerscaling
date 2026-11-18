@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+/* Exercise every code path at once: each class with all talents, every relic at max stacks and every skill (evolved),
+   run for a few minutes and fail on any page error or non-finite number. Usage: node tools/stress.js [minutes] */
+const path = require('path');
+const { chromium } = require('playwright');
+(async () => {
+  const minutes = +(process.argv[2] || 4);
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message + '\n' + (e.stack || '').split('\n').slice(1, 4).join('\n')));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
+  await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
+  for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper']) {
+    for (const half of [0, 1]) {
+      const res = await page.evaluate(async ({ cls, half, minutes }) => {
+        PS.Save.data.unlocked.reaper = true;
+        for (const n of PS.Data.META) PS.Save.data.tree[n.id] = n.max;
+        PS.Game.start(cls, { bot: {} });
+        PS.Game.state = 'sim';
+        const G = PS.G, p = G.player;
+        p.talents = [3, 3, 3];
+        for (const id in PS.Data.RELICS) for (let i = 0; i < Math.min(3, PS.Data.RELICS[id].max); i++) p.addRelic(id);
+        for (const id in PS.Data.TOMES) p.addTome(id, 2);
+        // six generic skills per pass (nine per half), all evolved, so every skill behaviour runs
+        const ids = PS.Skills.poolIds().filter((_, i) => (i % 2) === half);
+        for (const id of ids) { const k = p.addSkill(id); k.level = PS.Skills.MAX_LEVEL; k.evolved = true; PS.Skills.rebuild(k); }
+        p.skills[0].level = PS.Skills.MAX_LEVEL; PS.Skills.rebuild(p.skills[0]);
+        p.recalc(); p.hp = p.stats.maxHp;
+        G.time = 170; // jump straight to the first boss
+        let n = 0, bad = null;
+        const limit = G.time + minutes * 60;
+        const spawnAt = [200, 260, 320];
+        while (G.time < limit && !G.over) {
+          PS.Bot.drive(G); PS.Game.step(1 / 60);
+          if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(4 - spawnAt.length, 0); spawnAt.shift(); }
+          if (n % 600 === 0) {
+            p.hurt(5); // exercise on-hurt hooks
+            if (!isFinite(p.hp) || !isFinite(p.x) || !isFinite(p.dm) || !isFinite(G.dmgTotal)) { bad = 'player NaN'; break; }
+            for (const e of G.enemies) if (!isFinite(e.hp) || !isFinite(e.x) || !isFinite(e.y)) { bad = 'enemy NaN ' + e.def.id; break; }
+            for (const pr of G.projs) if (!isFinite(pr.x) || !isFinite(pr.dmg)) { bad = 'proj NaN ' + pr.kind + ' ' + pr.src; break; }
+            if (bad) break;
+          }
+          if (++n % 3000 === 0) await new Promise((r) => setTimeout(r, 0));
+        }
+        const out = { cls, half, t: Math.round(G.time), over: G.over, bad, kills: G.kills, bosses: G.bossesKilled, hp: Math.round(p.hp), sources: Object.keys(G.dmgBy).length,
+          arrays: [G.enemies.length, G.projs.length, G.zones.length, G.minions.length, G.pickups.length, G.hazards.length, G.eprojs.length].join('/') };
+        if (!G.over) PS.Game.endRun(true);
+        PS.Game.state = 'menu'; PS.G = null;
+        return out;
+      }, { cls, half, minutes });
+      console.log(JSON.stringify(res));
+      if (res.bad) process.exitCode = 1;
+    }
+  }
+  if (errors.length) { console.log('\nERRORS:\n' + [...new Set(errors)].slice(0, 20).join('\n')); process.exitCode = 1; }
+  else console.log('no page errors');
+  await browser.close();
+})();
