@@ -456,9 +456,10 @@
         const half = rampage ? Math.PI : 1.05 + (f.sweeping ? 0.3 : 0);
         const dmg = s.dmg * (rampage ? 1.3 : 1);
         const n = C.arc(p.x, p.y, p.aim, half, range, dmg, { el: 'steel', src: inst.name, knock: 150 });
+        C.deflect(p.x, p.y, range + 10, true, p.aim, half, 'Cleave reflect'); // the blade bats bullets back where they came from
         PS.FX.slash(p.x, p.y, p.aim, range, half, rampage ? '#ff6b5a' : '#e8eeff');
         p.swing = 1;
-        if (n && f.bloodthirst) p.heal(Math.min(3, n) * 1.2, true);
+        if (n && f.bloodthirst) p.leech(Math.min(3, n) * 1.2);
         if (n) PS.FX.shake(Math.min(2.5, 0.8 + n * 0.15));
         if (f.bladeWave) {
           inst.swings = (inst.swings || 0) + 1;
@@ -485,7 +486,7 @@
         fan(count, 0.13, (off) => {
           C.proj({
             x: p.x + Math.cos(p.aim) * 14, y: p.y + Math.sin(p.aim) * 14, ang: p.aim + off, speed: s.speed * (big ? 0.8 : 1), dmg, el: 'fire', src: inst.name,
-            r: 8 * size, size, life: 1.1, kind: 'fireball', color: EL.fire.color, explode: r, knock: big ? 200 : 70, trail: '#ff9a4d',
+            r: 8 * size, size, life: 1.1, kind: 'fireball', color: EL.fire.color, explode: r, knock: big ? 200 : 70, trail: '#ff9a4d', cut: true,
             onHit: f.hotStreak ? (pr, e, wasBurning) => {
               if (wasBurning && Math.random() < 0.3) {
                 PS.FX.explosion(e.x, e.y, r * 1.3, '#ffd06b');
@@ -512,7 +513,7 @@
         const baseDmg = s.dmg, spd = s.speed, basePierce = s.pierce;
         const mk = (ang, dmg, pierce, isHead, isSplit) => C.proj({
           x: p.x + Math.cos(ang) * 12, y: p.y + Math.sin(ang) * 12, ang, speed: spd * (isHead ? 1.4 : 1), dmg, el: 'steel', src: isHead ? 'Headshot' : inst.name,
-          r: isHead ? 9 : 5, size: isHead ? 1.6 : 1, life: 0.95, pierce, kind: 'arrow', color: isHead ? '#ffe9a8' : (f.poisonTips ? '#b8f078' : '#f1e7cf'), knock: isHead ? 160 : 50,
+          r: isHead ? 9 : 5, size: isHead ? 1.6 : 1, life: 0.95, pierce, cut: true, kind: 'arrow', color: isHead ? '#ffe9a8' : (f.poisonTips ? '#b8f078' : '#f1e7cf'), knock: isHead ? 160 : 50,
           opts: { crit: isHead ? true : undefined, poison: f.poisonTips ? 1 : 0 },
           onHit: (pr, e) => {
             if (f.piercing) pr.dmg *= 1.15;
@@ -540,7 +541,7 @@
         fan(count, 0.42, (off) => {
           C.proj({
             x: p.x, y: p.y, ang: p.aim + off, speed: s.speed, dmg: s.dmg, el: 'void', src: inst.name, r: 20 * (0.6 + 0.4 * s.area), size: 0.6 + 0.4 * s.area, life: 3,
-            kind: 'scythe', color: f.withering ? '#a6f07a' : EL.void.color, boomerang: 0.42, spin: -15, knock: 70,
+            kind: 'scythe', color: f.withering ? '#a6f07a' : EL.void.color, boomerang: 0.42, spin: -15, knock: 70, cut: true,
             opts: { poison: f.withering ? 1 : 0, execute: f.deathsDoor ? 0.2 : 0 },
           });
         });

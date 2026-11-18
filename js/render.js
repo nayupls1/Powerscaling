@@ -289,6 +289,18 @@
       g.fillStyle = '#1b2748'; g.beginPath(); g.arc(r * 0.2, 0, r * 0.55, 0, TAU); g.fill();
       eye(g, r * 0.4, -r * 0.2, r * 0.13, '#ffffff'); eye(g, r * 0.4, r * 0.2, r * 0.13, '#ffffff');
     },
+    mortar(g, r, col) {
+      // squat shell-back with a stubby cannon
+      g.fillStyle = '#6b3a12';
+      g.beginPath(); g.roundRect(r * 0.3, -r * 0.32, r * 1.05, r * 0.64, r * 0.2); g.fill();
+      body(g, r, col);
+      g.fillStyle = '#3b2009';
+      g.beginPath(); g.arc(-r * 0.1, 0, r * 0.55, 0, TAU); g.fill();
+      g.fillStyle = '#ffd08a';
+      g.beginPath(); g.arc(-r * 0.1, 0, r * 0.26, 0, TAU); g.fill();
+      g.fillStyle = '#ffa53d';
+      g.beginPath(); g.arc(r * 1.3, 0, r * 0.2, 0, TAU); g.fill();
+    },
     hexer(g, r, col) {
       g.fillStyle = col;
       g.beginPath(); g.moveTo(r * 1.1, 0); g.lineTo(0, -r); g.lineTo(-r * 1.1, 0); g.lineTo(0, r); g.closePath(); g.fill();
@@ -479,10 +491,11 @@
     for (const h of G.hazards) {
       if (h.kind === 'circle') {
         const t = Math.min(1, h.t / h.delay);
-        ctx.globalAlpha = 0.16 + 0.1 * t;
+        // a clear rim and a filling core show the timing without hiding what is underneath
+        ctx.globalAlpha = 0.1 + 0.06 * t;
         ctx.fillStyle = h.color;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.35 + 0.3 * t;
+        ctx.globalAlpha = 0.2 + 0.25 * t;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r * t, 0, TAU); ctx.fill();
         ctx.globalAlpha = 0.95;
         ctx.strokeStyle = t > 0.8 ? '#ffffff' : h.color; ctx.lineWidth = 3;
@@ -809,6 +822,25 @@
       ctx.beginPath(); ctx.arc(tx - Math.cos(a) * 2 + Math.cos(a + 1.57) * 14, ty - Math.sin(a) * 2 + Math.sin(a + 1.57) * 14, 15, a - 1.9, a - 0.5); ctx.stroke();
     }
     ctx.globalAlpha = 1;
+    // Ward: an expanding dome while it is up, and a faint arc when it is ready again
+    if (p.wardT > 0) {
+      const t = 1 - p.wardT / 0.35, rr = p.wardR * (0.45 + 0.55 * U.easeOutCubic(t));
+      ctx.globalCompositeOperation = 'lighter';
+      drawGlow(x, y, rr * 1.15, '#5fb8ff', 0.35 * (1 - t));
+      ctx.globalAlpha = 0.95 * (1 - t * 0.6);
+      ctx.strokeStyle = '#dff3ff'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.arc(x, y, rr, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = '#5fb8ff'; ctx.lineWidth = 2;
+      ctx.setLineDash([16, 12]); ctx.lineDashOffset = -G.time * 300;
+      ctx.beginPath(); ctx.arc(x, y, rr * 0.82, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    } else if (p.wardCd <= 0) {
+      ctx.globalAlpha = 0.5; ctx.strokeStyle = '#bfe6ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, r + 11, p.aim - 0.7, p.aim + 0.7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     // barrier
     if (p.barrier) {
       ctx.globalAlpha = 0.7; ctx.strokeStyle = '#9fd0ff'; ctx.lineWidth = 2.5;
@@ -871,6 +903,7 @@
       if (!visible(p.x, p.y, 40)) continue;
       const k = p.kind;
       if (k === 'fireball') { drawGlow(p.x, p.y, 26 * p.size, '#ff5a1f', 0.85); drawGlow(p.x, p.y, 12 * p.size, '#ffe9a8', 1); }
+      else if (k === 'reflect') { drawGlow(p.x, p.y, 22, '#8fd0ff', 0.95); drawGlow(p.x, p.y, 9, '#ffffff', 1); }
       else if (k === 'bolt' || k === 'missile') { drawGlow(p.x, p.y, 16, p.color, 0.9); }
       else if (k === 'spore') { drawGlow(p.x, p.y, 15, '#8fe04a', 0.8); }
       else if (k === 'shard') { drawGlow(p.x, p.y, 15, '#6fd8ff', 0.55); }
@@ -883,7 +916,7 @@
       const p = list[i];
       if (!visible(p.x, p.y, 40)) continue;
       const k = p.kind;
-      if (k === 'fireball' || k === 'spore') continue;
+      if (k === 'fireball' || k === 'spore' || k === 'reflect') continue;
       spriteTf(p.x, p.y, p.rot, p.size, p.size);
       if (k === 'arrow') {
         ctx.strokeStyle = p.color; ctx.lineWidth = 2.5; ctx.lineCap = 'round';

@@ -66,6 +66,7 @@
             p.whirlTick = 0.14;
             C.aoe(p.x, p.y, r, abil(p, 11, 'steel'), { el: 'steel', src: 'Whirlwind', knock: f.cyclone ? 0 : 60 });
             PS.FX.whirl(p.x, p.y, r);
+            C.deflect(p.x, p.y, r, true, 0, undefined, 'Whirlwind reflect');
           }
           if (f.cyclone) {
             PS.G.grid.query(p.x, p.y, r * 2.2, (e) => {
@@ -163,6 +164,7 @@
             x: t.x, y: t.y, r, delay: 0.7, dmg, el: 'fire', src: 'Cataclysm', kind: 'meteor', color: '#ff7a3d', opts: { knock: 300 },
             onLand: (sk) => {
               PS.FX.shake(9);
+              C.deflect(sk.x, sk.y, r, false);
               PS.Audio.play('bigExplode');
               C.zone({ x: sk.x, y: sk.y, r: r * 0.85, life: 4 * s.duration, tick: 0.5, dmg: dmg * 0.08, el: 'fire', src: 'Cataclysm', kind: 'fire', color: '#ff7a3d' });
             },
@@ -248,7 +250,10 @@
           C.zone({
             x: t.x, y: t.y, r: 165 * s.area, life: 3 * s.duration, tick: 0.18, firstTick: 0.1, dmg, el: 'steel', src: 'Arrow Storm', kind: 'arrows', color: '#f1e7cf',
             opts: { poison: s.f.poisonTips ? 1 : 0 },
-            onTick: mark ? (z) => { PS.G.grid.query(z.x, z.y, z.r, (e) => { e.markT = 6; }); } : null,
+            onTick: (z) => {
+              C.deflect(z.x, z.y, z.r, false); // the volley shoots bullets down
+              if (mark) PS.G.grid.query(z.x, z.y, z.r, (e) => { e.markT = 6; });
+            },
           });
           PS.Audio.play('ability');
         },
@@ -318,6 +323,7 @@
           PS.FX.ring(p.x, p.y, r, '#c06bff', 0.45);
           PS.FX.explosion(p.x, p.y, r * 0.6, '#c06bff', true);
           const n = C.aoe(p.x, p.y, r, abil(p, 85, 'void'), { el: 'void', src: 'Soul Harvest', knock: 200 });
+          C.deflect(p.x, p.y, r, true, 0, undefined, 'Soul Harvest');
           p.heal(Math.min(20, n) * 1.2, true);
           const max = 3 + (s.f.legion || 0);
           for (let i = 0; i < max; i++) raiseSkeleton(p, p.x + Math.cos((i * TAU) / max) * 50, p.y + Math.sin((i * TAU) / max) * 50);
@@ -333,7 +339,7 @@
           p.souls = 0;
           raiseSkeleton(p, e.x, e.y);
         }
-        if (f.siphon) p.heal(0.4, true);
+        if (f.siphon) p.leech(0.4);
         if (f.corpseEx && canProc && Math.random() < 0.22) {
           PS.FX.explosion(e.x, e.y, 88 * p.stats.area, '#8fe04a');
           C.aoe(e.x, e.y, 88 * p.stats.area, C.power('venom') * 1.6, { el: 'venom', src: 'Corpse Explosion', noProc: true, poison: 2 });

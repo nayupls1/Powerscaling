@@ -144,11 +144,12 @@
     volatile:   { name: 'Volatile Ichor',  icon: 'bomb',    tier: 2, max: 4, desc: 'Slain enemies have a 12% chance to explode.', apply: (s, n) => { s.f.corpseBoom = (s.f.corpseBoom || 0) + 0.12 * n; } },
     echo:       { name: 'Echo Stone',      icon: 'echo',    tier: 2, max: 3, desc: 'Skills that fire on a cooldown have a 15% chance to fire twice.', apply: (s, n) => { s.f.echo = (s.f.echo || 0) + 0.15 * n; } },
     giantsbelt: { name: 'Giant\'s Belt',   icon: 'belt',    tier: 2, max: 3, desc: '+20% area of effect and +15% max health.', apply: (s, n) => { s.area += 0.2 * n; s.hpMult += 0.15 * n; } },
-    ricochet:   { name: 'Splinter Prism',  icon: 'prism',   tier: 2, max: 3, desc: 'Arrows, shards, spores and bolts pierce 1 more enemy. All projectiles fly 15% faster.', apply: (s, n) => { s.pierce += n; s.projSpd += 0.15 * n; } },
+    ricochet:   { name: 'Splinter Prism',  icon: 'shards',   tier: 2, max: 3, desc: 'Arrows, shards, spores and bolts pierce 1 more enemy. All projectiles fly 15% faster.', apply: (s, n) => { s.pierce += n; s.projSpd += 0.15 * n; } },
     slayer:     { name: 'Giantslayer',     icon: 'skull',   tier: 2, max: 3, desc: '+30% damage to elites and bosses.', apply: (s, n) => { s.bossDmg += 0.30 * n; } },
     frostbite:  { name: 'Frostbite Ring',  icon: 'crystal', tier: 2, max: 3, desc: 'Hits have an 8% chance to freeze enemies solid.', apply: (s, n) => { s.f.freezeProc = (s.f.freezeProc || 0) + 0.08 * n; } },
     venomous:   { name: 'Serpent Tooth',   icon: 'spores',  tier: 2, max: 3, desc: 'Hits have a 20% chance to poison.', apply: (s, n) => { s.f.poisonProc = (s.f.poisonProc || 0) + 0.20 * n; } },
     souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 1,000 enemies slain this run, up to +50%.', apply: (s, n, p) => { s.dmg += Math.min(0.5, Math.floor((p.kills || 0) / 1000) * 0.01) * n; }, dynamic: true },
+    mirror:     { name: 'Mirror Shard',    icon: 'prism',   tier: 2, max: 1, desc: 'Ward is 25% larger and recharges 25% faster. Reflected bullets hit 60% harder.', apply: (s) => { s.f.mirror = 1; } },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },

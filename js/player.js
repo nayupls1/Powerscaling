@@ -6,6 +6,7 @@
 
   const DASH_TIME = 0.16;
   const DASH_SPEED = 980;
+  const WARD_CD = 6, WARD_TIME = 0.35, WARD_RADIUS = 150;
 
   /** experience needed to go from `level` to `level + 1` */
   function xpFor(level) {
@@ -35,6 +36,8 @@
       this.surgeT = 0; this.galeT = 0; this.whirlT = 0; this.barrier = false; this.barrierT = 3; this.reborn = false;
       this.souls = 0; this.hitCounter = 0; this.arcIcd = 0; this.timeStopT = 20;
       this.revivesUsed = 0; this.leechPool = 0; this.auraR = 0;
+      this.tremorN = 0; this.tremorAt = -99; this.hitInv = false; this.abilityRefund = 0; this.wardRefund = 0;
+      this.wardCd = 0; this.wardMax = WARD_CD; this.wardT = 0; this.wardR = WARD_RADIUS; this.wardHits = 0;
       this.dm = 1; this.as = 1;
       this.dynT = 0; this.wantFire = false; this.gemCombo = 0; this.gemComboT = 0;
       this.stats = null; this.aff = {};
@@ -133,7 +136,7 @@
       this.as = Math.max(0.2, as);
 
       // timers
-      if (this.inv > 0) this.inv -= dt;
+      if (this.inv > 0) { this.inv -= dt; if (this.inv <= 0) this.hitInv = false; }
       if (this.hurtFlash > 0) this.hurtFlash -= dt;
       if (this.swing > 0) this.swing = Math.max(0, this.swing - dt * 5);
       if (this.abilityCd > 0) this.abilityCd -= dt;
@@ -152,7 +155,7 @@
         if (this.hp < 1) this.hp = 1;
       }
       if (this.leechPool > 0) {
-        const cap = (4 + s.maxHp * 0.06) * dt;
+        const cap = (2 + s.maxHp * 0.025) * dt;
         const h = Math.min(this.leechPool, cap);
         this.leechPool = Math.min(this.leechPool - h, s.maxHp * 0.5);
         this.hp = Math.min(s.maxHp, this.hp + h);
@@ -172,7 +175,8 @@
       const want = Math.atan2(this.aimY - this.y, this.aimX - this.x);
       this.aim = autoAim ? U.turnTo(this.aim, want, 14 * dt) : want;
       if (Math.abs(Math.cos(this.aim)) > 0.2) this.face = Math.cos(this.aim) > 0 ? 1 : -1;
-      this.wantFire = autoAim ? !!target : ctrl.fire;
+      // auto-aim holds fire with nothing in range; manual attack only swings on a click or hold
+      this.wantFire = ctrl.fire && (!autoAim || !!target);
 
       // dash
       if (ctrl.dash && this.dashT <= 0 && this.dashCharges > 0) {
@@ -181,6 +185,7 @@
         this.dashT = DASH_TIME;
         this.dashAng = (ctrl.mx || ctrl.my) ? Math.atan2(ctrl.my, ctrl.mx) : this.aim;
         this.inv = Math.max(this.inv, DASH_TIME + 0.12);
+        this.hitInv = false;
         PS.Audio.play('dash', { vol: 0.5 });
         PS.FX.dashBurst(this.x, this.y, this.dashAng, cls.color);
         if (cls.onDash) cls.onDash(this);
@@ -206,10 +211,24 @@
       this.y += vy * dt;
       if (this.moving) this.walk += dt * 11;
 
+      // Ward: a brief shield pulse that reflects bullets and staggers whatever is touching you
+      if (this.wardCd > 0) this.wardCd -= dt;
+      if (ctrl.ward && this.wardCd <= 0 && this.wardT <= 0) this.raiseWard();
+      if (this.wardT > 0) {
+        this.wardT -= dt;
+        const got = C.deflect(this.x, this.y, this.wardR, true, 0, undefined, 'Ward', true);
+        if (got) this.wardHits += got; // the cooldown refund is handled (and capped) in Combat.bulletReward
+        if (this.wardT <= 0 && this.wardHits > 0) {
+          PS.FX.text(this.x, this.y - 44, 'Reflected ' + this.wardHits, '#bfe6ff');
+          PS.Audio.play('crit', { vol: 0.6, pitch: 0.8 });
+        }
+      }
+
       // ability
       if (ctrl.ability && this.abilityCd <= 0) {
         this.abilityMax = cls.ability.cd / (1 + s.abilityHaste);
         this.abilityCd = this.abilityMax;
+        this.abilityRefund = this.abilityMax * 0.35;
         cls.ability.use(this);
         PS.FX.ring(this.x, this.y, 60, cls.color, 0.3);
       }
@@ -233,6 +252,26 @@
           }
         }
       }
+    }
+
+    raiseWard() {
+      const G = PS.G, s = this.stats;
+      this.wardMax = WARD_CD * (s.f.mirror ? 0.75 : 1);
+      this.wardCd = this.wardMax;
+      this.wardRefund = this.wardMax * 0.4; // a good parry buys back up to 40% of the cooldown, no more
+      this.hitInv = false;
+      this.wardT = WARD_TIME;
+      this.wardHits = 0;
+      this.wardR = WARD_RADIUS * (s.f.mirror ? 1.25 : 1);
+      this.inv = Math.max(this.inv, WARD_TIME + 0.1);
+      PS.FX.ring(this.x, this.y, this.wardR, '#bfe6ff', 0.35);
+      PS.Audio.play('frost', { vol: 0.7, pitch: 0.7 });
+      // shove and stagger everything in reach (bosses only flinch)
+      const dmg = C.power('steel') * 2;
+      G.grid.query(this.x, this.y, this.wardR, (e) => {
+        C.freeze(e, 1, 0.6); // respects freeze immunity, so the Ward cannot hold a crowd frozen
+        C.damage(e, dmg, { el: 'steel', src: 'Ward', knock: 320, noProc: true, noStatus: true });
+      });
     }
 
     /** where an aimed ability lands */
@@ -259,9 +298,10 @@
       this.leechPool += v;
     }
     /** returns 'iframe' | 'dodge' | 'block' | 'hit' */
-    hurt(dmg, src) {
+    hurt(dmg, src, raw) {
       const G = PS.G, s = this.stats, cls = this.cls;
-      if (this.inv > 0 || this.dashT > 0 || G.over) return 'iframe';
+      // the grace period after a contact hit does not shelter you from the ground giving way; dash, Ward and revive still do
+      if (this.dashT > 0 || G.over || (this.inv > 0 && !(raw && this.hitInv))) return 'iframe';
       if (s.dodge > 0 && Math.random() < s.dodge) {
         this.inv = 0.3;
         PS.FX.text(this.x, this.y - 30, 'Dodge', '#bfe6ff');
@@ -276,12 +316,13 @@
         if (cls.onBlock) cls.onBlock(this);
         return 'block';
       }
-      let d = dmg * (60 / (60 + Math.max(0, s.armor)));
+      let d = raw ? dmg : dmg * (60 / (60 + Math.max(0, s.armor)));
       if (this.whirlT > 0) d *= 0.6;
       d = Math.max(1, d);
       this.hp -= d;
       G.dmgTaken += d;
       this.inv = 0.55 + (s.m.iframes || 0);
+      this.hitInv = true;
       this.hurtFlash = 0.35;
       G.hitstop = 0.07;
       PS.FX.shake(8);
@@ -305,6 +346,8 @@
         if (plume) this.plumeUsed = true;
         this.hp = s.maxHp * (plume ? 1 : 0.5);
         this.inv = 3;
+        this.hitInv = false;
+        this.tremorN = 0;
         PS.FX.flash('#ffd06b', 0.6);
         PS.FX.explosion(this.x, this.y, 320, '#ffb061', true);
         PS.FX.shake(12);

@@ -14,13 +14,14 @@
   const TABLE = [
     { id: 'imp',     from: 0,   w: (t) => Math.max(2.5, 10 - t * 0.7) },
     { id: 'bat',     from: 1,   w: () => 4 },
-    { id: 'spitter', from: 2,   w: () => 1.8 },
+    { id: 'spitter', from: 2,   w: () => 2.2 },
     { id: 'slime',   from: 2.6, w: () => 2.4 },
     { id: 'hound',   from: 3.5, w: () => 2.4 },
     { id: 'brute',   from: 4.5, w: () => 1.5 },
     { id: 'bloater', from: 5.5, w: () => 1.6 },
     { id: 'wraith',  from: 6.5, w: () => 2.3 },
-    { id: 'hexer',   from: 7.5, w: () => 1.4 },
+    { id: 'mortar',  from: 4,   w: () => 1.2 },
+    { id: 'hexer',   from: 7.5, w: () => 1.8 },
     { id: 'knight',  from: 8.5, w: (t) => 2 + Math.min(3, (t - 8.5) * 0.5) },
   ];
 
@@ -39,17 +40,18 @@
       this.chestsOpened = 0;
       this.victory = false;
       this.healAt = 0; this.magnetAt = 0; this.bombAt = 30;
+      this.tremorT = 150; this.tremorX = 1e9; this.tremorY = 1e9; this.linger = 0;
     },
     minutes() { return PS.G.time / 60; },
     endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       // player power grows roughly exponentially while slots fill, then levels off — the horde follows the same curve
-      return Math.exp(0.62 * t - 0.011 * t * t) * Math.pow(1.75, o);
+      return Math.exp(0.62 * t - 0.009 * t * t) * Math.pow(1.75, o);
     },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.75 + 0.13 * t) * (1 + 0.35 * o); // gentle opening, same bite by the final boss
+      return (0.7 + 0.15 * t) * (1 + 0.35 * o); // gentle opening, same bite by the final boss
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
     xpMult() { return 1 + this.endless() * 0.1; },
@@ -121,6 +123,24 @@
         if (G.enemies.length >= target) { this.spawnAcc = 0; break; }
         const pos = this.ringPos();
         PS.Enemies.spawn(this.pickType(), pos.x, pos.y);
+      }
+
+      // ---- rift tremors: the ground under you gives way if you linger. Trivial to sidestep, lethal to stand in.
+      this.tremorT -= dt;
+      if (this.tremorT <= 0) {
+        const tm = this.minutes();
+        // the longer you stay put, the faster the ground breaks up; moving on resets it
+        if (U.dist2(p.x, p.y, this.tremorX, this.tremorY) < 170 * 170) this.linger++; else this.linger = 0;
+        this.tremorX = p.x; this.tremorY = p.y;
+        this.tremorT = Math.max(3, 8.5 - tm * 0.42) * (bossAlive ? 1.5 : 1) * Math.max(0.3, Math.pow(0.65, this.linger));
+        PS.Combat.hazard({ kind: 'circle', x: p.x, y: p.y, r: 80, delay: 1.2, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
+        const extra = tm > 6 ? 2 : 1;
+        for (let i = 0; i < extra; i++) {
+          const a = Math.random() * TAU, d = U.rand(130, 280);
+          PS.Combat.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, delay: 1.2 + i * 0.15, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
+        }
+        PS.Audio.play('telegraph', { vol: 0.35, pitch: 0.7 });
+        PS.UI.tip('tremor', 'The ground is giving way. Keep moving', 'mountain');
       }
 
       // ---- elites
