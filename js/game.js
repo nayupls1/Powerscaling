@@ -4,6 +4,8 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U;
 
+  const LEVEL_HEAL = 0.03; // share of max health every level-up restores (Second Wind adds to it)
+
   const Game = {
     state: 'menu', // menu | play | choice | paused | over
     last: 0,
@@ -182,9 +184,12 @@
         }
         if (!spec) {
           p.pendingLevels--;
-          const heal = p.stats.m.levelHeal; // once per level, however the levels were batched
-          if (heal) p.heal(p.stats.maxHp * heal, true);
-          spec = { kind: 'level', title: 'Level ' + (p.level - p.pendingLevels), sub: 'Choose one.', cards: R.levelChoices(p) };
+          // once per level, however the levels were batched: a breather that matters most in the opening, while levels come fast
+          p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)), true);
+          const lv = p.claimedLevel;
+          if (lv > 1 && PS.SLOT_LEVELS.skill.includes(lv)) { PS.UI.toast('A new skill slot opens', 'lock'); PS.Audio.play('shrine', { vol: 0.5 }); }
+          else if (PS.SLOT_LEVELS.tome.includes(lv)) PS.UI.toast('A new tome slot opens', 'book');
+          spec = { kind: 'level', title: 'Level ' + lv, sub: 'Choose one.', cards: R.levelChoices(p) };
         }
       }
       if (!spec) return;

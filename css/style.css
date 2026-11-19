@@ -126,6 +126,8 @@ i[data-icon], .count i { display: inline-flex; }
 .slot.evo { border-color: var(--gilt); box-shadow: 0 0 12px rgba(242, 193, 78, 0.55); }
 .slot.evo em { color: var(--gilt); }
 .slot.empty { border-style: dashed; border-color: rgba(239, 232, 216, 0.13); background: rgba(15, 11, 34, 0.35); }
+.slot.locked { border-style: dashed; border-color: rgba(239, 232, 216, 0.08); background: rgba(15, 11, 34, 0.25); color: rgba(239, 232, 216, 0.28); }
+.slot.locked em { color: rgba(239, 232, 216, 0.55); }
 .slots.small .slot { width: 32px; height: 32px; border-radius: 8px; color: #d8d0ee; --c: #8f86b8; }
 .is-touch .action kbd, .is-touch .choice-actions kbd, .is-touch .card-key { display: none; }
 
@@ -493,7 +495,7 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
 .is-touch .hud-bottom { flex-direction: column-reverse; align-items: flex-start; gap: 8px; }
 .is-touch .loadout { align-items: flex-start; }
 .is-touch .slots { justify-content: flex-start; }
-.is-touch .slot.empty { display: none; }
+.is-touch .slot.empty, .is-touch .slot.locked { display: none; }
 .is-touch .toasts { max-width: 56vw; }
 /* landscape phones: everything has to fit in ~390px of height */
 @media (max-height: 520px) {

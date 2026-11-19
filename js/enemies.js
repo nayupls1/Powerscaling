@@ -5,7 +5,7 @@
   const U = PS.U, C = PS.Combat, TAU = U.TAU;
 
   const DEFS = {
-    imp:      { name: 'Rift Imp',     r: 12, hp: 9,  spd: 64,  dmg: 7,  xp: 1, mass: 1,   ai: 'chase',   color: '#b3324a' },
+    imp:      { name: 'Rift Imp',     r: 12, hp: 9,  spd: 64,  dmg: 5,  xp: 1, mass: 1,   ai: 'chase',   color: '#b3324a' },
     bat:      { name: 'Gloomwing',    r: 10, hp: 6,  spd: 125, dmg: 6,  xp: 1, mass: 0.6, ai: 'swoop',   color: '#7b4bd1' },
     spitter:  { name: 'Spitter',      r: 13, hp: 16, spd: 58,  dmg: 7,  xp: 3, mass: 1,   ai: 'ranged',  color: '#5fa83a', range: 290, shotCd: 2.8, shotDmg: 8, shotSpd: 175 },
     slime:    { name: 'Ooze',         r: 17, hp: 30, spd: 55,  dmg: 9,  xp: 2, mass: 1.6, ai: 'chase',   color: '#2fa8a0', split: { into: 'slimelet', n: 3 } },
@@ -47,7 +47,8 @@
       let hp = def.hp * (def.boss ? 1 : Dr.hpMult()) * (opts.hpMult || 1);
       let r = def.r, dmg = def.dmg * Dr.dmgMult(), mass = def.mass, xp = def.xp * Dr.xpMult();
       mass *= 1 + Dr.minutes() * 0.06; // the horde gets harder to shove around as the run goes on
-      if (opts.elite) { hp *= 7 + Dr.minutes() * 0.6; r *= 1.45; dmg *= 1.4; mass *= 3.5; xp *= 12; }
+      // elites are a short duel, not a sponge: the tanky types (brutes, knights) get a smaller multiplier than the light ones
+      if (opts.elite) { hp *= (7 + Dr.minutes() * 0.2) * Math.min(1, Math.sqrt(30 / def.hp)); r *= 1.45; dmg *= 1.4; mass *= 3.5; xp *= 12; }
       const e = {
         id: nextId++, def, x, y, r, hp, maxHp: hp, dmg, speed: def.spd * Dr.speedMult(), xp, mass,
         score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, braceT: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,

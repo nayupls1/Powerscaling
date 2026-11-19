@@ -300,7 +300,7 @@
         </div>
         <div class="help-col">
           <h3>The run</h3>
-          <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger.</p>
+          <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
@@ -440,12 +440,14 @@
       $('bossBar').hidden = !G.boss;
 
       // loadout tiles only re-render when something changed
-      const sig = p.skills.map((k) => k.id + k.level + (k.evolved ? 'e' : '') + Math.round(k.over * 100)).join() + '|' + p.tomes.map((t) => t.id + t.level).join() + '|' + p.relicOrder.length;
+      const sig = p.skills.map((k) => k.id + k.level + (k.evolved ? 'e' : '') + Math.round(k.over * 100)).join() + '|' + p.tomes.map((t) => t.id + t.level).join() + '|' + p.relicOrder.length + '|' + p.skillSlots + '/' + p.tomeSlots;
       if (sig !== loadoutSig) {
         loadoutSig = sig;
-        $('hudSkills').innerHTML = p.skills.map((k) => this.skillTile(k)).join('') + '<span class="slot empty"></span>'.repeat(Math.max(0, p.skillSlots - p.skills.length));
+        $('hudSkills').innerHTML = p.skills.map((k) => this.skillTile(k)).join('') + '<span class="slot empty"></span>'.repeat(Math.max(0, p.skillSlots - p.skills.length))
+          + this.lockedSlots(p, 'skill', '');
         $('hudTomes').innerHTML = p.tomes.map((t) => `<span class="slot tome" data-tip="<b>${esc(t.def.name)}</b><br>Level ${t.level}: +${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 16)}<em>${t.level}</em></span>`).join('')
-          + '<span class="slot tome empty"></span>'.repeat(Math.max(0, p.tomeSlots - p.tomes.length));
+          + '<span class="slot tome empty"></span>'.repeat(Math.max(0, p.tomeSlots - p.tomes.length))
+          + this.lockedSlots(p, 'tome', ' tome');
       }
       const asig = D.ELEMENT_IDS.map((e) => p.aff[e]).join();
       if (asig !== affSig) {
@@ -456,6 +458,10 @@
           return `<div class="aff${n >= 2 ? ' lit' : ''}" style="--c:${el.color}" data-tip="${tip}">${ico(el.icon, 16)}<b>${n}</b><span class="pips">${[2, 4, 6].map((t) => `<i class="${n >= t ? 'on' : ''}"></i>`).join('')}</span></div>`;
         }).join('');
       }
+    },
+    /** slots the hero has not grown into yet, each labelled with the level that opens it */
+    lockedSlots(p, kind, cls) {
+      return PS.SLOT_LEVELS[kind].filter((l) => l > p.claimedLevel).map((l) => `<span class="slot${cls} locked" data-tip="<b>Locked ${kind} slot</b><br>Opens at level ${l}">${ico('lock', kind === 'tome' ? 12 : 16)}<em>${l}</em></span>`).join('');
     },
     skillTile(k) {
       const def = k.def, col = elColor(def.el);

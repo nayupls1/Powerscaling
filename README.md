@@ -37,6 +37,7 @@ Touch screens get a floating movement stick with auto-aim, and gamepads are supp
 
 - **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
 - **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
+- **Slots you grow into** — a run starts with only the class attack. Skill slots open at levels 2, 5, 9, 14 and 20, tome slots at 2, 4, 7, 11, 16 and 22, and the HUD shows each locked slot with the level that opens it.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
@@ -44,6 +45,18 @@ Touch screens get a floating movement stick with auto-aim, and gamepads are supp
 - **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
+
+## Progression
+
+A run is paced in four acts of three minutes, each closed by a boss. The hero starts scrappy (one attack, enemies that need a couple of hits, a horde the hero cannot quite clear) and ends dominant, but the climb is not a straight line:
+
+- **Spikes** come from discrete gains: a new slot opening, a talent every 6 levels, an evolution (usually the first one lands in act 2), a relic from an elite or a chest, and the three-relic spoils of each boss.
+- **Falls** follow them: every boss slain deepens the rift, making the horde sturdier in one step, and new enemy types arrive through the run.
+- **Waves**: spawn pressure breathes in a cycle anchored on the hordes, with a lull after each horde breaks and a surge that builds into the next. The swells start gentle and reach full strength once the kit has filled out.
+
+Every level-up restores 3% of max health, a breather that matters most in the opening, when levels come fast and the kit is small.
+
+Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), interpolated geometrically, so each act can be tuned on its own. Overtime starts when the Rift Lord falls and ramps until it ends the run. The permanent skill tree roughly doubles a hero's strength when fully bought: enough that a weaker player can grind their way to a win, not so much that a strong one is never threatened.
 
 ## Project layout
 
@@ -125,6 +138,15 @@ tools/afk.sh "300 600"                   # idle test: play to T seconds, then le
 ```
 
 Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--quiet`.
+
+`tools/curve.js` is the balance report. It plays many runs in parallel and averages, per time bucket, the hero's level and loadout against how hard the rift is pushing back: seconds to kill a normal enemy and an elite, how full the screen is relative to the director's target, clearing headroom (raw damage against the toughness of what spawns), damage taken and lowest health. It also lists death times and the average length of each boss fight:
+
+```sh
+node tools/curve.js all 13 10 --quiet                 # 10 runs per class, summary lines only
+node tools/curve.js ranger 13 8 --bucket=30           # finer timeline for one class
+node tools/curve.js all 13 6 --sloppy --tree=full     # careless player with every permanent upgrade
+node tools/curve.js all 13 6 --tree=arm:might         # one arm of the tree; also half, m1,m2 or -a5 (full minus a node)
+```
 
 `tools/stress.js` runs every class with all talents, every relic and every evolved skill at once and fails on any page error or invalid number:
 

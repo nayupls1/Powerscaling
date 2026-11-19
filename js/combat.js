@@ -13,7 +13,7 @@
     /** scaling baseline for proc/affinity damage so it keeps pace with the player's build */
     power(el) {
       const p = PS.G.player;
-      return (14 + p.level * 0.35) * p.dm * (el ? p.stats.el[el] : 1);
+      return (14 + p.level * 0.5) * p.dm * (el ? p.stats.el[el] : 1);
     },
     affN(el) {
       return PS.G.player.aff[el] || 0;

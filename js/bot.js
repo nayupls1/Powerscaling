@@ -143,6 +143,11 @@
         s += card.tier * 3;
         if (card.type === 'skill' && card.el && cfg.element === card.el) s += 30;
         if (card.type === 'skill' && card.el && p.aff[card.el] > 0) s += 6;
+        if (card.type === 'skillup') {
+          // like a player chasing an evolution: push the skills that are closest to max, above all once their tome is in hand
+          const inst = p.hasSkill(card.id);
+          if (inst && !inst.def.primary) s += inst.level * 2 + (inst.def.evo && p.hasTome(inst.def.evo.tome) ? 6 : 0);
+        }
         if (card.type === 'tome') {
           if (['might', 'haste', 'multishot'].includes(card.id)) s += 6;
           if (card.lines.some((t) => t.startsWith('Evolves'))) s += 10;

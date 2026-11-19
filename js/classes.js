@@ -5,7 +5,7 @@
   const U = PS.U, C = PS.Combat, TAU = U.TAU;
 
   /** ability damage scales with the build and with level so it never falls off */
-  const abil = (p, base, el) => base * p.dm * p.stats.el[el] * (1 + p.level * 0.07);
+  const abil = (p, base, el) => base * p.dm * p.stats.el[el] * (1 + p.level * 0.1);
 
   function retribution(p, mult) {
     const s = p.stats;
@@ -26,7 +26,7 @@
       return;
     }
     const king = !!f.lichKing;
-    const dmg = (11 + p.level * 1.1) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
+    const dmg = (11 + p.level * 1.6) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
     C.minion({
       x, y, kind: king ? 'knight' : 'skeleton', r: king ? 15 : 11, dmg, life: (18 + (f.deadExplode ? 8 : 0)) * s.duration,
       speed: king ? 175 : 160, atkRate: 0.65, src: king ? 'Death Knights' : 'Skeletons', el: 'void', cleave: king ? 55 : 0, seat: alive.length,
@@ -151,7 +151,7 @@
     pyromancer: {
       name: 'Pyromancer', title: 'Glass-cannon caster', difficulty: 'Moderate', color: '#ff6b3d', accent: '#ffd06b', primary: 'firebolt',
       blurb: 'Explosive firebolts and a screen-clearing meteor. Fragile — keep your distance.',
-      base: { maxHp: 95, speed: 210, dashCd: 2.2, crit: 0.08 },
+      base: { maxHp: 105, speed: 210, dashCd: 2.2, crit: 0.08, regen: 0.3 },
       dashName: 'Blink',
       ability: {
         name: 'Cataclysm', icon: 'meteor', cd: 15,
@@ -238,7 +238,7 @@
     ranger: {
       name: 'Ranger', title: 'Mobile sharpshooter', difficulty: 'Demanding', color: '#9be36b', accent: '#f1e7cf', primary: 'longbow',
       blurb: 'Rapid piercing arrows and the fastest feet in the rift. Thrives on kiting and crits.',
-      base: { maxHp: 105, speed: 232, dashCd: 1.7, crit: 0.1 },
+      base: { maxHp: 115, speed: 232, dashCd: 1.7, crit: 0.1, regen: 0.3 },
       dashName: 'Tumble',
       ability: {
         name: 'Arrow Storm', icon: 'multishot', cd: 12,

@@ -533,7 +533,7 @@
     scythe: {
       name: 'Soul Scythe', el: 'void', icon: 'scythe', primary: true, usesProj: true, unit: 'scythe',
       desc: 'A spectral scythe that spins out where you aim and returns.',
-      base: { dmg: 15, cd: 0.95, count: 1, speed: 470, area: 1 },
+      base: { dmg: 18, cd: 0.95, count: 1, speed: 470, area: 1 },
       up: [{ dmg: 5 }, { area: 0.25 }, { cd: -0.12 }, { count: 1 }, { dmg: 8 }],
       fire(inst, s, p) {
         const f = p.stats.f;
@@ -541,7 +541,7 @@
         fan(count, 0.42, (off) => {
           C.proj({
             x: p.x, y: p.y, ang: p.aim + off, speed: s.speed, dmg: s.dmg, el: 'void', src: inst.name, r: 20 * (0.6 + 0.4 * s.area), size: 0.6 + 0.4 * s.area, life: 3,
-            kind: 'scythe', color: f.withering ? '#a6f07a' : EL.void.color, boomerang: 0.42, spin: -15, knock: 70, cut: true,
+            kind: 'scythe', color: f.withering ? '#a6f07a' : EL.void.color, boomerang: 0.5, spin: -15, knock: 70, cut: true,
             opts: { poison: f.withering ? 1 : 0, execute: f.deathsDoor ? 0.2 : 0 },
           });
         });
@@ -592,7 +592,7 @@
       st.b = b;
       st.dmg = b.dmg * (1 + inst.over) * p.dm * s.el[def.el] * (def.summon ? s.summon : 1);
       // class attacks cannot evolve, so they grow with the hero instead and stay the heart of the build
-      if (def.primary) st.dmg *= 1 + 0.03 * (p.level - 1);
+      if (def.primary) st.dmg *= 1 + 0.045 * (p.level - 1);
       st.cd = Math.max(0.07, (b.cd || 1) / p.as);
       st.count = (b.count || 1) + (def.usesProj ? s.proj : 0);
       st.area = (b.area || 1) * s.area;

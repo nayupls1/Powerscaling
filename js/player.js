@@ -10,8 +10,13 @@
 
   /** experience needed to go from `level` to `level + 1` */
   function xpFor(level) {
-    return Math.floor(5 + level * 5 + Math.pow(level, 2.2) * 0.5);
+    return Math.floor(8 + level * 9 + Math.pow(level, 2.35) * 0.9);
   }
+  // slots open as the hero levels, so a build is assembled over the run instead of in the first minute.
+  // Each unlock is a power spike the player can see coming on the HUD.
+  const SKILL_SLOT_LEVELS = [1, 2, 5, 9, 14, 20];
+  const TOME_SLOT_LEVELS = [2, 4, 7, 11, 16, 22];
+  const slotsAt = (table, level) => { let n = 0; for (const l of table) if (level >= l) n++; return n; };
 
   class Player {
     constructor(clsId) {
@@ -49,8 +54,10 @@
       this.rerollsBought = 0;
     }
 
-    get tomeSlots() { return 6 + (this.stats.m.tomeSlots || 0); }
-    get skillSlots() { return 6; }
+    /** the level whose reward is being chosen: levels are banked at once but claimed one card at a time */
+    get claimedLevel() { return this.level - this.pendingLevels; }
+    get tomeSlots() { return slotsAt(TOME_SLOT_LEVELS, this.claimedLevel) + (this.stats.m.tomeSlots || 0); }
+    get skillSlots() { return slotsAt(SKILL_SLOT_LEVELS, this.claimedLevel); }
 
     recalc(first) {
       const cls = this.cls;
@@ -411,4 +418,5 @@
 
   PS.Player = Player;
   PS.xpFor = xpFor;
+  PS.SLOT_LEVELS = { skill: SKILL_SLOT_LEVELS, tome: TOME_SLOT_LEVELS };
 })();
