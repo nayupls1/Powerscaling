@@ -335,11 +335,12 @@
   /* Lingering zones are discs a few hundred pixels across, and some builds keep dozens down at once. Filling and outlining
      each one was two path draws the size of its bounding square. Instead each kind is painted once per on-screen size
      (a body that deepens toward the rim, then the rim) and blitted 1:1, which is cheaper and no longer flat. */
+  // the hero's own ground effects: soft-edged washes with a faint rim, so they never read as the hard red discs of the rift
   const ZONE_STYLE = {
-    poison:   { rgb: '95,184,46',   a0: 0.06, a1: 0.22, rim: '#b8f078', ra: 0.55 },
-    fire:     { rgb: '255,106,42',  a0: 0.2,  a1: 0.07, rim: '#ff9a4d', ra: 0.55 },
-    blizzard: { rgb: '159,230,255', a0: 0.04, a1: 0.15, rim: '#e8f9ff', ra: 0.4 },
-    arrows:   { rgb: '241,231,207', a0: 0.02, a1: 0.11, rim: '#f1e7cf', ra: 0.6 },
+    poison:   { rgb: '95,184,46',   a0: 0.06, a1: 0.22, rim: '#b8f078', ra: 0.28 },
+    fire:     { rgb: '255,106,42',  a0: 0.2,  a1: 0.07, rim: '#ff9a4d', ra: 0.25 },
+    blizzard: { rgb: '159,230,255', a0: 0.04, a1: 0.15, rim: '#e8f9ff', ra: 0.25 },
+    arrows:   { rgb: '241,231,207', a0: 0.02, a1: 0.11, rim: '#f1e7cf', ra: 0.3 },
   };
   const zoneSpr = new Map();
   let zonePx = 0; // pixels held by the cache, which is trimmed oldest first
@@ -463,19 +464,29 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  // the one colour reserved for what hurts the hero: nothing the hero casts is drawn in it
+  const DANGER = '#ff2f4e', DANGER_INK = '#2a0410';
+
   function drawHazards(G) {
     for (const h of G.hazards) {
       if (h.kind === 'circle') {
-        const t = Math.min(1, h.t / h.delay);
-        // a clear rim and a filling core show the timing without hiding what is underneath
-        ctx.globalAlpha = 0.1 + 0.06 * t;
-        ctx.fillStyle = h.color;
+        if (!visible(h.x, h.y, h.r + 8)) continue;
+        const t = Math.min(1, h.t / h.delay), hot = t > 0.8;
+        // Everything that will hurt the hero wears the same colours, whoever cast it: a red disc with a core that fills
+        // as the blast comes due, inside a heavy dark-backed rim of marching dashes that turns white just before it lands.
+        ctx.globalAlpha = 0.13 + 0.07 * t;
+        ctx.fillStyle = DANGER;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.2 + 0.25 * t;
+        ctx.globalAlpha = 0.22 + 0.28 * t;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r * t, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.95;
-        ctx.strokeStyle = t > 0.8 ? '#ffffff' : h.color; ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = DANGER_INK; ctx.lineWidth = 7;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = hot ? '#ffffff' : DANGER; ctx.lineWidth = 3.5;
+        ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
       } else if (h.kind === 'beam') {
         const live = h.t >= h.delay;
         const x2 = h.x + Math.cos(h.ang) * h.len, y2 = h.y + Math.sin(h.ang) * h.len;
@@ -483,15 +494,17 @@
         if (!live) {
           const t = h.t / h.delay;
           ctx.globalAlpha = 0.18 + 0.2 * t;
-          ctx.strokeStyle = h.color; ctx.lineWidth = h.w;
+          ctx.strokeStyle = DANGER; ctx.lineWidth = h.w;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
-          ctx.globalAlpha = 0.9;
-          ctx.strokeStyle = t > 0.8 ? '#ffffff' : h.color; ctx.lineWidth = 2 + 3 * t;
+          ctx.globalAlpha = 0.95;
+          ctx.strokeStyle = t > 0.8 ? '#ffffff' : DANGER; ctx.lineWidth = 2 + 3 * t;
+          ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.setLineDash([]);
         } else if (!h.harmless) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = 0.7;
-          ctx.strokeStyle = h.color; ctx.lineWidth = h.w * (1.1 + 0.15 * Math.sin(G.time * 40));
+          ctx.strokeStyle = DANGER; ctx.lineWidth = h.w * (1.1 + 0.15 * Math.sin(G.time * 40));
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = '#ffffff'; ctx.lineWidth = h.w * 0.4;
@@ -499,8 +512,11 @@
           ctx.globalCompositeOperation = 'source-over';
         }
       } else if (h.kind === 'ring') {
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = h.color; ctx.lineWidth = h.thick;
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = DANGER_INK; ctx.lineWidth = h.thick + 5;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = DANGER; ctx.lineWidth = h.thick;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
@@ -538,7 +554,7 @@
         ctx.fillText(cost + ' gold', pr.x, pr.y - 34);
       } else if (pr.kind === 'altar') {
         ctx.globalAlpha = 0.55;
-        ctx.strokeStyle = '#ff5a7a'; ctx.lineWidth = 2;
+        ctx.strokeStyle = '#f3d9c8'; ctx.lineWidth = 2;
         ctx.setLineDash([3, 9]); ctx.lineDashOffset = -t * 14;
         ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
@@ -1142,12 +1158,20 @@
     for (const s of G.strikes) {
       const t = Math.min(1, s.t / s.delay);
       if (s.kind === 'meteor') {
-        ctx.globalAlpha = 0.05 + 0.1 * t;
-        ctx.fillStyle = '#ff7a3d';
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.45;
-        ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (1.25 - 0.25 * t), 0, TAU); ctx.stroke();
+        // the hero's own strike: a thin aiming reticle with four ticks, never a filling disc (those are the rift's)
+        const rr = s.r * (1.2 - 0.2 * t);
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = '#ffe2b8'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 8]);
+        ctx.beginPath(); ctx.arc(s.x, s.y, rr, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.6; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const a = i * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), sn = Math.sin(a);
+          ctx.moveTo(s.x + c * rr * 0.86, s.y + sn * rr * 0.86); ctx.lineTo(s.x + c * rr * 1.08, s.y + sn * rr * 1.08);
+        }
+        ctx.stroke();
         // falling rock
         const fy = s.y - (1 - t) * 520, fx = s.x + (1 - t) * 170;
         ctx.globalCompositeOperation = 'lighter';

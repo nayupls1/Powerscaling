@@ -412,6 +412,7 @@
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it, then slay enough of what pours out before its timer burns down, and it leaves a relic.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
+          <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
