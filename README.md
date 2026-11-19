@@ -33,6 +33,8 @@ bun start                     # then open http://localhost:3000
 
 Touch screens get a floating movement stick with auto-aim, and gamepads are supported (left stick move, right stick aim, A/LB dash, B/Y ward, X/RB ability).
 
+With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a small health bar and one segment per dash charge ride under the hero, each segment filling as its charge comes back, so a fight never sends your eyes to a corner. The bars under the hero can be switched off in Settings (Hero bars).
+
 ## What is in it
 
 - **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.

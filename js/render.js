@@ -886,11 +886,64 @@
       ctx.beginPath(); ctx.arc(x, y, r + 6, -Math.PI / 2, -Math.PI / 2 + (p.frenzy / p.frenzyMax) * TAU); ctx.stroke();
       ctx.globalAlpha = 1;
     }
-    // dash pips under the feet
-    const maxC = p.stats.dashCharges;
+    drawHeroBars(G, p, x, y);
+  }
+
+  /* Health and dash charges ride under the hero's feet, where the eye already is in a fight: nobody should have to
+     look away to a corner of the screen to learn whether the next dodge is ready. Draw-side state only. */
+  const bars = { G: null, ghost: 1, full: 9, charges: 0, flash: 0 };
+  function drawHeroBars(G, p, x, y) {
+    const s = p.stats, r = p.r, dt = G.rdt || 0, maxC = s.dashCharges;
+    if (bars.G !== G) { bars.G = G; bars.ghost = 1; bars.full = 9; bars.charges = p.dashCharges; bars.flash = 0; }
+    if (PS.Save.data.settings.heroBars === false) {
+      // switched off: plain dash pips
+      for (let i = 0; i < maxC; i++) {
+        ctx.fillStyle = i < p.dashCharges ? '#ffffff' : 'rgba(255,255,255,0.22)';
+        ctx.beginPath(); ctx.arc(x + (i - (maxC - 1) / 2) * 9, y + r + 12, 2.6, 0, TAU); ctx.fill();
+      }
+      return;
+    }
+    const W = 42, back = 'rgba(10,6,22,0.82)';
+    let yy = y + r * 1.5 + 6;
+    // health: touch keeps its own bar clear of the thumbs, so this one is for mouse and gamepad
+    if (!PS.Input.touch) {
+      const f = U.clamp(p.hp / s.maxHp, 0, 1), H = 4.5, x0 = x - W / 2;
+      bars.full = f < 0.995 ? 0 : bars.full + dt;
+      bars.ghost = f >= bars.ghost ? f : Math.max(f, bars.ghost - dt * 0.55); // the chunk just lost lingers, then drains
+      const a = bars.full > 1.2 ? 0.4 : 1; // steps back at full health
+      ctx.globalAlpha = a;
+      ctx.fillStyle = back; ctx.fillRect(x0 - 1.5, yy - 1.5, W + 3, H + 3);
+      if (bars.ghost > f) { ctx.fillStyle = '#ffe9c9'; ctx.fillRect(x0, yy, W * bars.ghost, H); }
+      const low = f < 0.3;
+      ctx.fillStyle = low && Math.sin(G.time * 12) > 0 ? '#ffb3bd' : '#f0405c';
+      ctx.fillRect(x0, yy, W * f, H);
+      ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#fff'; ctx.fillRect(x0, yy, W * f, 1.2);
+      ctx.globalAlpha = 1;
+      yy += H + 3.5;
+    }
+    // dash: one segment per charge, and the one recharging fills as it comes back
+    if (p.dashCharges > bars.charges) bars.flash = 0.35;
+    bars.charges = p.dashCharges;
+    if (bars.flash > 0) bars.flash -= dt;
+    const gap = 2.5, sw = Math.min(14, (W - gap * (maxC - 1)) / maxC), total = maxC * sw + gap * (maxC - 1), h = 3.2;
+    const prog = p.dashCharges < maxC ? 1 - U.clamp(p.dashRecharge / s.dashCd, 0, 1) : 0;
     for (let i = 0; i < maxC; i++) {
-      ctx.fillStyle = i < p.dashCharges ? '#ffffff' : 'rgba(255,255,255,0.22)';
-      ctx.beginPath(); ctx.arc(x + (i - (maxC - 1) / 2) * 9, y + r + 12, 2.6, 0, TAU); ctx.fill();
+      const sx = x - total / 2 + i * (sw + gap);
+      ctx.fillStyle = back; ctx.fillRect(sx - 1.2, yy - 1.2, sw + 2.4, h + 2.4);
+      if (i < p.dashCharges) { ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, yy, sw, h); }
+      else {
+        ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(sx, yy, sw, h);
+        if (i === p.dashCharges) { ctx.fillStyle = '#7fa6ff'; ctx.fillRect(sx, yy, sw * prog, h); }
+      }
+    }
+    if (bars.flash > 0 && p.dashCharges > 0) {
+      // a charge just came back: the segment flares so it registers without being looked at
+      const k = bars.flash / 0.35, e = (1 - k) * 5, sx = x - total / 2 + (p.dashCharges - 1) * (sw + gap);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = k * 0.9; ctx.fillStyle = '#cfe0ff';
+      ctx.fillRect(sx - e, yy - e, sw + e * 2, h + e * 2);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
     }
   }
   function drawOrbits(G) {
