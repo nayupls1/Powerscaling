@@ -37,6 +37,22 @@
     const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
     return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
   }
+  /** a small portrait of a horde model or a boss, drawn once with the real art and kept as an image */
+  const portraits = {};
+  function portrait(sprite, color, r, px) {
+    const key = sprite + px;
+    if (portraits[key]) return portraits[key];
+    let url = '';
+    try {
+      const cv = document.createElement('canvas'), k = 2;
+      cv.width = cv.height = px * k;
+      const g = cv.getContext('2d'), unit = (px * k) / 3.3;
+      g.setTransform(unit, 0, 0, unit, px * k * 0.52, px * k / 2);
+      PS.Models.enemy(g, sprite, 0.15, color, PS.Models.ink(r), null);
+      url = cv.toDataURL();
+    } catch (e) { url = ''; }
+    return (portraits[key] = url ? `<img class="cx-art" src="${url}" width="${px}" height="${px}" alt="">` : ico('skull', 24));
+  }
   const mmss = (sec) => Math.floor(sec / 60) + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
 
   const UI = {
@@ -466,9 +482,9 @@
       } else {
         hint = 'Everything you have slain, across every run.';
         const E = PS.Enemies.DEFS, B = PS.Bosses.DEFS;
-        const row = (id, name, sub, note, color) => { const k = sh.has(id); return entry(k, color, 'skull', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
-        html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color)).join('')}</ul>
-          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), b.overtime ? 'Waits beyond the Rift Lord, two minutes into overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`, b.color)).join('')}</ul>`;
+        const row = (id, name, sub, note, color, art) => { const k = sh.has(id); return entry(k, color, k ? art : 'lock', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
+        html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color, portrait(id, E[id].color, E[id].r, 52))).join('')}</ul>
+          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), (b.overtime ? '' : '') + (b.overtime ? 'Waits beyond the Rift Lord, two minutes into overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`), b.color, portrait(b.sprite, b.color, b.r, 52))).join('')}</ul>`;
       }
       $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
     },
