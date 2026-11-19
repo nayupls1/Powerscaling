@@ -29,7 +29,7 @@
       const word = 'POWERSCALING';
       $('logo').innerHTML = word.split('').map((ch, i) => {
         const t = i / (word.length - 1);
-        return `<span style="font-size:${(0.5 + Math.pow(t, 1.6) * 1.15).toFixed(3)}em;--t:${t.toFixed(3)}">${ch}</span>`;
+        return `<span style="font-size:${(0.42 + Math.pow(t, 1.6) * 1.18).toFixed(3)}em;font-weight:${t < 0.3 ? 700 : t < 0.65 ? 800 : 900};--t:${t.toFixed(3)}">${ch}</span>`;
       }).join('');
 
       click($('navPlay'), () => this.showScreen('scrClass'));
@@ -66,6 +66,16 @@
         if (e.target.closest && e.target.closest('button') && e.relatedTarget && !e.target.closest('button').contains(e.relatedTarget)) PS.Audio.play('uiHover', { vol: 0.25 });
       });
 
+      // server sync: progress or board rows can arrive after the menu is already on screen
+      window.addEventListener('ps:sync', () => { if (PS.Game.state === 'menu') this.showScreen(lastScreen); });
+      window.addEventListener('ps:board', (e) => {
+        if (PS.Game.state !== 'menu') return;
+        if (lastScreen === 'scrBoard' && e.detail && e.detail.cls === boardTab) this.renderBoard(true);
+        if (lastScreen === 'scrTitle' && e.detail && e.detail.cls === 'all') this.renderTitle();
+      });
+      window.addEventListener('ps:run', (e) => this.showWorldRank(e.detail));
+      if (PS.Save.ready) PS.Save.ready.then(() => { if (PS.Game.state === 'menu' && lastScreen === 'scrTitle') this.renderTitle(); });
+
       selClass = D.CLASSES[PS.Save.data.lastClass] && PS.Save.data.unlocked[PS.Save.data.lastClass] ? PS.Save.data.lastClass : 'vanguard';
       this.showMenu();
       if (/[?&]bot=1/.test(location.search)) setTimeout(() => PS.Game.start(selClass, { bot: {} }), 300);
@@ -92,9 +102,10 @@
     renderTitle() {
       const d = PS.Save.data, st = d.stats;
       $('navEssence').innerHTML = `${ico('essence', 14)} ${U.fmtNum(d.essence)}`;
-      const top = PS.Save.board().slice(0, 3);
       const affordable = D.META.some((n) => (d.tree[n.id] || 0) < n.max && this.nodeOpen(n) && d.essence >= D.metaCost(n, d.tree[n.id] || 0));
       $('navTree').classList.toggle('has-news', affordable);
+      const scope = PS.Save.boardScope ? PS.Save.boardScope('all') : 'device';
+      const top = PS.Save.board().slice(0, 5);
       $('titleSide').innerHTML = `
         <div class="side-card">
           <h3>Your record</h3>
@@ -104,10 +115,16 @@
             <div><dt>Longest run</dt><dd>${U.fmtTime(st.bestTime)}</dd></div>
             <div><dt>Runs</dt><dd>${st.runs}</dd></div>
             <div><dt>Bosses slain</dt><dd>${st.bosses}</dd></div>
-          </dl>` : `<p class="muted">No runs yet. The first boss arrives at 3:00 — can you last that long?</p>`}
-          ${top.length ? `<ol class="mini-board">${top.map((r) => `<li><span>${esc(r.name)}</span><span class="muted">${D.CLASSES[r.cls] ? D.CLASSES[r.cls].name : ''}</span><b>${U.fmtNum(r.score)}</b></li>`).join('')}</ol>` : ''}
+          </dl>` : `<p class="muted">No runs yet. The first boss arrives at 3:00. Last that long and the Reaper is yours.</p>`}
           ${affordable ? `<p class="hint">${ico('essence', 14)} You can afford a skill tree upgrade.</p>` : ''}
-        </div>`;
+        </div>
+        ${top.length ? `<div class="side-card">
+          <div class="board-head"><h3>Top runs</h3><span class="scope ${scope}">${scope === 'global' ? 'Everyone' : 'This device'}</span></div>
+          <ol class="mini-board">${top.map((r) => {
+            const c = D.CLASSES[r.cls];
+            return `<li class="${r.mine ? 'mine' : ''}"><span>${esc(r.name)}<small style="--c:${c ? c.color : ''}">${c ? c.name : ''}</small></span><b>${U.fmtNum(r.score)}</b></li>`;
+          }).join('')}</ol>
+        </div>` : ''}`;
     },
 
     renderClasses() {
@@ -235,10 +252,15 @@
     },
 
     /* ---------------------------------------------------------------- leaderboard */
-    renderBoard() {
+    renderBoard(fromServer) {
       const tabs = ['all'].concat(D.CLASS_IDS);
       $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : D.CLASSES[t].name}</button>`).join('');
       $('boardTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { boardTab = b.dataset.tab; this.renderBoard(); }));
+      // show what we have now; the global rows re-render this when they arrive
+      if (!fromServer && PS.Save.fetchBoard) PS.Save.fetchBoard(boardTab);
+      const global = PS.Save.boardScope && PS.Save.boardScope(boardTab) === 'global';
+      $('boardScope').textContent = global ? 'Everyone, worldwide' : 'Saved on this device';
+      $('boardScope').classList.toggle('global', global);
       const rows = PS.Save.board(boardTab);
       if (!rows.length) {
         $('boardBody').innerHTML = `<div class="empty"><p>No runs recorded${boardTab === 'all' ? '' : ' for this class'} yet.</p><button class="btn btn-primary" id="boardPlay">Enter the rift</button></div>`;
@@ -249,7 +271,7 @@
         <thead><tr><th>#</th><th>Name</th><th>Class</th><th class="num">Score</th><th class="num">Time</th><th class="num">Level</th><th class="num">Kills</th><th class="num">Bosses</th><th>Top damage</th><th>Date</th></tr></thead>
         <tbody>${rows.map((r, i) => {
           const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
-          return `<tr class="${i < 3 ? 'top' + (i + 1) : ''}">
+          return `<tr class="${i < 3 ? 'top' + (i + 1) : ''}${r.mine ? ' mine' : ''}">
             <td>${i + 1}</td><td class="nm">${esc(r.name)}${r.won ? ` <span class="won" data-tip="Slew the Rift Lord">${ico('crown', 14)}</span>` : ''}</td>
             <td style="color:${c.color}">${c.name}</td>
             <td class="num score">${Math.round(r.score).toLocaleString('en-US')}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td>
@@ -304,6 +326,10 @@
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
+        <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>
+          <select data-quality>${[['auto', 'Auto'], ['high', 'Sharp'], ['low', 'Fast']].map(([v, l]) => `<option value="${v}"${(s.quality || 'auto') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        ${PS.Save.syncCode && PS.Save.syncCode() ? `<div class="set-row set-link"><span><b>Play on another device</b><small>Copy this code there to share your Essence, upgrades and unlocks. Treat it like a password.</small></span>
+          <span class="link-tools"><button class="btn btn-small" data-copy>Copy code</button><input type="text" placeholder="Paste a code" data-code aria-label="Code from your other device"><button class="btn btn-small" data-link>Link</button></span></div>` : ''}
         ${PS.Game.state === 'menu' ? `<div class="set-row"><span><b>Erase progress</b><small>Deletes Essence, upgrades, unlocks and the leaderboard</small></span><button class="btn btn-danger" data-reset>Erase</button></div>` : ''}`;
       root.querySelectorAll('[data-set]').forEach((inp) => {
         inp.addEventListener('input', () => {
@@ -316,6 +342,26 @@
       });
       const nm = root.querySelector('[data-name]');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const q = root.querySelector('[data-quality]');
+      q.addEventListener('change', () => { s.quality = q.value; PS.Render.setQuality(q.value); PS.Save.save(); });
+      const copy = root.querySelector('[data-copy]');
+      if (copy) {
+        click(copy, () => {
+          const code = PS.Save.syncCode();
+          const done = () => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy code'; }, 1600); };
+          if (navigator.clipboard) navigator.clipboard.writeText(code).then(done, () => window.prompt('Your code', code));
+          else window.prompt('Your code', code);
+        });
+        const link = root.querySelector('[data-link]'), field = root.querySelector('[data-code]');
+        click(link, async () => {
+          link.disabled = true; link.textContent = 'Linking';
+          const ok = await PS.Save.useSyncCode(field.value);
+          link.disabled = false;
+          link.textContent = ok ? 'Linked' : 'Link';
+          if (!ok) { field.value = ''; field.placeholder = 'That code did not match a profile'; }
+          else this.renderSettings(root);
+        });
+      }
       const reset = root.querySelector('[data-reset]');
       if (reset) click(reset, () => {
         if (!reset.dataset.armed) { reset.dataset.armed = '1'; reset.textContent = 'Erase everything?'; return; }
@@ -592,7 +638,8 @@
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-tags">
             ${res.best ? '<span class="tag gold">New best score</span>' : ''}
-            ${res.rank ? `<span class="tag">Rank ${res.rank} on your board</span>` : ''}
+            ${res.rank ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}
+            <span class="tag world" id="overWorld" hidden></span>
             <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence</span>
           </div>
         </div>
@@ -632,6 +679,14 @@
       click($('overTree'), () => { PS.Game.toMenu(); this.showScreen('scrTree'); });
       click($('overBoard'), () => { PS.Game.toMenu(); this.showScreen('scrBoard'); });
       click($('overMenu'), () => PS.Game.toMenu());
+    },
+
+    /** the server answered a posted run: show where it landed among everyone's */
+    showWorldRank(d) {
+      const el = $('overWorld');
+      if (!el || $('ovOver').hidden || !d || !d.rank) return;
+      el.innerHTML = `${ico('crown', 14)} #${d.rank.toLocaleString('en-US')} of ${d.total.toLocaleString('en-US')} worldwide`;
+      el.hidden = false;
     },
 
     /* ================================================================ gamepad (menus, cards, pause) */
