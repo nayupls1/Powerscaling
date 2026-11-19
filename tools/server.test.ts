@@ -104,6 +104,14 @@ describe('runs and leaderboard', () => {
     }
     expect((await req('POST', '/api/runs', run())).status).toBe(400); // no id
   });
+  test('every class the game has is accepted, and nothing else', () => {
+    // js/data.js is not importable here, so read the class ids out of js/classes.js: the server's list must match
+    const src = require('node:fs').readFileSync(join(import.meta.dir, '..', 'js', 'classes.js'), 'utf8');
+    const ids = [...src.matchAll(/^    ([a-z]+): \{\n      name: '[^']+', title:/gm)].map((m) => m[1]);
+    expect(ids.length).toBeGreaterThanOrEqual(7);
+    for (const cls of ids) expect(validateRun(run({ cls })).cls).toBe(cls);
+    expect(() => validateRun(run({ cls: 'necromancer' }))).toThrow();
+  });
   test('validateRun accepts real-looking runs and trims names', () => {
     expect(validateRun(run({ name: '  Ash  ' })).name).toBe('Ash');
     expect(validateRun(run({ name: '' })).name).toBe('Wanderer');
