@@ -184,7 +184,10 @@
           p.pendingLevels--;
           const heal = p.stats.m.levelHeal; // once per level, however the levels were batched
           if (heal) p.heal(p.stats.maxHp * heal, true);
-          spec = { kind: 'level', title: 'Level ' + (p.level - p.pendingLevels), sub: 'Choose one.', cards: R.levelChoices(p) };
+          const lv = p.claimedLevel;
+          if (lv > 1 && PS.SLOT_LEVELS.skill.includes(lv)) { PS.UI.toast('A new skill slot opens', 'lock'); PS.Audio.play('shrine', { vol: 0.5 }); }
+          else if (PS.SLOT_LEVELS.tome.includes(lv)) PS.UI.toast('A new tome slot opens', 'book');
+          spec ={ kind: 'level', title: 'Level ' + (p.level - p.pendingLevels), sub: 'Choose one.', cards: R.levelChoices(p) };
         }
       }
       if (!spec) return;

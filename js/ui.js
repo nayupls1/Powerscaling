@@ -440,12 +440,14 @@
       $('bossBar').hidden = !G.boss;
 
       // loadout tiles only re-render when something changed
-      const sig = p.skills.map((k) => k.id + k.level + (k.evolved ? 'e' : '') + Math.round(k.over * 100)).join() + '|' + p.tomes.map((t) => t.id + t.level).join() + '|' + p.relicOrder.length;
+      const sig = p.skills.map((k) => k.id + k.level + (k.evolved ? 'e' : '') + Math.round(k.over * 100)).join() + '|' + p.tomes.map((t) => t.id + t.level).join() + '|' + p.relicOrder.length + '|' + p.skillSlots + '/' + p.tomeSlots;
       if (sig !== loadoutSig) {
         loadoutSig = sig;
-        $('hudSkills').innerHTML = p.skills.map((k) => this.skillTile(k)).join('') + '<span class="slot empty"></span>'.repeat(Math.max(0, p.skillSlots - p.skills.length));
+        $('hudSkills').innerHTML = p.skills.map((k) => this.skillTile(k)).join('') + '<span class="slot empty"></span>'.repeat(Math.max(0, p.skillSlots - p.skills.length))
+          + this.lockedSlots(p, 'skill', '');
         $('hudTomes').innerHTML = p.tomes.map((t) => `<span class="slot tome" data-tip="<b>${esc(t.def.name)}</b><br>Level ${t.level}: +${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 16)}<em>${t.level}</em></span>`).join('')
-          + '<span class="slot tome empty"></span>'.repeat(Math.max(0, p.tomeSlots - p.tomes.length));
+          + '<span class="slot tome empty"></span>'.repeat(Math.max(0, p.tomeSlots - p.tomes.length))
+          + this.lockedSlots(p, 'tome', ' tome');
       }
       const asig = D.ELEMENT_IDS.map((e) => p.aff[e]).join();
       if (asig !== affSig) {
@@ -456,6 +458,12 @@
           return `<div class="aff${n >= 2 ? ' lit' : ''}" style="--c:${el.color}" data-tip="${tip}">${ico(el.icon, 16)}<b>${n}</b><span class="pips">${[2, 4, 6].map((t) => `<i class="${n >= t ? 'on' : ''}"></i>`).join('')}</span></div>`;
         }).join('');
       }
+    },
+    /** slots the hero has not grown into yet, each labelled with the level that opens it */
+    lockedSlots(p, kind, cls) {
+      const open = kind === 'tome' ? p.tomeSlots : p.skillSlots, max = kind === 'tome' ? p.maxTomeSlots : p.maxSkillSlots;
+      const levels = PS.SLOT_LEVELS[kind].filter((l) => l > p.claimedLevel).slice(-(max - open));
+      return levels.map((l) => `<span class="slot${cls} locked" data-tip="<b>Locked ${kind} slot</b><br>Opens at level ${l}">${ico('lock', kind === 'tome' ? 12 : 16)}<em>${l}</em></span>`).join('');
     },
     skillTile(k) {
       const def = k.def, col = elColor(def.el);

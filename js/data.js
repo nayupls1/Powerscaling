@@ -177,13 +177,13 @@
     T.push({ id, arm, name, icon, x, y, max, cost, req, desc, apply });
 
   // Might — up
-  node('m1', 'might', 'Sharpened Edge', 'sword',     0, -1.35, 5, 20,  ['core'], (r) => `+${4 * r}% damage`, (s, r) => { s.dmg += 0.04 * r; });
-  node('m2', 'might', 'Quick Hands',    'hourglass', -1.15, -2.6, 5, 35,  ['m1'],   (r) => `+${3 * r}% attack speed`, (s, r) => { s.atkSpd += 0.03 * r; });
-  node('m3', 'might', 'Keen Eye',       'crosshair', 1.15, -2.6,  5, 35,  ['m1'],   (r) => `+${2 * r}% critical chance`, (s, r) => { s.crit += 0.02 * r; });
-  node('m4', 'might', 'Wide Arc',       'expand',    -1.15, -3.85, 3, 60,  ['m2'],   (r) => `+${4 * r}% area of effect`, (s, r) => { s.area += 0.04 * r; });
-  node('m5', 'might', 'Brutality',      'skull',     1.15, -3.85,  3, 60,  ['m3'],   (r) => `+${10 * r}% critical damage`, (s, r) => { s.critMult += 0.10 * r; });
-  node('m6', 'might', 'Lingering Pain', 'flame',     0, -4.75,  3, 90,  ['m4', 'm5'], (r) => `+${8 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.08 * r; });
-  node('m7', 'might', 'Giantsbane',     'trophy',    0, -5.95,  1, 400, ['m6'],   () => '+25% damage to elites and bosses', (s, r) => { s.bossDmg += 0.25 * r; });
+  node('m1', 'might', 'Sharpened Edge', 'sword',     0, -1.35, 5, 20,  ['core'], (r) => `+${3 * r}% damage`, (s, r) => { s.dmg += 0.03 * r; });
+  node('m2', 'might', 'Quick Hands',    'hourglass', -1.15, -2.6, 5, 35,  ['m1'],   (r) => `+${2 * r}% attack speed`, (s, r) => { s.atkSpd += 0.02 * r; });
+  node('m3', 'might', 'Keen Eye',       'crosshair', 1.15, -2.6,  5, 35,  ['m1'],   (r) => `+${1.5 * r}% critical chance`, (s, r) => { s.crit += 0.015 * r; });
+  node('m4', 'might', 'Wide Arc',       'expand',    -1.15, -3.85, 3, 60,  ['m2'],   (r) => `+${3 * r}% area of effect`, (s, r) => { s.area += 0.03 * r; });
+  node('m5', 'might', 'Brutality',      'skull',     1.15, -3.85,  3, 60,  ['m3'],   (r) => `+${8 * r}% critical damage`, (s, r) => { s.critMult += 0.08 * r; });
+  node('m6', 'might', 'Lingering Pain', 'flame',     0, -4.75,  3, 90,  ['m4', 'm5'], (r) => `+${6 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.06 * r; });
+  node('m7', 'might', 'Giantsbane',     'trophy',    0, -5.95,  1, 400, ['m6'],   () => '+15% damage to elites and bosses', (s, r) => { s.bossDmg += 0.15 * r; });
 
   // Vitality — left
   node('v1', 'vitality', 'Hardy',        'heart',   -1.35, 0,  5, 20,  ['core'], (r) => `+${10 * r} max health`, (s, r) => { s.maxHp += 10 * r; });
@@ -195,9 +195,9 @@
   node('v7', 'vitality', 'Undying',      'phoenix', -5.95, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });
 
   // Fortune — right
-  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${4 * r}% experience`, (s, r) => { s.xp += 0.04 * r; });
-  node('f2', 'fortune', 'Prospector',   'coin',   2.6, -1.15,   5, 35,  ['f1'],   (r) => `+${8 * r}% gold found`, (s, r) => { s.gold += 0.08 * r; });
-  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${6 * r} luck`, (s, r) => { s.luck += 6 * r; });
+  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${3 * r}% experience`, (s, r) => { s.xp += 0.03 * r; });
+  node('f2', 'fortune', 'Prospector',   'coin',   2.6, -1.15,   5, 35,  ['f1'],   (r) => `+${6 * r}% gold found`, (s, r) => { s.gold += 0.06 * r; });
+  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${5 * r} luck`, (s, r) => { s.luck += 5 * r; });
   node('f4', 'fortune', 'Second Opinion', 'dice', 3.85, -1.15,   3, 60,  ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = r; });
   node('f5', 'fortune', 'Exile',        'ban',    3.85, 1.15,    2, 80,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = r; });
   node('f6', 'fortune', 'Soul Tithe',   'essence', 4.75, 0,   3, 90,  ['f4', 'f5'], (r) => `+${10 * r}% Essence earned`, (s, r) => { s.m.essence = 0.10 * r; });
@@ -206,7 +206,7 @@
   // Mastery — down
   node('a1', 'mastery', 'Fleet Foot',   'boot',     0, 1.35,  5, 20,  ['core'], (r) => `+${2 * r}% move speed`, (s, r) => { s.speed *= 1 + 0.02 * r; });
   node('a2', 'mastery', 'Blink Training', 'dash',  -1.15, 2.6,   3, 40,  ['a1'],   (r) => `Dash recharges ${8 * r}% faster`, (s, r) => { s.dashCd *= 1 - 0.08 * r; });
-  node('a3', 'mastery', 'Focus',        'spark',    1.15, 2.6,   4, 40,  ['a1'],   (r) => `+${6 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.06 * r; });
+  node('a3', 'mastery', 'Focus',        'spark',    1.15, 2.6,   4, 40,  ['a1'],   (r) => `+${5 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.05 * r; });
   node('a4', 'mastery', 'Persistence',  'clock',   -1.15, 3.85,   3, 60,  ['a2'],   (r) => `+${5 * r}% effect duration`, (s, r) => { s.duration += 0.05 * r; });
   node('a5', 'mastery', 'Prodigy',      'arrowup',  1.15, 3.85,   2, 120, ['a3'],   (r) => `Begin each run ${r} level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = r; });
   node('a6', 'mastery', 'Tailwind',     'wings',    0, 4.75,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });

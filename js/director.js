@@ -9,6 +9,15 @@
   const BOSS_TIMES = [180, 360, 540, 720];
   const FINAL_TIME = 720;
   const ENDLESS_BOSS_EVERY = 120;
+  const HORDE_FIRST = 75, HORDE_EVERY = 80;
+  /*
+   * Horde toughness by minute, interpolated geometrically between knots. The hero's power does not grow at one rate:
+   * it climbs slowly while only a couple of slots are open, fastest in the middle acts as slots fill and skills
+   * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
+   * so a run goes from scrappy to dominant instead of the other way round.
+   */
+  const HP_KNOTS = [[0, 1.5], [1, 2.1], [2, 2.9], [3, 4], [4.5, 7], [6, 12.5], [7.5, 18], [9, 26], [10.5, 37], [12, 52]];
+  const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
 
   // from: minute the type first appears, w: weight once established
   const TABLE = [
@@ -25,12 +34,24 @@
     { id: 'knight',  from: 8.5, w: (t) => 2 + Math.min(3, (t - 8.5) * 0.5) },
   ];
 
+  /** geometric interpolation through [x, y] knots */
+  function knot(k, x) {
+    if (x <= k[0][0]) return k[0][1];
+    for (let i = 1; i < k.length; i++) {
+      if (x <= k[i][0]) {
+        const f = (x - k[i - 1][0]) / (k[i][0] - k[i - 1][0]);
+        return k[i - 1][1] * Math.pow(k[i][1] / k[i - 1][1], f);
+      }
+    }
+    return k[k.length - 1][1];
+  }
+
   const Dr = {
     BOSS_TIMES, FINAL_TIME,
     reset() {
       this.spawnAcc = 0;
       this.eliteT = 55;
-      this.hordeT = 75;
+      this.hordeT = HORDE_FIRST;
       this.hordeN = 0;
       this.bossIdx = 0;
       this.endlessBossT = 0;
@@ -46,22 +67,34 @@
     endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      // player power grows roughly exponentially while slots fill, then levels off — the horde follows the same curve
-      return Math.exp(0.62 * t - 0.009 * t * t) * Math.pow(1.75, o);
+      return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(1.75, o);
     },
+    /** bosses slain so far, capped at the four scripted ones (overtime has its own ramp) */
+    depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.7 + 0.15 * t) * (1 + 0.35 * o); // gentle opening, same bite by the final boss
+      return (0.72 + 0.15 * t) * (1 + 0.06 * this.depth()) * (1 + 0.35 * o);
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
     xpMult() { return 1 + this.endless() * 0.1; },
+    /**
+     * The horde breathes in a cycle anchored on the hordes: a lull right after one breaks, then a surge that builds
+     * into the next. 1 on average, swinging up to 0.7..1.3 once the hero's kit has filled out.
+     */
+    pressure() {
+      // the opening eases in: the first cycle starts only once the first horde has broken
+      if (this.hordeN === 0) return 0.75 + 0.25 * U.clamp(PS.G.time / HORDE_FIRST, 0, 1);
+      const ph = U.clamp(1 - this.hordeT / HORDE_EVERY, 0, 1); // 0 just after a horde, 1 as the next one is due
+      const amp = Math.min(0.3, 0.06 + 0.045 * this.minutes()); // gentle swells while the kit is small, full swings later
+      return 1 + amp * Math.sin(TAU * (ph - 0.5));
+    },
     targetCount() {
       const t = this.minutes();
-      return Math.min(MAX_ENEMIES, 42 + 30 * t + 1.4 * t * t);
+      return Math.min(MAX_ENEMIES, (30 + 30 * t + 1.4 * t * t) * this.pressure());
     },
     spawnRate() {
       const t = this.minutes();
-      return 6 + 6.5 * t + Math.max(0, t - 12) * 4;
+      return (5 + 6 * t + Math.max(0, t - 12) * 4) * this.pressure();
     },
 
     /** a point just off-screen around the player */
@@ -159,7 +192,7 @@
       // ---- hordes
       this.hordeT -= dt;
       if (this.hordeT <= 0 && !bossHold) {
-        this.hordeT = 80;
+        this.hordeT = HORDE_EVERY;
         this.horde(this.hordeN++);
       }
 

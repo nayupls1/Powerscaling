@@ -28,7 +28,7 @@
         const def = inst.def;
         if (def.evo && !inst.evolved) evoTomes.add(def.evo.tome);
         if (inst.level < S.MAX_LEVEL) {
-          cands.push({ w: def.primary ? 2.6 : 2.2, type: 'skillup', id: inst.id });
+          cands.push({ w: def.primary ? 2.8 : 2.6, type: 'skillup', id: inst.id });
         } else if (def.evo && !inst.evolved && p.hasTome(def.evo.tome)) {
           cands.push({ w: 60, type: 'evolve', id: inst.id });
         } else {
@@ -53,8 +53,8 @@
       }
 
       let picks = sample(cands, 3);
-      // the first few levels should always offer at least one new skill while slots are open
-      if (p.level <= 4 && p.skills.length < 3 && !picks.some((c) => c.type === 'skill')) {
+      // a freshly opened skill slot should always be offered something to fill it
+      if (p.skills.length < p.skillSlots && p.skills.length < 3 && !picks.some((c) => c.type === 'skill')) {
         const sk = cands.filter((c) => c.type === 'skill');
         if (sk.length && picks.length) picks[picks.length - 1] = U.weighted(sk);
       }
