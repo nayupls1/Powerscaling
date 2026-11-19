@@ -141,6 +141,7 @@
       let dm = s.dmg * s.dmgMore;
       if (f.berserk) dm *= 1 + f.berserk * (1 - this.hp / s.maxHp);
       if (this.reborn) dm *= 1.3;
+      if (s.m.blooded && this.hp < s.maxHp * 0.5) dm *= 1 + s.m.blooded;
       if (f.momentum) dm *= 1 + Math.max(0, s.speed / s.baseSpeed - 1) * 0.6;
       this.dm = dm;
       let as = s.atkSpd;

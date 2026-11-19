@@ -240,7 +240,7 @@
       }
       this.shrineT -= dt;
       if (this.shrineT <= 0) {
-        this.shrineT = 75;
+        this.shrineT = 75 * (1 - (p.stats.m.shrines || 0));
         if (G.props.filter((x) => x.kind === 'shrine').length < 2) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
           G.props.push({ kind: 'shrine', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, dead: false, t: 0, charge: 0, bob: 0 });
@@ -544,7 +544,7 @@
           PS.Audio.play('gold', { vol: 0.4 });
           break;
         case 'heal':
-          p.heal(p.stats.maxHp * 0.3 * G.rules.heal);
+          p.heal(p.stats.maxHp * 0.3 * G.rules.heal * (1 + (p.stats.m.healMore || 0)));
           PS.FX.mend(p);
           PS.Audio.play('heal');
           break;

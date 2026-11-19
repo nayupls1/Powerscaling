@@ -222,8 +222,8 @@
       if (G.queue.length) {
         const q = G.queue.shift();
         if (q.kind === 'chest') {
-          const cards = R.relicChoices(p, q.n, q.minTier);
-          spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: q.n > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
+          const cards = R.relicChoices(p, q.n + (p.stats.m.relicChoice || 0), q.minTier);
+          spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: cards.length > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
         } else if (q.kind === 'altar') {
           const cards = R.pactChoices(p);
           if (cards.length) spec = { kind: 'pact', title: 'The altar offers a pact', sub: 'Every gift has a price, and both last the whole run. You may walk away.', cards };

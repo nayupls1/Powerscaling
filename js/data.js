@@ -260,6 +260,12 @@
   node('a6', 'mastery', 'Tailwind',     'wings',    0, 4.75,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
   node('a7', 'mastery', 'Seventh Tome', 'book',     0, 5.95,   1, 400, ['a6'],   () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
 
+  // Bridges: four nodes in the corners between the arms, opened from either arm beside them
+  node('x1', 'might',    'Blooded',     'blood',  -3.2, -3.2, 3, 150, ['m4', 'v4'], (r) => `+${5 * r}% damage while below half health`, (s, r) => { s.m.blooded = 0.05 * r; });
+  node('x2', 'fortune',  'Appraiser',   'lens',    3.2, -3.2, 1, 500, ['m5', 'f4'], () => 'Relic chests offer one more relic to choose from', (s, r) => { s.m.relicChoice = r; });
+  node('x3', 'vitality', 'Field Medic', 'potion', -3.2,  3.2, 3, 150, ['v5', 'a4'], (r) => `Health pickups and tonics heal ${15 * r}% more`, (s, r) => { s.m.healMore = 0.15 * r; });
+  node('x4', 'mastery',  'Wayfinder',   'spark',   3.2,  3.2, 3, 150, ['f5', 'a5'], (r) => `Shrines appear ${20 * r}% more often`, (s, r) => { s.m.shrines = 0.2 * r; });
+
   D.META = T;
   D.META_BY_ID = {};
   for (const n of T) D.META_BY_ID[n.id] = n;

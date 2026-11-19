@@ -117,7 +117,7 @@
           if (inst.def.evo && inst.def.evo.tome === id && !inst.evolved) card.lines.push(`Evolves ${inst.def.name} into ${inst.def.evo.name}.`);
         }
       } else if (type === 'heal') {
-        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = `Restore ${Math.round(40 * PS.G.rules.heal)}% of your health.`;
+        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = `Restore ${Math.round(40 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0)))}% of your health.`;
       } else if (type === 'gold') {
         card.icon = 'coin'; card.title = 'Coin Purse'; card.tag = 'Supplies'; card.val = 30 + p.level * 2; card.desc = `Gain ${card.val} gold.`;
       }
@@ -231,7 +231,7 @@
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;
         case 'pact': p.addPact(card.id); PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#ff2846', 0.3); PS.FX.surge(p.x, p.y, '#ff5a7a', false); break;
-        case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal); PS.Audio.play('heal'); break;
+        case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0))); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
       }
       PS.G.picks.push({ t: Math.floor(PS.G.time), type: card.type, title: card.title });
