@@ -288,7 +288,7 @@
       e.spawnT = 1.4;
       e.bs = { t: 2.2, atk: null, at: 0, n: 0, rage: endlessK > 0, phase2: false };
       e.endlessK = endlessK;
-      e.score = 2500 * (idx + 1) * (endlessK ? 1 + endlessK : 1);
+      e.score = 2500 * (Math.min(idx, 3) + 1) * (endlessK ? 1 + endlessK : 1); // capped at the Rift Lord's worth: server.ts scoreBounds assumes it
       G.boss = e;
       e.bornAt = G.time;
       e.hurtAt = G.dmgTaken;
