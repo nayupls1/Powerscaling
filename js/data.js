@@ -85,7 +85,7 @@
     haste:     { name: 'Tome of Haste',     icon: 'hourglass', max: 10, per: 0.08, stat: 'Attack speed',    fmt: pc, apply: (s, v) => { s.atkSpd += v; } },
     precision: { name: 'Tome of Precision', icon: 'crosshair', max: 10, per: 0.05, stat: 'Critical chance', fmt: pc, apply: (s, v) => { s.crit += v; s.critMult += v * 2; }, extra: 'Also adds twice that much critical damage.' },
     reach:     { name: 'Tome of Reach',     icon: 'expand',    max: 8,  per: 0.08, stat: 'Area of effect',  fmt: pc, apply: (s, v) => { s.area += v; } },
-    multishot: { name: 'Tome of Volleys',   icon: 'multishot', max: 3,  per: 1,    stat: 'Projectiles',     fmt: (v) => r1(v), fixed: true, minRar: 2, apply: (s, v) => { s.proj += v; } },
+    multishot: { name: 'Tome of Volleys',   icon: 'multishot', max: 3,  per: 1,    stat: 'Projectiles',     fmt: (v) => r1(v), fixed: true, minRar: 2, cardText: '+1 projectile on every skill that fires them.', apply: (s, v) => { s.proj += v; } },
     duration:  { name: 'Tome of Lingering', icon: 'clock',     max: 8,  per: 0.10, stat: 'Effect duration', fmt: pc, apply: (s, v) => { s.duration += v; s.statusDmg += v * 0.5; }, extra: 'Burn, Poison and Bleed also deal more damage.' },
     vitality:  { name: 'Tome of Vitality',  icon: 'heart',     max: 10, per: 18,   whole: true, stat: 'Max health', fmt: (v) => r1(v), apply: (s, v) => { s.maxHp += v; s.regen += v * 0.015; }, extra: 'Also adds a little regeneration.' },
     plating:   { name: 'Tome of Plating',   icon: 'shield',    max: 8,  per: 4,    whole: true, stat: 'Armor',  fmt: (v) => r1(v), apply: (s, v) => { s.armor += v; } },

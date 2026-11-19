@@ -110,7 +110,7 @@
         const inc = D.incFor(def, card.tier);
         card.icon = def.icon; card.title = def.name;
         card.tag = t ? `Level ${t.level} to ${t.level + 1}` : 'New tome';
-        card.desc = `+${def.fmt(inc)} ${def.stat.toLowerCase()}.`;
+        card.desc = def.cardText || `+${def.fmt(inc)} ${def.stat.toLowerCase()}.`;
         if (def.extra) card.lines.push(def.extra);
         // hint when this tome is the key to an evolution
         for (const inst of p.skills) {
