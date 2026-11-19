@@ -8,7 +8,7 @@
   const ico = (name, size, color) => PS.Icons.svg(name, { size: size || 20, color: color || 'currentColor' });
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe' };
 
-  let hudT = 0, loadoutSig = '', affSig = '', curSpec = null, choiceAt = 0, banishMode = false;
+  let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -379,7 +379,7 @@
           <ul class="keys">
             <li>${k('W')}${k('A')}${k('S')}${k('D')}<span>Move</span></li>
             <li>${k('Mouse')}<span>Aim your attack. It fires on its own, or on click if you turn auto-attack off.</span></li>
-            <li>${k('Space')}<span>Dash. Nothing can hurt you mid-dash.</span></li>
+            <li>${k('Space')}<span>Dash. Nothing can hurt you mid-dash. The bar under your hero fills as the next one recharges.</span></li>
             <li>${k('Shift')} or ${k('F')}<span>Ward. A shield pulse that reflects bullets and staggers the crowd.</span></li>
             <li>${k('Q')} or ${k('Right click')}<span>Class ability</span></li>
             <li>${k('T')}<span>Toggle auto-aim</span></li>
@@ -432,6 +432,7 @@
         ${sl('music', 'Music')}
         ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
+        ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
         <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>
@@ -496,7 +497,7 @@
       $('toasts').innerHTML = '';
       $('banner').hidden = true;
       $('bossBar').hidden = true;
-      loadoutSig = ''; affSig = ''; hudT = 0;
+      loadoutSig = ''; affSig = ''; dashSig = null; hudT = 0;
       const G = PS.G, p = G.player, c = p.cls;
       const mode = G.daily ? 'Daily rift: ' + D.MUTATORS[G.rules.mutator].name : G.depth ? 'Depth ' + G.depth : '';
       $('hudMode').textContent = mode;
@@ -524,9 +525,12 @@
       const ap = p.abilityCd > 0 ? p.abilityCd / p.abilityMax : 0;
       ab.style.setProperty('--p', ap.toFixed(3));
       ab.classList.toggle('ready', ap <= 0);
-      const dp = p.dashCharges > 0 ? 0 : p.dashRecharge / s.dashCd;
+      // the sweep tracks the charge that is coming back, even while others are still in hand
+      const dp = p.dashCharges < s.dashCharges ? U.clamp(p.dashRecharge / s.dashCd, 0, 1) : 0;
       da.style.setProperty('--p', dp.toFixed(3));
       da.classList.toggle('ready', p.dashCharges > 0);
+      const dc = s.dashCharges > 1 ? String(p.dashCharges) : '';
+      if (dc !== dashSig) { dashSig = dc; const n = $('dashCount'); n.textContent = dc; n.hidden = !dc; }
       const wa = $('actWard'), wp = p.wardCd > 0 ? Math.min(1, p.wardCd / p.wardMax) : 0;
       wa.style.setProperty('--p', wp.toFixed(3));
       wa.classList.toggle('ready', wp <= 0);
