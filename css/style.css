@@ -217,7 +217,7 @@ i[data-icon], .count i { display: inline-flex; }
 .hint { margin-top: 12px; display: flex; gap: 8px; align-items: center; color: #dccbff; font-weight: 600; font-size: 0.95rem; }
 
 /* class select */
-.class-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.class-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
 .class-card { --c: #fff; display: grid; justify-items: start; gap: 2px; text-align: left; min-width: 0; padding: 16px; border-radius: 14px; background: rgba(35, 27, 71, 0.75); border: 2px solid var(--line); border-bottom-width: 5px; color: var(--bone); font-family: var(--body); cursor: pointer; transition: transform 0.1s, border-color 0.12s, background 0.12s; }
 .class-card:hover { background: var(--panel-hi); }
 .class-card.sel { border-color: var(--c); background: color-mix(in oklab, var(--c), var(--dusk) 82%); transform: translateY(-3px); }

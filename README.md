@@ -37,7 +37,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 
 ## What is in it
 
-- **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
+- **Five classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter), Reaper (summoner, unlocked by killing a boss) and Stormcaller (instant chain lightning, unlocked by slaying the Rift Lord). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
 - **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
 - **Slots you grow into** — a run starts with only the class attack. Skill slots open at levels 2, 5, 9, 14 and 20, tome slots at 2, 4, 7, 11, 16 and 22, and the HUD shows each locked slot with the level that opens it.
 - **Reactions** — hit one enemy with two different elements within 4 seconds and the pair reacts: fifteen reactions, one for every pair (Ember and Blight *Combust* the poison stacks, Rime and Tempest *Superconduct* into a stun, Iron and Abyss *Sunder* the crowd). A split build is a real build, not a failed mono-element one. The pause screen lists the reactions your current skills can set off, and a new-skill card says what it would react with.
@@ -52,7 +52,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Rift Depths** — beating the Rift Lord opens Depth 1, and winning at your deepest depth opens the next, up to 10. Each depth adds one named modifier on top of all the ones before it (sturdier hordes, elites in pairs, bosses that enrage early), hardens the horde by a further 6% health and 3% damage, and adds 15% to score and 10% to Essence. Depth 10 is meant for a full skill tree and clean play.
 - **Daily rift** — one seed a day, the same for everyone: a set class, one of eight mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence.
 - **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
-- **Feats** — 44 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
+- **Feats** — 45 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 

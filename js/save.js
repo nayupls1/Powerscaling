@@ -8,7 +8,7 @@
   const KEY = 'powerscaling.save.v1';
   const ID_KEY = 'powerscaling.id.v1';  // kept apart from the save so reset() does not orphan the player id
   const MAX_BOARD = 100;
-  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper'];
+  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller'];
   const READY_WAIT = 1500;              // Save.ready never holds the menu up longer than this
   const PUSH_DELAY = 800;
 
@@ -40,6 +40,7 @@
     out.settings = Object.assign(defaults().settings, obj(d.settings));
     out.stats = Object.assign(defaults().stats, obj(d.stats));
     out.unlocked = Object.assign(defaults().unlocked, obj(d.unlocked));
+    if (out.stats.wins >= 1) out.unlocked.stormcaller = true; // saves from before the Stormcaller existed
     out.board = (Array.isArray(d.board) ? d.board : []).filter((r) => r && typeof r === 'object' && num(r.score));
     if (!num(out.essence)) out.essence = 0;
     if (!num(out.essenceTotal)) out.essenceTotal = 0;

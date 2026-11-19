@@ -199,7 +199,7 @@ describe('daily rift', () => {
     expect(validateRun(run({ cls: Daily.spec(yesterday).cls, daily: yesterday }), now).daily).toBe(yesterday); // finished just after midnight
     expect(() => validateRun(run({ cls: Daily.spec(old).cls, daily: old }), now)).toThrow();
     expect(() => validateRun(run({ cls: Daily.spec(tomorrow).cls, daily: tomorrow }), now)).toThrow();
-    const other = ['vanguard', 'pyromancer', 'ranger', 'reaper'].find((c) => c !== spec.cls);
+    const other = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller'].find((c) => c !== spec.cls);
     expect(() => validateRun(daily({ cls: other }), now)).toThrow();
     expect(() => validateRun(daily({ depth: 2, score: undefined }), now)).toThrow();
     expect(() => validateRun(daily({ daily: 'soon' }), now)).toThrow();

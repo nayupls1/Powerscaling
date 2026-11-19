@@ -145,6 +145,7 @@
       if (this.frenzy > 0) as += this.frenzy * 0.025;
       if (this.surgeT > 0) as += 0.6;
       if (this.galeT > 0) as += 0.4;
+      if (this.stepT > 0) as += 0.5;
       if (f.momentum2 && this.moving) as += 0.2;
       this.as = Math.max(0.2, as);
 
@@ -215,6 +216,7 @@
       } else {
         let sp = s.speed;
         if (this.whirlT > 0) sp *= 1.3;
+        if (this.tempestT > 0 && f.eye) sp *= 1.25;
         if (f.rampage && this.frenzy >= this.frenzyMax) sp *= 1.2;
         vx = ctrl.mx * sp;
         vy = ctrl.my * sp;
@@ -331,6 +333,7 @@
       }
       let d = raw ? dmg : dmg * (60 / (60 + Math.max(0, s.armor)));
       if (this.whirlT > 0) d *= 0.6;
+      if (this.tempestT > 0 && s.f.eye) d *= 0.65;
       d = Math.max(1, d);
       this.hp -= d;
       G.dmgTaken += d;

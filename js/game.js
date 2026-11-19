@@ -314,6 +314,11 @@
       G.endless = true;
       G.score += 15000;
       d.stats.wins++;
+      if (!d.unlocked.stormcaller && !G.bot) {
+        d.unlocked.stormcaller = true;
+        G.unlockedClass = 'stormcaller';
+        PS.UI.toast('Stormcaller unlocked', 'thunder');
+      }
       let sub = 'You win. The rift does not close — see how far beyond it you can go.';
       if (!G.daily && !G.bot) {
         d.depth.clear[G.cls] = Math.max(d.depth.clear[G.cls] === undefined ? -1 : d.depth.clear[G.cls], G.depth);

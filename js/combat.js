@@ -70,7 +70,7 @@
       }
       if (o.minBossPct && e.boss) dmg = Math.max(dmg, e.maxHp * o.minBossPct);
       let m = 1;
-      if (e.shockT > 0) m += aff.storm >= 2 ? 0.30 : 0.15;
+      if (e.shockT > 0) m += (aff.storm >= 2 ? 0.30 : 0.15) + (s.f.staticShock ? 0.15 : 0);
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
       if (e.markT > 0) m += 0.4;
       if (e.exposeT > 0) m += 0.2;

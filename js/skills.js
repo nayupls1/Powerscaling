@@ -530,6 +530,69 @@
         PS.Audio.play('arrow', { vol: 0.4 });
       },
     },
+    arc: {
+      name: 'Arc Lash', el: 'storm', icon: 'thunder', primary: true, usesProj: true, unit: 'arc',
+      desc: 'A lash of lightning that strikes what you aim at in an instant, then leaps to enemies nearby, weaker with every leap. With no one left to leap to, it grounds itself in the last enemy.',
+      base: { dmg: 14, cd: 0.5, count: 1, jumps: 3 },
+      up: [{ dmg: 4 }, { jumps: 1, dmg: 2 }, { count: 1 }, { cd: -0.06, dmg: 3 }, { dmg: 5, jumps: 1 }],
+      fire(inst, s, p) {
+        const G = PS.G, f = p.stats.f, RANGE = 400, CONE = 0.6;
+        // the lash goes for whatever stands closest to the line of aim: one target per arc
+        const found = [];
+        G.grid.query(p.x, p.y, RANGE, (e) => {
+          const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
+          const off = Math.abs(U.angDiff(p.aim, Math.atan2(dy, dx)));
+          if (off > CONE && d > 60) return;
+          found.push({ e, k: d + off * 260 });
+        });
+        found.sort((a, b) => a.k - b.k);
+        inst.casts = (inst.casts || 0) + 1;
+        const bolt = f.thunderbolt && inst.casts % 5 === 0;
+        const full = f.capacitor && p.charge >= 1;
+        let dmg = s.dmg * (bolt ? 3 : 1);
+        const jumps = s.b.jumps + (f.forked ? 2 : 0);
+        const o = { el: 'storm', src: inst.name, growth: bolt ? 1 : 0.85, color: bolt ? '#ffffff' : '#9fe8ff' };
+        if (f.staticShock) o.shock = 1;
+        p.swing = 1;
+        if (!found.length) {
+          // nothing in reach: the lash still cracks the air in front of you, and swats bullets out of it
+          const x2 = p.x + Math.cos(p.aim) * 230, y2 = p.y + Math.sin(p.aim) * 230;
+          PS.FX.bolt(p.x, p.y, x2, y2, '#9fe8ff');
+          for (let i = 1; i <= 3; i++) C.deflect(p.x + (x2 - p.x) * i / 3, p.y + (y2 - p.y) * i / 3, 46, false);
+          PS.Audio.play('zap', { vol: 0.25, pitch: 1.3 });
+          return;
+        }
+        const n = Math.min(s.count, found.length);
+        for (let i = 0; i < n; i++) {
+          const e = found[i].e, ex = e.x, ey = e.y;
+          for (let k = 1; k <= 3; k++) C.deflect(p.x + (ex - p.x) * k / 3, p.y + (ey - p.y) * k / 3, 42, false);
+          if (full && i === 0) {
+            // a full capacitor empties into the first target
+            p.charge = 0;
+            const r = 120 * s.area;
+            PS.FX.explosion(ex, ey, r, '#9fe8ff');
+            PS.FX.bolt(ex + U.frand(-30, 30), ey - 320, ex, ey, '#ffffff', 3);
+            C.aoe(ex, ey, r, dmg * 4, { el: 'storm', src: 'Discharge', shock: 1, knock: 160 });
+            PS.Audio.play('thunder', { vol: 0.5 });
+          }
+          // leap from enemy to enemy; with nobody left to leap to, what is left of the lash grounds itself in the last one
+          const seen = new Set();
+          let cur = e, cx = p.x, cy = p.y, d = dmg, back = 0;
+          for (let k = 0; k <= jumps && cur; k++) {
+            seen.add(cur.id);
+            PS.FX.bolt(cx, cy, cur.x, cur.y, o.color);
+            cx = cur.x; cy = cur.y;
+            C.damage(cur, d, o);
+            d *= o.growth;
+            const next = C.nearest(cx, cy, 180, (x) => !seen.has(x.id));
+            if (next) cur = next;
+            else if (cur.dead || ++back > 2) cur = null;
+            else d *= 0.6;
+          }
+        }
+        PS.Audio.play('zap', { vol: bolt ? 0.6 : 0.4, pitch: bolt ? 0.7 : 1.15 });
+      },
+    },
     scythe: {
       name: 'Soul Scythe', el: 'void', icon: 'scythe', primary: true, usesProj: true, unit: 'scythe',
       desc: 'A spectral scythe that spins out where you aim and returns.',

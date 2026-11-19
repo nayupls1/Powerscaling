@@ -713,6 +713,51 @@
       g.beginPath(); g.arc(0.14, 0, 0.36, -1.0, 1.0); g.closePath(); F(g, dark(col, 0.72));
       g.beginPath(); g.moveTo(-0.3, 0); g.lineTo(-0.72, fl * 2); S(g, dark(col, 0.3), 0.05, 0.7);
     },
+    stormcaller(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 6) * 0.07, coat = mix(col, '#12224a', 0.62), coatDk = dark(coat, 0.3), brass = '#d9a441', skin = '#f0c9a0';
+      // a long coat split into two tails that whip about
+      g.beginPath(); g.moveTo(-0.2, -0.7);
+      g.quadraticCurveTo(-0.95, -0.92, -1.72, -0.6 + fl * 2);
+      g.lineTo(-1.1, -0.2 + fl); g.lineTo(-0.9, 0); g.lineTo(-1.1, 0.2 - fl); g.lineTo(-1.72, 0.6 - fl * 2);
+      g.quadraticCurveTo(-0.95, 0.92, -0.2, 0.7); g.closePath();
+      F(g, coatDk, lw);
+      g.beginPath(); g.moveTo(-0.5, -0.5); g.lineTo(-1.5, -0.56 + fl * 2); g.moveTo(-0.5, 0.5); g.lineTo(-1.5, 0.56 - fl * 2); S(g, col, 0.045, 0.6);
+      feet(g, wk, '#1c2440', lw);
+      // two brass rods rise from the back, a spark hopping between their tips
+      for (const s of [-1, 1]) {
+        limb(g, [-0.42, s * 0.3, -1.0, s * 0.62], 0.075, brass, lw * 0.8);
+        ell(g, -1.02, s * 0.63, 0.11, 0.11); F(g, lite(brass, 0.3), lw * 0.7);
+      }
+      const zz = Math.sin(t * 23) * 0.12;
+      g.beginPath(); g.moveTo(-1.02, -0.63); g.lineTo(-1.14 + zz, -0.2); g.lineTo(-0.94 - zz, 0.16); g.lineTo(-1.02, 0.63); glowLine(g, acc, 0.035);
+      // both hands thrown forward, the lash gathering between them
+      const reach = 0.98 + sw * 0.3, gap = 0.5 - sw * 0.16;
+      for (const s of [-1, 1]) {
+        limb(g, [0, s * 0.7, 0.52, s * 0.86, reach, s * gap], 0.25, coat, lw);
+        ell(g, reach - 0.18, s * (gap + 0.07), 0.2, 0.17); F(g, brass, lw * 0.8); // gauntlet cuff
+        ell(g, reach, s * gap, 0.16, 0.16); F(g, skin, lw);
+      }
+      o.glow(g, reach + 0.12, 0, 0.9 + sw * 0.9, col, 0.85);
+      const j = Math.sin(t * 31) * 0.1, k = Math.cos(t * 27) * 0.1;
+      g.beginPath(); g.moveTo(reach + 0.06, -gap); g.lineTo(reach + 0.3 + j, -gap * 0.4); g.lineTo(reach + 0.08 + k, 0); g.lineTo(reach + 0.32 - j, gap * 0.4); g.lineTo(reach + 0.06, gap);
+      glowLine(g, '#ffffff', 0.04 + sw * 0.03);
+      const orb = 0.1 + sw * 0.1 + Math.sin(t * 15) * 0.02;
+      ell(g, reach + 0.18, 0, orb, orb); F(g, acc);
+      // body, with a bolt stitched down the back of the coat
+      ell(g, -0.05, 0, 0.6, 0.84); F(g, vol(g, -0.05, 0, 0.84, coat), lw);
+      poly(g, [-0.16, -0.2, -0.36, 0.02, -0.25, 0.02, -0.42, 0.24, -0.5, 0.0, -0.39, 0.0, -0.3, -0.2]); F(g, acc, lw * 0.5);
+      // a high winged collar
+      for (const s of [-1, 1]) {
+        poly(g, [0.2, s * 0.3, 0.05, s * 0.86, -0.42, s * 1.04, -0.22, s * 0.5]); F(g, vol(g, -0.1, s * 0.7, 0.5, lite(coat, 0.14)), lw);
+        g.beginPath(); g.moveTo(0.05, s * 0.86); g.lineTo(-0.42, s * 1.04); S(g, brass, 0.06);
+      }
+      // bare head: swept-back white hair and a brass circlet
+      ell(g, 0.14, 0, 0.44, 0.42); F(g, vol(g, 0.14, 0, 0.44, '#e9f6ff'), lw);
+      g.beginPath(); g.moveTo(0.02, -0.4); g.quadraticCurveTo(-0.5, -0.3 + fl, -0.74, -0.06 + fl * 3); g.quadraticCurveTo(-0.44, 0.02, -0.7, 0.2 + fl * 3); g.quadraticCurveTo(-0.4, 0.34, 0.02, 0.4); g.closePath();
+      F(g, '#ffffff', lw);
+      g.beginPath(); g.arc(0.14, 0, 0.44, -1.15, 1.15); S(g, brass, 0.085);
+      poly(g, [0.64, 0, 0.55, 0.08, 0.46, 0, 0.55, -0.08]); F(g, col, lw * 0.6);
+    },
     reaper(g, o) {
       const { t, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.08, shroud = '#2e1a4a', pale = acc; // it floats: no stride
       // shroud in tatters, thinning to nothing

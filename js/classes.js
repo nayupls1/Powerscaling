@@ -39,6 +39,15 @@
     PS.Audio.play('summon', { vol: 0.35 });
   }
 
+  /** Lightning Step: a burst where the Stormcaller leaves and where they land */
+  function stepBurst(p) {
+    const s = p.stats, r = 95 * s.area * (s.f.afterimage ? 1.5 : 1);
+    PS.FX.ring(p.x, p.y, r, '#9fe8ff', 0.3);
+    PS.FX.bolt(p.x + U.frand(-30, 30), p.y - 300, p.x, p.y, '#ffffff', 3);
+    C.aoe(p.x, p.y, r, abil(p, 16, 'storm'), { el: 'storm', src: 'Lightning Step', shock: 1, knock: 140 });
+    C.deflect(p.x, p.y, r, false);
+  }
+
   const CLASSES = {
     /* ============================================================ VANGUARD */
     vanguard: {
@@ -369,6 +378,92 @@
             { name: 'Withering', icon: 'drop', desc: 'Your scythe poisons everything it cuts. +1 Blight affinity.', apply: (s) => { s.f.withering = 1; s.aff.venom += 1; } },
             { name: 'Corpse Explosion', icon: 'spores', desc: 'Slain enemies have a 22% chance to burst, poisoning everything nearby.', apply: (s) => { s.f.corpseEx = 1; } },
             { name: 'Pandemic', icon: 'ghost', desc: 'Poison stacks 5 higher and spreads on death. Poisoned enemies deal 25% less damage.', apply: (s) => { s.f.pandemic = 1; } },
+          ],
+        },
+      ],
+    },
+    /* ============================================================ STORMCALLER */
+    stormcaller: {
+      name: 'Stormcaller', title: 'Chain-lightning caster', difficulty: 'Moderate', color: '#5ad1ff', accent: '#fff3a8', primary: 'arc',
+      blurb: 'Lightning that lands the instant you aim and leaps through the crowd. Fragile, quick, and strongest when the horde is packed tight.',
+      base: { maxHp: 105, speed: 220, dashCd: 2.0, crit: 0.06, regen: 0.4 },
+      dashName: 'Lightning Step',
+      passive: 'Lightning bursts where you leave and where you land.',
+      unlock: { text: 'Slay the Rift Lord to unlock', check: (save) => save.stats.wins >= 1 },
+      ability: {
+        name: 'Maelstrom', icon: 'tornado', cd: 14,
+        desc: 'Call a storm that follows you for 5 seconds, striking enemies all around with lightning and swatting bullets out of the air.',
+        use(p) {
+          p.tempestT = 5 + (p.stats.f.gathering ? 2 : 0);
+          p.tempestTick = 0;
+          PS.FX.ring(p.x, p.y, 330, '#9fe8ff', 0.5);
+          PS.Audio.play('ability');
+          PS.Audio.play('thunder', { vol: 0.5 });
+        },
+      },
+      update(p, dt) {
+        const s = p.stats, f = s.f;
+        if (p.stepT > 0) p.stepT -= dt;
+        if (f.capacitor && p.moving && p.charge < 1) {
+          p.charge = Math.min(1, (p.charge || 0) + dt / 4);
+          if (p.charge >= 1) { PS.FX.ring(p.x, p.y, 46, '#ffffff', 0.3); PS.Audio.play('zap', { vol: 0.3, pitch: 1.6 }); }
+        }
+        if (!(p.tempestT > 0)) return;
+        p.tempestT -= dt;
+        p.tempestTick -= dt;
+        if (p.tempestTick > 0) return;
+        p.tempestTick = f.stormlord ? 0.08 : 0.16;
+        C.deflect(p.x, p.y, 130, false);
+        const e = C.randomEnemy(330);
+        if (!e) return;
+        const dmg = abil(p, 19, 'storm'), r = 62 * s.area, x = e.x, y = e.y;
+        PS.FX.bolt(x + U.frand(-40, 40), y - 380, x, y, '#9fe8ff', 3);
+        PS.FX.ring(x, y, r, '#9fe8ff');
+        C.aoe(x, y, r, dmg, { el: 'storm', src: 'Maelstrom', shock: 1, knock: 50 });
+        if (f.stormlord && !e.dead) C.chain(x, y, e, dmg * 0.6, 2, 180, { src: 'Maelstrom', skipFirst: true, color: '#9fe8ff' });
+        PS.Audio.play('zap', { vol: 0.22, pitch: 0.8 });
+      },
+      onHurt(p) {
+        if (!p.stats.f.living) return;
+        PS.FX.ring(p.x, p.y, 170 * p.stats.area, '#ffffff', 0.35);
+        C.aoe(p.x, p.y, 170 * p.stats.area, C.power('storm') * 1.5, { el: 'storm', src: 'Living Lightning', shock: 1, knock: 200, noProc: true });
+        PS.G.grid.query(p.x, p.y, 170 * p.stats.area, (e) => { C.freeze(e, 1, 1.2); });
+      },
+      onDash(p) {
+        stepBurst(p);
+        p.stepLanded = false;
+      },
+      dashing(p) {
+        // the far end of the step: one more burst where you land
+        if (p.dashT <= 0 && !p.stepLanded) {
+          p.stepLanded = true;
+          stepBurst(p);
+          if (p.stats.f.living) p.stepT = 3;
+        }
+      },
+      branches: [
+        {
+          name: 'Conduit', icon: 'chain', color: '#9fe8ff',
+          nodes: [
+            { name: 'Forked Lightning', icon: 'chain', desc: 'Arc Lash leaps 2 more times.', apply: (s) => { s.f.forked = 1; } },
+            { name: 'Static', icon: 'bolt', desc: 'Arc Lash always Shocks, and you deal 15% more damage to Shocked enemies.', apply: (s) => { s.f.staticShock = 1; } },
+            { name: 'Thunderbolt', icon: 'thunder', desc: 'Every fifth Arc Lash is a thunderbolt: triple damage, and its leaps lose no strength.', apply: (s) => { s.f.thunderbolt = 1; } },
+          ],
+        },
+        {
+          name: 'Maelstrom', icon: 'tornado', color: '#ffe14d',
+          nodes: [
+            { name: 'Gathering Storm', icon: 'hourglass', desc: 'Maelstrom lasts 2 seconds longer. +25% ability haste.', apply: (s) => { s.f.gathering = 1; s.abilityHaste += 0.25; } },
+            { name: 'Eye of the Storm', icon: 'eye', desc: 'While Maelstrom rages you move 25% faster and take 35% less damage.', apply: (s) => { s.f.eye = 1; } },
+            { name: 'Stormlord', icon: 'crown', desc: 'Maelstrom strikes twice as often, and every strike leaps to 2 more enemies.', apply: (s) => { s.f.stormlord = 1; } },
+          ],
+        },
+        {
+          name: 'Surge', icon: 'dash', color: '#c9b8ff',
+          nodes: [
+            { name: 'Afterimage', icon: 'dash', desc: '+1 dash charge. The bursts of Lightning Step are 50% larger.', apply: (s) => { s.dashCharges += 1; s.f.afterimage = 1; } },
+            { name: 'Capacitor', icon: 'battery', desc: 'Moving builds charge. Once full, your next Arc Lash discharges: four times the damage, in a burst around its target.', apply: (s) => { s.f.capacitor = 1; } },
+            { name: 'Living Lightning', icon: 'spark', desc: '+50% attack speed for 3 seconds after a Lightning Step. Being hit releases a nova that stuns everything nearby.', apply: (s) => { s.f.living = 1; } },
           ],
         },
       ],
