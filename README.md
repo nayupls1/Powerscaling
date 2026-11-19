@@ -87,7 +87,7 @@ A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, 
 
 ### Seeds
 
-Every run has a seed, shown on the pause and results screens. It feeds three independent streams (`js/seed.js`): `sim` for moment-to-moment simulation, `event` for the run's script (which horde comes next, which elite, which affixes) and `loot` for reward cards and relic rolls. Two players on the same seed meet the same hordes and elites in the same order even though their fights differ; with the bot at a fixed time step, the same seed replays the same run exactly. Particles, shake and sound use `Math.random` and cannot disturb a seeded run.
+Every run has a seed, shown on the pause and results screens. It feeds independent streams (`js/seed.js`): `sim` for moment-to-moment simulation and `loot` for reward cards and relic rolls, while the run's script (which horde comes next, which elite and its affixes, which tide, which breach trial) is drawn per numbered event from `RNG.side(name)`, so the third horde is the same horde however late a player meets it. Two players on the same seed meet the same hordes and elites in the same order even though their fights differ; with the bot at a fixed time step, the same seed replays the same run exactly. Particles, shake and sound use `Math.random` and cannot disturb a seeded run.
 
 Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), interpolated geometrically, so each act can be tuned on its own. Overtime starts when the Rift Lord falls and ramps until it ends the run. The permanent skill tree roughly doubles a hero's strength when fully bought: enough that a weaker player can grind their way to a win, not so much that a strong one is never threatened.
 

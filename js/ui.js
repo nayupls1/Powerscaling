@@ -470,7 +470,7 @@
             <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
             <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
             <span class="hist-build muted">${esc((r.build || []).join(', '))}</span>
-            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · seed <span class="seed-text">${esc(String(r.seed))}</span></small>
+            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · ${r.daily ? 'daily rift' : `seed <span class="seed-text">${esc(String(r.seed))}</span>`}</small>
               ${r.daily || r.rush ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
           </li>`;
         }).join('')}</ul>`;

@@ -234,7 +234,7 @@
           break;
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;
-        case 'pact': p.addPact(card.id); PS.G.pactsStruck++; PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#ff2846', 0.3); PS.FX.surge(p.x, p.y, '#ff5a7a', false); break;
+        case 'pact': p.addPact(card.id); PS.G.pactsStruck++; PS.G.pactsAtAltar.push(card.id); PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#ff2846', 0.3); PS.FX.surge(p.x, p.y, '#ff5a7a', false); break;
         case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0))); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
       }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-/* Seed check. Plays a seed, then a different run, then the first seed again in the same page, and fails unless the two
+/* Seed check, in two parts. The script: a careful and a careless player on one seed must meet the same hordes, elites,
+   tides and breach trials in the same order. And the replay: plays a seed, then a different run, then the first seed again in the same page, and fails unless the two
    plays of the seed match exactly: anything a run leaves behind (a module variable, a Director field that reset()
    forgets) shows up here as a difference. Usage: node tools/determinism.js [minutes] [--seed=abc] */
 const path = require('path');
@@ -34,11 +35,29 @@ const { chromium } = require('playwright');
       const a = play(cls, seed);
       play(other, seed + ':between', { depth: 3, mutator: 'parade' }); // something as different as possible in between
       const b = play(cls, seed);
-      return { a, b };
+      // the script: a careless player on the same seed must meet the same hordes, elites, tides and breach trials, in order
+      const script = (bot) => {
+        PS.Game.start(cls, { bot, seed });
+        PS.Game.state = 'sim';
+        const G = PS.G;
+        while (G.time < minutes * 60 && !G.over) { PS.Bot.drive(G); PS.Game.step(1 / 60); }
+        const sc = G.script;
+        if (!G.over) PS.Game.endRun(true);
+        PS.Game.state = 'menu'; PS.G = null;
+        return sc;
+      };
+      const s1 = script({}), s2 = script({ sloppy: true, random: true });
+      const drift = [];
+      for (const k of ['horde', 'elite', 'tide', 'breach']) {
+        const x = s1[k] || [], y = s2[k] || [], n = Math.min(x.length, y.length);
+        for (let i = 0; i < n; i++) if (x[i] !== y[i]) { drift.push(`${k} ${i + 1}: ${x[i]} / ${y[i]}`); break; }
+      }
+      return { a, b, drift, counts: ['horde', 'elite', 'tide', 'breach'].map((k) => (s1[k] || []).length + '/' + (s2[k] || []).length).join(' ') };
     }, { cls, seed, minutes, other: classes[(classes.indexOf(cls) + 1) % classes.length] });
     const same = res.a === res.b;
     if (!same) bad++;
-    console.log((same ? 'same   ' : 'DIFFERS') + ' ' + cls.padEnd(13) + (same ? '' : '\n  first  ' + res.a + '\n  again  ' + res.b));
+    if (res.drift.length) bad++;
+    console.log((same ? 'same   ' : 'DIFFERS') + ' ' + cls.padEnd(13) + (res.drift.length ? ' SCRIPT DRIFTS: ' + res.drift.join('; ') : ' script holds (hordes, elites, tides, breaches compared: ' + res.counts + ')') + (same ? '' : '\n  first  ' + res.a + '\n  again  ' + res.b));
   }
   if (errors.length) { console.log('\nERRORS:\n' + [...new Set(errors)].slice(0, 10).join('\n')); bad++; }
   console.log(bad ? '\nseeded runs are not reproducible' : '\nevery class replays its seed exactly');

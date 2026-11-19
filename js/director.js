@@ -3,7 +3,9 @@
   'use strict';
   const PS = (window.PS = window.PS || {});
   const U = PS.U, TAU = U.TAU;
-  const EV = () => PS.RNG.event(); // the run's script (hordes, elites) has its own seeded stream: see seed.js
+  // The run's script (which horde, which elite, which tide) is drawn per numbered event from PS.RNG.side: see seed.js.
+  // G.script keeps what was drawn, in separate lists, so tools/determinism.js can hold two players on a seed against each other.
+  const note = (kind, what) => { const sc = PS.G.script; (sc[kind] = sc[kind] || []).push(what); };
 
   const MAX_ENEMIES = 300;
   const MAX_GEMS = 340;
@@ -71,7 +73,8 @@
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
-      this.tideT = 200; this.tide = null; this.tideLeft = 0; this.lastTide = ''; this.guardedAt = 0; // rift tides: see Data.TIDES
+      this.tideT = 200; this.tide = null; this.tideLeft = 0; this.lastTide = ''; this.guardedAt = 0;
+      this.tideN = 0; this.hoarderN = 0; this.guardN = 0; this.eliteN = 0; // how many of each so far: they name the RNG.side draws // rift tides: see Data.TIDES
       this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
@@ -213,9 +216,11 @@
         let first = null;
         for (let i = 0; i < R.eliteN; i++) {
           const pos = this.ringPos();
-          const e = PS.Enemies.spawn(U.pick(pool, EV), pos.x, pos.y, { elite: true });
+          const SD = PS.RNG.side('elite' + this.eliteN++); // the nth elite is the same for everyone on the seed, whenever it arrives
+          const e = PS.Enemies.spawn(U.pick(pool, SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD) });
           first = first || e;
         }
+        note('elite', first.def.id + ':' + first.affixes.join('+'));
         PS.UI.toast(R.eliteN > 1 ? 'Elites have entered the rift' : `${first.label} has entered the rift`, 'skull');
         PS.UI.tip('affix', 'Elites carry affixes. Their name says what to expect', 'skull');
       }
@@ -248,7 +253,7 @@
       }
       this.shrineT -= dt;
       if (this.shrineT <= 0) {
-        this.shrineT = 75 * (1 - (p.stats.m.shrines || 0));
+        this.shrineT = 75 / (1 + (p.stats.m.shrines || 0));
         if (G.props.filter((x) => x.kind === 'shrine').length < 2) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
           G.props.push({ kind: 'shrine', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, dead: false, t: 0, charge: 0, bob: 0 });
@@ -283,22 +288,24 @@
       } else {
         this.tideT -= dt;
         if (this.tideT <= 0 && !bossAlive) {
-          this.tideT = 150 + EV() * 60;
+          const SD = PS.RNG.side('tide' + this.tideN++);
+          this.tideT = 150 + SD() * 60;
           const T = PS.Data.TIDES, ids = Object.keys(T).filter((id) => id !== this.lastTide);
-          const td = T[U.pick(ids, EV)];
+          const td = T[U.pick(ids, SD)];
           this.tide = td; this.tideLeft = td.dur; this.lastTide = td.id;
+          note('tide', td.id);
           PS.UI.banner(td.name, td.text, 3);
           PS.FX.flash(td.color, 0.18);
           PS.Audio.play('shrine', { vol: 0.5, pitch: 0.8 });
           if (td.elites) {
             const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => this.minutes() >= TABLE.find((r) => r.id === id).from);
-            for (let i = 0; i < td.elites; i++) { const pos = this.ringPos(); const e = PS.Enemies.spawn(U.pick(pool, EV), pos.x, pos.y, { elite: true }); e.richChest = true; }
+            for (let i = 0; i < td.elites; i++) { const pos = this.ringPos(); const e = PS.Enemies.spawn(U.pick(pool, SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD) }); e.richChest = true; }
           }
         }
       }
       this.hoarderT -= dt;
       if (this.hoarderT <= 0 && !bossAlive) {
-        this.hoarderT = (150 + EV() * 60) * G.rules.hoarderEvery;
+        this.hoarderT = (150 + PS.RNG.side('hoarder' + this.hoarderN++)() * 60) * G.rules.hoarderEvery;
         const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
         const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
         const e = PS.Enemies.spawn('hoarder', x, y, { hpMult: 5 });
@@ -329,7 +336,7 @@
       this.breachT = Math.max(this.breachT, (PS.G.sigilBreach ? 35 : 70) * PS.G.rules.breachEvery);
       if (won) {
         G.breaches++;
-        G.score += 400 + 40 * (b.mode === 'swarm' ? b.need : 30);
+        G.score += b.mode === 'swarm' ? 400 + 40 * b.need : 500; // kept small where few kills back it: server.ts budgets score per kill
         PS.FX.flash('#c06bff', 0.3);
         PS.FX.ring(b.x, b.y, 260, '#e3b8ff', 0.6);
         PS.FX.surge(b.x, b.y, '#c06bff', true);
@@ -357,14 +364,16 @@
         if (!inside) return;
         const t = this.minutes();
         b.active = true;
-        b.mode = b.mode || (this.breachN < 1 ? 'swarm' : U.pick(['swarm', 'champion', 'hold'], EV));
+        const SD = PS.RNG.side('breach' + this.breachN);
+        b.mode = b.mode || (this.breachN < 1 ? 'swarm' : U.pick(['swarm', 'champion', 'hold'], SD));
         this.breachN++;
+        note('breach', b.mode);
         b.out = 0; b.got = 0; b.acc = 3; // a first clutch at once
         this.breach = b;
         if (b.mode === 'champion') {
           b.need = 1; b.left = b.total = 30;
           const pool = ['hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => t >= TABLE.find((r) => r.id === id).from);
-          const e = PS.Enemies.spawn(U.pick(pool.length ? pool : ['imp'], EV), b.x, b.y, { elite: true });
+          const e = PS.Enemies.spawn(U.pick(pool.length ? pool : ['imp'], SD), b.x, b.y, { elite: true, affixes: this.sideAffixes(SD) });
           e.breach = b; e.spawnT = 0.9; e.label = 'Breach ' + e.label; e.noChest = true;
           b.champ = e;
           PS.UI.toast(`The breach wakes. Slay its champion: ${e.label}`, 'rift');
@@ -439,6 +448,8 @@
     },
     rushStages: RUSH_ORDER.length, rushLevels: RUSH_LEVELS,
 
+    /** affixes for an elite that is not part of the run's script (a breach champion, a chest's guard): drawn from `rng`, not `event` */
+    sideAffixes(rng) { return U.shuffle(PS.Data.AFFIX_IDS.slice(), rng).slice(0, this.affixCount()); },
     /** how many elite affixes the rift hands out right now */
     affixCount() { return Math.min(3, PS.G.rules.affixes + (this.victory ? 1 : 0)); },
 
@@ -458,9 +469,11 @@
      */
     horde(n, force) {
       const G = PS.G, p = G.player, t = this.minutes();
+      const EV = PS.RNG.side('horde' + n); // the nth horde is the same for everyone on the seed, whenever it arrives
       const kinds = ['ring', 'stampede', 'pincer', 'wall', 'coil', 'spearhead'];
       const kind = force || (n < 2 ? kinds[n] : U.pick(kinds.filter((k) => k !== this.lastHorde), EV));
       this.lastHorde = kind;
+      if (!force) note('horde', kind);
       if (kind === 'ring') {
         const count = Math.min(60, Math.round(22 + t * 4));
         const type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
@@ -685,7 +698,7 @@
               pr.dead = true;
               const pool = ['imp', 'hound', 'brute', 'wraith'].filter((id) => this.minutes() >= TABLE.find((r) => r.id === id).from);
               const a = U.rnd() * TAU;
-              const e = PS.Enemies.spawn(U.pick(pool), pr.x + Math.cos(a) * 90, pr.y + Math.sin(a) * 90, { elite: true });
+              const e = PS.Enemies.spawn(U.pick(pool), pr.x + Math.cos(a) * 90, pr.y + Math.sin(a) * 90, { elite: true, affixes: this.sideAffixes(PS.RNG.side('guard' + this.guardN++)) });
               e.spawnT = 0.9;
               PS.FX.portal(e.x, e.y, 70, '#c06bff');
               PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });

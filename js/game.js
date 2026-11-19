@@ -45,7 +45,8 @@
       // tools and the bot may ask for any depth; a player only gets what they have unlocked
       const depth = daily || rush ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
         : U.clamp(opts.depth !== undefined ? opts.depth | 0 : save.depth.sel, 0, save.depth.max);
-      const seed = daily ? daily.seed : opts.seed !== undefined ? String(opts.seed) : PS.RNG.fresh();
+      // a typed seed that names a daily rift is salted, so the day's rift cannot be rehearsed outside it
+      const seed = daily ? daily.seed : opts.seed !== undefined ? (/^daily:/i.test(String(opts.seed)) && !opts.bot ? 'x' : '') + String(opts.seed) : PS.RNG.fresh();
       PS.RNG.seed(seed);
       PS.Enemies.reset();
       PS.Bot.reset();
@@ -60,7 +61,7 @@
         cam: { x: 0, y: 0 }, shake: 0, flashA: 0, flashCol: '#fff', hitstop: 0, slowmo: 0, boss: null, over: false,
         viewW: vs.w || 1280, viewH: vs.h || 800, biome: 0,
         ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
-        breaches: 0, breachesLost: 0, flawless: 0, hoarders: 0, pactsStruck: 0, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
+        breaches: 0, breachesLost: 0, flawless: 0, hoarders: 0, pactsStruck: 0, pactsAtAltar: [], script: {}, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
       // one sigil, if its feat is earned; tools and the bot may ask for any (opts.sigil), the daily rift allows none
       const sg = daily ? null : D.SIGILS[opts.bot ? opts.sigil : save.sigil];
@@ -310,6 +311,7 @@
     bossKilled() {
       const d = PS.Save.data;
       PS.G.player.rerolls++; // every boss is worth a reroll
+      if (PS.G.bot) return; // a bot's kills are not the player's: nothing below is theirs to unlock
       d.stats.bosses++;
       if (!d.unlocked.reaper) {
         d.unlocked.reaper = true;

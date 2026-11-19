@@ -46,7 +46,8 @@
     out.stats = Object.assign(defaults().stats, obj(d.stats));
     out.unlocked = Object.assign(defaults().unlocked, obj(d.unlocked));
     if (out.stats.wins >= 1) out.unlocked.stormcaller = true;
-    if (out.stats.bosses >= 10) out.unlocked.frostwarden = true; // saves from before the Stormcaller existed
+    if (out.stats.bosses >= 10) out.unlocked.frostwarden = true;
+    if (Object.keys(obj(obj(d.codex).pacts)).length >= 3) out.unlocked.plaguebearer = true; // saves from before the Stormcaller existed
     out.board = (Array.isArray(d.board) ? d.board : []).filter((r) => r && typeof r === 'object' && num(r.score));
     if (!num(out.essence)) out.essence = 0;
     if (!num(out.essenceTotal)) out.essenceTotal = 0;
@@ -304,7 +305,7 @@
       const cx = this.data.codex, p = G.player;
       for (const id of p.relicOrder) cx.relics[id] = 1;
       for (const k of p.skills) if (k.evolved) cx.evos[k.id] = 1;
-      if (!G.rules.startPacts) for (const id of p.pacts) cx.pacts[id] = 1;
+      for (const id of G.pactsAtAltar) cx.pacts[id] = 1; // struck at an altar, not handed out by a mutator
       for (const name in G.reactions) cx.rx[name] = 1;
       for (const id in G.slain) cx.foes[id] = (cx.foes[id] || 0) + G.slain[id];
       if (!this.data.unlocked.plaguebearer && Object.keys(cx.pacts).length >= 3) { this.data.unlocked.plaguebearer = true; G.unlockedClass = G.unlockedClass || 'plaguebearer'; }
