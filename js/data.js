@@ -336,7 +336,7 @@
 
   /* ---------- Rift tides: a short spell of different rules every few minutes. The director reads the numbers ---------- */
   D.TIDES = {
-    bloodmoon: { name: 'Blood Moon',   icon: 'moon',  color: '#ff5a72', dur: 20, text: 'The horde runs 25% faster. Gems are worth half again as much.', speed: 1.25, xp: 1.5 },
+    bloodmoon: { name: 'Hunter\'s Moon', icon: 'moon', color: '#ffab4a', dur: 20, text: 'The horde runs 25% faster. Gems are worth half again as much.', speed: 1.25, xp: 1.5 },
     goldrain:  { name: 'Gold Rain',    icon: 'coin',  color: '#ffd35c', dur: 18, text: 'Three times as many of the slain drop gold.',        gold: 3 },
     stillness: { name: 'Stillness',    icon: 'clock', color: '#9fe6ff', dur: 14, text: 'The rift holds its breath: enemies move 40% slower.', speed: 0.6 },
     surge:     { name: 'Power Surge',  icon: 'bolt',  color: '#ffe14d', dur: 14, text: 'Your skills and attacks come 30% faster.',          haste: 0.3 },
