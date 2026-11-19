@@ -9,7 +9,7 @@
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder', frostwarden: 'snow', plaguebearer: 'flask' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
-  let codexTab = 'relics', sigilPeek = '', padNav = 0;
+  let codexTab = 'relics', sigilPeek = '', padNav = 0, tideSig = '';
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -691,6 +691,7 @@
       $('screens').hidden = true;
       $('ovOver').hidden = true; $('ovPause').hidden = true; $('ovChoice').hidden = true;
       $('hud').hidden = false;
+      $('hud').classList.remove('tide'); tideSig = '';
       $('touch').hidden = !PS.Input.touch;
       $('toasts').innerHTML = '';
       $('banner').hidden = true;
@@ -755,6 +756,8 @@
       if (G.rush) next = 'Boss rush, stage ' + Math.min(G.rush.stage + 1, Dr.rushStages) + ' of ' + Dr.rushStages;
       $('hudNext').textContent = next;
       $('hudNext').style.color = Dr.tide ? Dr.tide.color : '';
+      const tideId = Dr.tide ? Dr.tide.id : '';
+      if (tideId !== tideSig) { tideSig = tideId; const h = $('hud'); h.classList.toggle('tide', !!tideId); if (tideId) h.style.setProperty('--tide', Dr.tide.color); }
       $('bossBar').hidden = !G.boss;
 
       // loadout tiles only re-render when something changed

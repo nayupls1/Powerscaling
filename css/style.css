@@ -77,6 +77,7 @@ i[data-icon], .count i { display: inline-flex; }
 .hud-level small { font: 600 0.8rem var(--body); color: var(--muted); text-shadow: none; }
 .hud-clock { position: absolute; left: 50%; transform: translateX(-50%); text-align: center; }
 .clock-time { font-family: var(--display); font-weight: 800; font-size: 2.6rem; line-height: 0.95; letter-spacing: 0.02em; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.55); font-variant-numeric: tabular-nums; }
+.hud.tide::after { content: ''; position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 150px color-mix(in oklab, var(--tide), transparent 55%); animation: fade-in 0.8s ease-out both; }
 .clock-next { font-size: 0.85rem; font-weight: 600; color: #ffb9a8; margin-top: 4px; min-height: 1.2em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 .hud-left { display: grid; justify-items: start; gap: 7px; }
 .clock-mode { display: inline-block; padding: 1px 9px; border-radius: 99px; background: rgba(15, 11, 34, 0.7); border: 1px solid var(--line); font-size: 0.78rem; font-weight: 700; color: #dccbff; }
