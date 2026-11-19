@@ -206,6 +206,7 @@
           p.recalc();
           PS.Audio.play('evolve');
           PS.FX.flash(D.ELEMENTS[inst.def.el].color, 0.4);
+          PS.FX.surge(p.x, p.y, D.ELEMENTS[inst.def.el].glow, true);
           PS.UI.toast(inst.name + ' awakened', inst.def.icon);
           break;
         }
@@ -216,6 +217,7 @@
           p.recalc();
           PS.Audio.play('ascend');
           PS.FX.flash(p.cls.color, 0.35);
+          PS.FX.surge(p.x, p.y, p.cls.color, false);
           break;
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;

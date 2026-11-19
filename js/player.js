@@ -362,6 +362,7 @@
         this.tremorN = 0;
         PS.FX.flash('#ffd06b', 0.6);
         PS.FX.explosion(this.x, this.y, 320, '#ffb061', true);
+        PS.FX.rays(this.x, this.y, 380, '#ffd06b', 12, 0.8);
         PS.FX.shake(12);
         PS.Audio.play('revive');
         C.aoe(this.x, this.y, 340, C.power('fire') * 12, { el: 'fire', src: 'Rebirth', knock: 500, noProc: true });

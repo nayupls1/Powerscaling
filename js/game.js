@@ -368,7 +368,7 @@
       this.state = 'over';
       PS.Audio.resume();
       PS.Audio.music('off');
-      if (!retired) { PS.Audio.play('death'); PS.FX.flash('#ff2846', 0.5); PS.FX.shake(14); }
+      if (!retired) { PS.Audio.play('death'); PS.FX.flash('#ff2846', 0.5); PS.FX.shake(14); PS.FX.heroDeath(p); }
       PS.UI.showOver(G.result);
     },
   };

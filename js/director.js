@@ -401,6 +401,7 @@
           break;
         case 'heal':
           p.heal(p.stats.maxHp * 0.3 * G.rules.heal);
+          PS.FX.mend(p);
           PS.Audio.play('heal');
           break;
         case 'magnet':
@@ -411,6 +412,9 @@
         case 'bomb':
           PS.FX.flash('#ffffff', 0.5);
           PS.FX.shake(10);
+          PS.FX.ring(p.x, p.y, 760, '#ffffff', 0.55);
+          PS.FX.ring(p.x, p.y, 420, '#ffd08a', 0.4);
+          PS.FX.flare(p.x, p.y, 180, '#ffffff', 0.3);
           PS.Audio.play('bomb');
           for (const e of G.enemies.slice()) {
             if (U.dist2(e.x, e.y, p.x, p.y) < 800 * 800) PS.Combat.damage(e, e.boss ? e.maxHp * 0.03 : e.elite ? e.maxHp * 0.4 : e.maxHp * 2, { src: 'Bomb', noCrit: true, noProc: true, noStatus: true });
