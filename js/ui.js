@@ -431,6 +431,7 @@
           <h3>Elites and hordes</h3>
           <p>An elite arrives about once a minute and drops a relic chest. Every elite carries an affix, and its name tells you which:</p>
           <ul class="rxs">${D.AFFIX_IDS.map((id) => `<li><span class="rx-els"><i style="--c:${D.AFFIXES[id].color}"></i></span><b>${D.AFFIXES[id].name}</b><span>${D.AFFIXES[id].text}</span></li>`).join('')}</ul>
+          <p>Two enemies change how you fight: a Rift Toad crouches and leaps onto the spot it marked, and a Warder shields every enemy inside its pale dotted ring, so kill it first.</p>
           <p>Hordes break over you in four shapes: a closing ring, a stampede from one side, a pincer from two, and a wall that sweeps the whole screen with a single gap to slip through.</p>
         </div>
         <div class="help-col">

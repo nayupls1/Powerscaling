@@ -16,6 +16,8 @@
     wraith:   { name: 'Wraith',       r: 13, hp: 26, spd: 104, dmg: 11, xp: 4, mass: 0.9, ai: 'wraith',  color: '#8fb6ff' },
     mortar:   { name: 'Bombardier',   r: 15, hp: 26, spd: 56,  dmg: 8,  xp: 5, mass: 1.4, ai: 'mortar',  color: '#d98a2b', range: 300, shotCd: 3.8, blast: { r: 74, dmg: 14 } },
     hexer:    { name: 'Hexer',        r: 14, hp: 30, spd: 60,  dmg: 8,  xp: 5, mass: 1,   ai: 'ranged',  color: '#c04bb0', range: 330, shotCd: 3.4, shotDmg: 9, shotSpd: 190, burst: 3 },
+    toad:     { name: 'Rift Toad',    r: 15, hp: 26, spd: 46,  dmg: 11, xp: 4, mass: 1.4, ai: 'leaper',  color: '#3fbf6a', leap: { range: 340, cd: 4, r: 56, dmg: 13 } },
+    warder:   { name: 'Warder',       r: 15, hp: 36, spd: 52,  dmg: 8,  xp: 7, mass: 1.6, ai: 'warder',  color: '#e9d8a6', ward: { r: 150, cut: 0.33 } },
     knight:   { name: 'Dread Knight', r: 16, hp: 72, spd: 66,  dmg: 17, xp: 8, mass: 2.6, ai: 'chase',   color: '#5b6485', taken: 0.75 },
   };
   for (const id in DEFS) { DEFS[id].id = id; DEFS[id].sprite = id; }
@@ -130,7 +132,7 @@
         chillT: 0, freezeT: 0, freezeImm: 0, shockT: 0, markT: 0, dotT: U.rnd() * 0.25, dotAcc: 0, dotEl: null, dotShow: 0,
         icd: {}, elite: !!opts.elite, boss: !!def.boss, big: !!opts.elite || !!def.boss, taken: def.taken || 1,
         spawnT: 0.35, wob: U.rnd() * TAU, dead: false, dx: 0, dy: 0, tx: 0, ty: 0,
-        tagEl: null, tagT: 0, rxAt: 0, exposeT: 0, // reactions: the element last hit with, and the reaction cooldown
+        tagEl: null, tagT: 0, rxAt: 0, exposeT: 0, hop: 0, wardT: 0, wardCut: 0, // reactions: the element last hit with, and the reaction cooldown
         shield: 0, shieldMax: 0, marchT: 0, mdx: 0, mdy: 0, rage: false, affixes: null, label: def.name,
       };
       if (opts.elite) {
@@ -207,6 +209,7 @@
 
         if (e.freezeT > 0) {
           e.freezeT -= dt;
+          e.hop = 0;
         } else {
           let sp = e.speed;
           if (e.chillT > 0) sp *= 1 - (e.boss ? slowAmt * 0.4 : slowAmt);
@@ -243,7 +246,7 @@
 
         // ---- contact damage
         const rr = e.r + p.r * 0.75;
-        if (d < rr && e.freezeT <= 0 && e.spawnT <= 0) {
+        if (d < rr && e.freezeT <= 0 && e.spawnT <= 0 && e.hop <= 0) {
           p.hurt(e.dmg * (pandemic && e.poisStacks > 0 ? 0.75 : 1), e);
         }
 
@@ -289,6 +292,47 @@
     },
     chase(e, dt, sp, dx, dy, d) {
       moveTo(e, dx, dy, d, sp, dt);
+    },
+    leaper(e, dt, sp, dx, dy, d, p) {
+      // state 0 shuffle closer, 1 crouch (the landing spot is marked), 2 in the air, 3 recover
+      const L = e.def.leap;
+      if (e.state === 0) {
+        moveTo(e, dx, dy, d, sp, dt);
+        e.st -= dt;
+        if (e.st <= 0 && d < L.range && d > 70) {
+          e.state = 1; e.st = 0.65;
+          e.tx = p.x; e.ty = p.y; e.dx = e.x; e.dy = e.y;
+          // it lands where you stood when it crouched: step off the mark
+          C.hazard({ kind: 'circle', x: e.tx, y: e.ty, r: L.r * (e.elite ? 1.35 : 1), delay: 1.0, dmg: L.dmg * PS.Director.dmgMult() * (e.elite ? 1.4 : 1), color: '#3fbf6a', owner: e });
+        }
+      } else if (e.state === 1) {
+        e.st -= dt;
+        e.ang = Math.atan2(e.ty - e.y, e.tx - e.x);
+        if (e.st <= 0) { e.state = 2; e.st = 0.35; e.dx = e.x; e.dy = e.y; }
+      } else if (e.state === 2) {
+        e.st -= dt;
+        const k = U.clamp(1 - e.st / 0.35, 0, 1);
+        e.x = e.dx + (e.tx - e.dx) * k; e.y = e.dy + (e.ty - e.dy) * k;
+        e.hop = Math.sin(k * Math.PI);
+        e.kx = 0; e.ky = 0;
+        if (e.st <= 0) { e.state = 3; e.st = 0.8; e.hop = 0; }
+      } else {
+        e.st -= dt;
+        if (e.st <= 0) { e.state = 0; e.st = L.cd * (0.8 + U.rnd() * 0.4); }
+      }
+    },
+    warder(e, dt, sp, dx, dy, d) {
+      // keeps to the middle of the pack, a little way off, and wards everything around it: kill it first
+      const W = e.def.ward;
+      e.ang = Math.atan2(dy, dx);
+      if (d > 300) moveTo(e, dx, dy, d, sp, dt);
+      else if (d < 190) moveTo(e, -dx, -dy, d, sp * 0.8, dt);
+      e.st -= dt;
+      if (e.st <= 0) {
+        e.st = 0.4;
+        const until = PS.G.time + 0.6, r = W.r * (e.elite ? 1.3 : 1);
+        PS.G.grid.query(e.x, e.y, r, (o) => { if (o !== e && o.def.ai !== 'warder' && !o.boss) { o.wardT = until; o.wardCut = W.cut; } });
+      }
     },
     swoop(e, dt, sp, dx, dy, d) {
       // weave side to side while closing in

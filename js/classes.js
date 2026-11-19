@@ -103,6 +103,7 @@
           if (p.barrierT <= 0) { p.barrier = true; PS.FX.ring(p.x, p.y, 40, '#9fd0ff', 0.3); }
         }
       },
+      meter(p) { return p.stats.f.bloodlust ? { v: p.frenzy / p.frenzyMax, color: '#ff5a5a' } : null; },
       onKill(p) {
         if (p.stats.f.bloodlust) {
           p.frenzy = Math.min(p.frenzyMax, p.frenzy + 1);
@@ -423,6 +424,7 @@
         if (f.stormlord && !e.dead) C.chain(x, y, e, dmg * 0.6, 2, 180, { src: 'Maelstrom', skipFirst: true, color: '#9fe8ff' });
         PS.Audio.play('zap', { vol: 0.22, pitch: 0.8 });
       },
+      meter(p) { return p.stats.f.capacitor ? { v: p.charge || 0, color: '#9fe8ff' } : null; },
       onHurt(p) {
         if (!p.stats.f.living) return;
         PS.FX.ring(p.x, p.y, 170 * p.stats.area, '#ffffff', 0.35);

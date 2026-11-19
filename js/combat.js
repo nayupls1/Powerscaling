@@ -76,6 +76,7 @@
       if (e.exposeT > 0) m += 0.2;
       if (e.big) m += s.bossDmg;
       dmg *= m * (e.taken || 1);
+      if (e.wardT > G.time) dmg *= 1 - e.wardCut; // a Warder stands nearby
       if (dmg <= 0) return 0;
 
       // a Shielded elite's barrier is spent before its health

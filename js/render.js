@@ -751,7 +751,7 @@
       if (!visible(e.x, e.y, e.r * 2.6)) continue;
       if (e.boss) { drawBoss(e, t, G.frame); continue; }
       const spr = SPR[e.def.sprite];
-      const sc = e.r / e.def.r;
+      const sc = (e.r / e.def.r) * (1 + e.hop * 0.4); // a leaping toad swells toward the camera
       const frozen = e.freezeT > 0;
       const wob = frozen ? 0 : Math.sin(t * 9 + e.wob) * 0.035;
       // each enemy runs its walk cycle from its own offset; frozen ones hold a pose
@@ -760,7 +760,7 @@
       const flash = e.flash > 0;
       const img = flash && !e.big ? tinted(fr, 'white') : frozen ? tinted(fr, 'ice') : fr.img;
       ctx.globalAlpha = e.spawnT > 0 ? Math.max(0.15, 1 - e.spawnT / 0.35) : 1;
-      spriteTf(e.x, e.y, e.ang, sc * (1 + wob), sc * (1 - wob));
+      spriteTf(e.x, e.y - e.hop * 34, e.ang, sc * (1 + wob), sc * (1 - wob));
       ctx.drawImage(img, spr.x, spr.y, spr.w, spr.h);
       if (flash && e.big) { ctx.globalAlpha = 0.4; ctx.drawImage(tinted(fr, 'white'), spr.x, spr.y, spr.w, spr.h); }
     }
@@ -776,6 +776,15 @@
       if (e.chillT > 0 && e.freezeT <= 0) {
         ctx.globalAlpha = 0.35; ctx.fillStyle = '#9fe6ff';
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.9, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      if (e.def.ward) {
+        // the Warder's reach: pale, thin and dotted, nothing like the red of a blast
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * 12;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.def.ward.r * (e.elite ? 1.3 : 1), 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      } else if (e.wardT > t) {
+        // warded: a pale bracket over the enemy
+        ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, -2.3, -0.84); ctx.stroke(); ctx.globalAlpha = 1;
       }
       if (e.markT > 0) {
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
@@ -1029,6 +1038,14 @@
       ctx.fillRect(sx - e, yy - e, sw + e * 2, h + e * 2);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
+    }
+    // a class resource, when a talent gives the hero one (Frenzy, the Capacitor): a thin meter that flares when full
+    const m = p.cls.meter && p.cls.meter(p);
+    if (m) {
+      yy += h + 3; const mh = 2.6, x0 = x - W / 2, v = U.clamp(m.v, 0, 1), full = v >= 1;
+      ctx.fillStyle = back; ctx.fillRect(x0 - 1.2, yy - 1.2, W + 2.4, mh + 2.4);
+      ctx.fillStyle = full && Math.sin(G.time * 14) > 0 ? '#ffffff' : m.color;
+      ctx.fillRect(x0, yy, W * v, mh);
     }
   }
   function drawOrbits(G) {

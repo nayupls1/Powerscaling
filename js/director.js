@@ -34,7 +34,9 @@
     { id: 'bloater', from: 5.5, w: () => 1.6 },
     { id: 'wraith',  from: 6.5, w: () => 2.3 },
     { id: 'mortar',  from: 4,   w: () => 1.2 },
+    { id: 'toad',    from: 5,   w: () => 1.1 },
     { id: 'hexer',   from: 7.5, w: () => 1.8 },
+    { id: 'warder',  from: 7,   w: () => 0.4 },
     { id: 'knight',  from: 8.5, w: (t) => 2 + Math.min(3, (t - 8.5) * 0.5) },
   ];
 
@@ -192,7 +194,7 @@
       if (this.eliteT <= 0 && !bossHold) {
         const R = G.rules;
         this.eliteT = Math.max(50, 75 - this.minutes() * 1.2) * R.eliteEvery;
-        const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith'].filter((id) => {
+        const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => {
           const row = TABLE.find((r) => r.id === id);
           return this.minutes() >= row.from;
         });

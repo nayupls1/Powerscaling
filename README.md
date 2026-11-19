@@ -47,6 +47,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
 - **Red means danger** — every enemy blast, beam and shockwave is drawn in one reserved red with a dashed rim that flashes white before it lands, whoever cast it. The hero's own ground effects are soft-edged, and their strikes are marked with a thin reticle, so a glance tells you which circles to leave.
 - **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
+- **A horde with roles** — fourteen enemy types arrive through the run. Besides chasers, chargers and gunners there are Rift Toads, which crouch, mark the spot you stand on and leap onto it, and Warders, which shield every enemy inside their dotted ring until you cut them down.
 - **Elites with affixes** — every elite carries one of seven affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding or Frenzied. Deeper rifts and overtime stack more than one.
 - **Four horde shapes** — the closing ring and the stampede, then a pincer from two sides and a wall that sweeps the whole screen with a single gap in it.
 - **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.

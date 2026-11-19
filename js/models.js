@@ -353,6 +353,52 @@
       // three hex motes in orbit, one for each bolt of its burst
       for (let i = 0; i < 3; i++) { const q = a / 3 + (i * TAU) / 3; glowDot(g, Math.cos(q) * 1.06, Math.sin(q) * 1.06, 0.11, '#ff9be6', 1.9); }
     },
+    toad(g, ph, col, lw) {
+      const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.45), belly = lite(col, 0.55);
+      // big folded hind legs, pumping
+      for (const s of [-1, 1]) {
+        const k = 0.1 * sw * s;
+        limb(g, [-0.3, s * 0.6, -1.0 + k, s * 1.12, -0.36 + k, s * 1.26, 0.2 + k, s * 1.06], 0.27, dk, lw);
+        for (const c of [-0.14, 0, 0.14]) spike(g, 0.24 + k, s * 1.06 + c, c * 1.2, 0.26, 0.06, belly, lw * 0.5);
+      }
+      // short forelegs
+      for (const s of [-1, 1]) {
+        limb(g, [0.4, s * 0.5, 0.86 - sw * s * 0.08, s * 0.82], 0.2, dk, lw);
+        ell(g, 0.92 - sw * s * 0.08, s * 0.84, 0.15, 0.12); F(g, belly, lw * 0.6);
+      }
+      ell(g, -0.12, 0, 0.92, 0.8); F(g, vol(g, -0.12, 0, 0.92, col), lw);
+      // warts down the back
+      for (const w of [[-0.6, -0.26, 0.13], [-0.5, 0.3, 0.11], [-0.18, 0.02, 0.15], [-0.84, 0.04, 0.09], [0.0, -0.42, 0.09], [0.04, 0.4, 0.1]]) { ell(g, w[0], w[1], w[2], w[2]); F(g, dark(col, 0.3)); }
+      // wide head, with the rift glowing in its throat
+      g.beginPath(); g.ellipse(0.5, 0, 0.56, 0.7, 0, -PI / 2, PI / 2); g.closePath(); F(g, vol(g, 0.5, 0, 0.7, lite(col, 0.12)), lw);
+      g.beginPath(); g.arc(0.66, 0, 0.3, -1.1, 1.1); S(g, INK, 0.07);
+      for (const s of [-1, 1]) {
+        ell(g, 0.5, s * 0.5, 0.21, 0.21); F(g, belly, lw);
+        glowDot(g, 0.54, s * 0.5, 0.12, '#ffe14d', 1.8);
+        ell(g, 0.56, s * 0.5, 0.04, 0.11); F(g, INK);
+      }
+    },
+    warder(g, ph, col, lw) {
+      const a = ph * TAU, br = Math.sin(a), dk = dark(col, 0.5), cloth = '#3d4a7a', gold = '#ffd36b';
+      // trailing robe
+      g.beginPath(); g.moveTo(-0.1, -0.7); g.quadraticCurveTo(-0.9, -0.84, -1.3, -0.4 + br * 0.06);
+      g.lineTo(-1.06, 0); g.lineTo(-1.3, 0.4 - br * 0.06); g.quadraticCurveTo(-0.9, 0.84, -0.1, 0.7); g.closePath();
+      F(g, dark(cloth, 0.25), lw);
+      // a standard carried upright in both hands: a tall pole crowned with a warding sigil
+      for (const s of [-1, 1]) limb(g, [0, s * 0.62, 0.5, s * 0.5, 0.74, s * 0.12], 0.21, cloth, lw);
+      limb(g, [0.3, 0, 1.3, 0], 0.09, '#8a6a4a', lw * 0.8);
+      const hr = 0.3 + br * 0.03;
+      g.beginPath(); g.arc(1.42, 0, hr, 0, TAU); S(g, INK, 0.12 + lw * 2); S(g, gold, 0.12);
+      glowDot(g, 1.42, 0, 0.13, '#bff3ff', 2.4);
+      for (let i = 0; i < 3; i++) { const q = a + (i * TAU) / 3; glowDot(g, 1.42 + Math.cos(q) * hr, Math.sin(q) * hr, 0.06, '#bff3ff', 1.6); }
+      ell(g, 0.74, 0, 0.17, 0.2); F(g, col, lw);
+      // body and a broad flat hat seen from above
+      ell(g, -0.05, 0, 0.6, 0.8); F(g, vol(g, -0.05, 0, 0.8, cloth), lw);
+      g.beginPath(); g.arc(-0.05, 0, 0.5, PI * 0.62, PI * 1.38); S(g, gold, 0.07);
+      ell(g, 0.08, 0, 0.66, 0.66); F(g, vol(g, 0.08, 0, 0.66, col), lw);
+      ell(g, 0.08, 0, 0.3, 0.3); F(g, dk, lw * 0.7);
+      g.beginPath(); g.arc(0.08, 0, 0.5, 0, TAU); S(g, dk, 0.05, 0.6);
+    },
     knight(g, ph, col, lw) {
       const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.5), red = '#ff5a6e', steel = lite(col, 0.25);
       // tattered cape
@@ -590,7 +636,7 @@
     },
   };
   /** walk cycles per second */
-  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6,
+  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0,
     boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75 };
 
   /** a sword along +x from the hand at the origin */
