@@ -150,6 +150,7 @@
       if (this.surgeT > 0) as += 0.6;
       if (this.galeT > 0) as += 0.4;
       if (this.stepT > 0) as += 0.5;
+      as += PS.Director.tideOf('haste', 0);
       if (f.momentum2 && this.moving) as += 0.2;
       this.as = Math.max(0.2, as);
 

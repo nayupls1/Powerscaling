@@ -68,6 +68,7 @@
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
+      this.tideT = 200; this.tide = null; this.tideLeft = 0; // rift tides: see Data.TIDES
       this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
@@ -92,6 +93,8 @@
     /** seconds between hordes */
     hordeGap() { return HORDE_EVERY * PS.G.rules.hordeEvery; },
     xpMult() { return 1 + this.endless() * 0.1; },
+    /** what the tide in force does to a number (speed, xp, gold, haste), or `none` */
+    tideOf(key, none) { return this.tide && this.tide[key] !== undefined ? this.tide[key] : none; },
     /**
      * The horde breathes in a cycle anchored on the hordes: a lull right after one breaks, then a surge that builds
      * into the next. 1 on average, swinging up to 0.7..1.3 once the hero's kit has filled out.
@@ -266,6 +269,26 @@
           G.props.push({ kind: 'breach', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
           PS.UI.toast('A breach has opened', 'rift');
           PS.UI.tip('breach', 'Step into a breach to wake it, then slay what pours out before it seals', 'rift');
+        }
+      }
+      // ---- rift tides: every few minutes the rules bend for a short spell (never during a boss)
+      if (this.tide) {
+        this.tideLeft -= dt;
+        if (this.tideLeft <= 0) { PS.UI.toast(this.tide.name + ' passes', this.tide.icon); this.tide = null; }
+      } else {
+        this.tideT -= dt;
+        if (this.tideT <= 0 && !bossAlive) {
+          this.tideT = 150 + EV() * 60;
+          const T = PS.Data.TIDES, ids = Object.keys(T).filter((id) => id !== this.lastTide);
+          const td = T[U.pick(ids, EV)];
+          this.tide = td; this.tideLeft = td.dur; this.lastTide = td.id;
+          PS.UI.banner(td.name, td.text, 3);
+          PS.FX.flash(td.color, 0.18);
+          PS.Audio.play('shrine', { vol: 0.5, pitch: 0.8 });
+          if (td.elites) {
+            const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => this.minutes() >= TABLE.find((r) => r.id === id).from);
+            for (let i = 0; i < td.elites; i++) { const pos = this.ringPos(); const e = PS.Enemies.spawn(U.pick(pool, EV), pos.x, pos.y, { elite: true }); e.richChest = true; }
+          }
         }
       }
       this.hoarderT -= dt;
@@ -461,15 +484,15 @@
       }
       if (e.elite) {
         for (let i = 0; i < 4; i++) this.pickup('gold', e.x + U.rand(-30, 30), e.y + U.rand(-30, 30), Math.round((5 + t) * s.gold));
-        if (!e.noChest) this.pickup('chest', e.x, e.y, 0);
+        if (!e.noChest) this.pickup(e.richChest ? 'breachchest' : 'chest', e.x, e.y, 0);
         if (U.rnd() < 0.35) this.pickup('heal', e.x + 24, e.y, 0);
         return;
       }
       const r = U.rnd();
       // kill counts already climb with the horde, so a coin barely grows with time: gold, and the chests it buys, stay an event
-      if (r < 0.05) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + U.rnd() * 2 + t * 0.05) * s.gold)));
+      if (r < 0.05 * this.tideOf('gold', 1)) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + U.rnd() * 2 + t * 0.05) * s.gold)));
       // rare drops are rate-limited: kill counts late in a run would otherwise rain them
-      else if (r < 0.0535) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
+      else if (r < 0.0535 && r >= 0.05) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
       else if (r < 0.0545) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
       else if (r < 0.0552) { if (G.time > this.bombAt) { this.bombAt = G.time + 90; this.pickup('bomb', e.x, e.y, 0); } }
     },
@@ -531,7 +554,7 @@
       switch (k.kind) {
         case 'xp':
           G.gemCount--;
-          p.addXp(k.val);
+          p.addXp(k.val * this.tideOf('xp', 1));
           if (p.stats.f.gemEater && ++p.gemsEaten >= 60) { p.gemsEaten = 0; p.heal(p.stats.maxHp * 0.04 * p.stats.f.gemEater * G.rules.heal); PS.FX.mend(p); }
           p.gemCombo = Math.min(24, p.gemCombo + 1);
           p.gemComboT = 0.6;

@@ -209,6 +209,7 @@
       const poisMul = s.statusDmg * (aff.venom >= 2 ? 1.5 : 1);
       const venom6 = aff.venom >= 6;
       leaps = 0;
+      const tideSpeed = PS.Director.tideOf('speed', 1);
       for (const h of G.hazards) if (h.leap && !h.dead) leaps++;
       const pandemic = !!f.pandemic;
       const parity = G.frame & 1;
@@ -262,7 +263,7 @@
           e.freezeT -= dt;
           e.hop = 0;
         } else {
-          let sp = e.speed;
+          let sp = e.speed * tideSpeed;
           if (e.chillT > 0) sp *= 1 - (e.boss ? slowAmt * 0.4 : slowAmt);
           if (e.rage) sp *= 1.35;
           e.t += dt;
