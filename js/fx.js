@@ -178,9 +178,10 @@
       for (const g of ghosts) {
         ctx.globalAlpha = (g.life / g.max) * 0.45;
         ctx.fillStyle = g.color;
-        ctx.beginPath();
-        ctx.arc(g.x, g.y, 14, 0, TAU);
-        ctx.fill();
+        ctx.save();
+        ctx.translate(g.x, g.y); ctx.rotate(g.aim); ctx.scale(14, 14);
+        PS.Models.heroGhost(ctx);
+        ctx.restore();
       }
       ctx.globalAlpha = 1;
     },

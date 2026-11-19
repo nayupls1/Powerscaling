@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Exercise every code path at once: each class with all talents, every relic at max stacks and every skill (evolved),
-   run for a few minutes and fail on any page error or non-finite number. Usage: node tools/stress.js [minutes] */
+   run for a few minutes, drawing frames along the way, and fail on any page error or non-finite number.
+   Usage: node tools/stress.js [minutes] */
 const path = require('path');
 const { chromium } = require('playwright');
 (async () => {
@@ -42,6 +43,7 @@ const { chromium } = require('playwright');
             for (const pr of G.projs) if (!isFinite(pr.x) || !isFinite(pr.dmg)) { bad = 'proj NaN ' + pr.kind + ' ' + pr.src; break; }
             if (bad) break;
           }
+          if (n % 20 === 0) { G.rdt = 1 / 60; PS.Render.draw(G); } // the renderer too: every model, tint and pose
           if (++n % 3000 === 0) await new Promise((r) => setTimeout(r, 0));
         }
         const out = { cls, half, t: Math.round(G.time), over: G.over, bad, kills: G.kills, bosses: G.bossesKilled, hp: Math.round(p.hp), sources: Object.keys(G.dmgBy).length,

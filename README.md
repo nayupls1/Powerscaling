@@ -78,6 +78,7 @@ js/bosses.js      boss fights
 js/director.js    difficulty curves, spawning, drops, chests, shrines
 js/rewards.js     reward card generation
 js/fx.js          particles, damage numbers, screen shake
+js/models.js      character art: the horde, bosses, heroes and minions
 js/render.js      canvas renderer
 js/input.js       keyboard, mouse, touch, gamepad
 js/ui.js          menus, HUD, cards, pause and results screens
@@ -148,7 +149,7 @@ node tools/curve.js all 13 6 --sloppy --tree=full     # careless player with eve
 node tools/curve.js all 13 6 --tree=arm:might         # one arm of the tree; also half, m1,m2 or -a5 (full minus a node)
 ```
 
-`tools/stress.js` runs every class with all talents, every relic and every evolved skill at once and fails on any page error or invalid number:
+`tools/stress.js` runs every class with all talents, every relic and every evolved skill at once, drawing frames as it goes, and fails on any page error or invalid number:
 
 ```sh
 node tools/stress.js 3
@@ -162,6 +163,17 @@ node tools/perf.js reaper 780 --json --frames=120
 ```
 
 The numbers come from headless Chromium's software rasterizer, so compare runs with each other rather than with a real GPU. Keep the same checkpoints between runs: frames drawn at earlier checkpoints change the dice later on.
+
+`tools/models.js` draws every character model with the real renderer, one per labelled cell, and writes a PNG. Run it before and after an art change to compare:
+
+```sh
+node tools/models.js --out=models.png               # the sheet: heroes, minions, the horde, an elite, bosses
+node tools/models.js --scene --out=fight.png        # a staged fight instead
+node tools/models.js --scene --frames=36 --dt=0.033 # numbered frames, for checking animation
+node tools/models.js --root=../other-checkout       # draw another checkout's models with this tool
+```
+
+The art itself is vector code in `js/models.js`, drawn facing +x in units of the model's collision radius, with a looping phase for its walk cycle. The horde and the Reaper's minions are cached as animation frames (8 per cycle, supersampled 2x, or 3x on dense screens), so a model can be as detailed as it likes at no per-frame cost. The hero and the boss are drawn live, into a scratch canvas that is then blitted: keep gradient fills off the main canvas, where a single one slows Chromium's software rasterizer for the rest of the session.
 
 The **Graphics** setting picks the render resolution. *Auto* (the default) starts at the device's pixel ratio, steps the canvas resolution down while frames run below about 45 fps, and climbs back after several seconds of headroom; *Sharp* never lowers it, and *Fast* renders at 70% with fewer particles.
 
