@@ -167,7 +167,8 @@
         if (!r) break;
         seen.add(r.id);
         const have = p.relics[r.id] || 0;
-        cards.push({ type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: have ? `Relic, you own ${have}` : 'Relic', desc: r.desc, lines: [] });
+        cards.push({ type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: have ? `Relic, you own ${have}` : 'Relic', desc: r.desc,
+          lines: !have && !PS.G.bot && !PS.Save.data.codex.relics[r.id] ? ['New to your codex'] : [] });
       }
       if (!cards.length) cards.push(R.card(p, 'gold', null, 0));
       return cards;
