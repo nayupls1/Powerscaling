@@ -39,10 +39,11 @@
     start(clsId, opts) {
       opts = opts || {};
       const save = PS.Save.data;
-      const daily = opts.daily ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
+      const rush = !!opts.rush;
+      const daily = opts.daily && !rush ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
       if (daily) clsId = daily.cls;
       // tools and the bot may ask for any depth; a player only gets what they have unlocked
-      const depth = daily ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
+      const depth = daily || rush ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
         : U.clamp(opts.depth !== undefined ? opts.depth | 0 : save.depth.sel, 0, save.depth.max);
       const seed = daily ? daily.seed : opts.seed !== undefined ? String(opts.seed) : PS.RNG.fresh();
       PS.RNG.seed(seed);
@@ -65,6 +66,7 @@
       const sg = daily ? null : D.SIGILS[opts.bot ? opts.sigil : save.sigil];
       G.sigil = sg && (opts.bot || save.feats[sg.feat]) ? sg.id : '';
       if (G.sigil && sg.rules) sg.rules(G.rules);
+      if (rush) G.rush = { stage: 0, wait: 3, at: 0 };
       PS.G = G;
       PS.FX.reset();
       PS.Director.reset();
@@ -76,6 +78,7 @@
       }
       if (G.sigil && D.SIGILS[G.sigil].start) D.SIGILS[G.sigil].start(G, p);
       if (G.rules.startPacts) for (const id of U.shuffle(Object.keys(D.PACTS).filter((k) => !D.PACTS[k].now), PS.RNG.loot).slice(0, G.rules.startPacts)) p.addPact(id);
+      if (rush) for (let i = 0; i < PS.Director.rushLevels[0]; i++) p.gainLevel();
       if (m.startLevels) {
         for (let i = 0; i < m.startLevels; i++) { p.level++; p.pendingLevels++; }
         p.xpNext = PS.xpFor(p.level);
@@ -91,7 +94,7 @@
     again() {
       const G = PS.G;
       if (!G) return;
-      this.start(G.cls, G.daily ? { daily: true } : { depth: G.depth });
+      this.start(G.cls, G.rush ? { rush: true } : G.daily ? { daily: true } : { depth: G.depth });
     },
 
     pause() {
@@ -344,8 +347,18 @@
       PS.UI.banner('The Rift Lord is slain', sub, 6);
       PS.Audio.play('evolve');
     },
+    /** the last boss of a rush is down */
+    rushWon() {
+      const G = PS.G, d = PS.Save.data;
+      G.won = true;
+      if (!G.bot) { d.rush = d.rush || {}; const best = d.rush[G.cls]; if (!best || G.time < best) { d.rush[G.cls] = Math.floor(G.time); G.rushBest = true; } }
+      PS.Audio.play('evolve');
+      this.endRun(true);
+    },
     /** mirrored in server.ts (scoreBounds): deeper rifts multiply the whole score */
     finalScore(G) {
+      // a rush is a race: bosses felled, and for a clear, every second under ten minutes
+      if (G.rush) return G.bossesKilled * 10000 + (G.won ? Math.max(0, 600 - Math.floor(G.time)) * 100 : 0);
       return Math.round((G.score + Math.floor(G.time) * 60 + (G.player.level - 1) * 100) * G.rules.score);
     },
     playerDied() {
@@ -361,7 +374,7 @@
       // the first daily rift of the day pays double
       const firstDaily = !!G.daily && !G.bot && !(d.daily.date === G.daily && d.daily.attempts > 0);
       // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
-      const essence = Math.round((G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
+      const essence = Math.round((G.rush ? G.bossesKilled * 45 + (G.won ? 80 : 0) : G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
         * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 : 1));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
@@ -373,10 +386,10 @@
       d.essenceTotal += essence;
       d.stats.runs++;
       d.stats.kills += G.kills;
-      d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
+      if (!G.rush) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
       // the daily rift lends everyone the full tree, so it keeps its own best score
-      const best = G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
-      if (!G.daily) d.stats.bestScore = Math.max(d.stats.bestScore, score);
+      const best = G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
+      if (!G.daily && !G.rush) d.stats.bestScore = Math.max(d.stats.bestScore, score);
       G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
       if (G.daily && !G.bot) {
         if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
@@ -388,10 +401,10 @@
       G.result.feats = G.feats.slice();
       if (!G.bot) {
         d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
-          seed: G.seed, daily: G.daily || '', build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
+          seed: G.seed, daily: G.daily || '', rush: !!G.rush, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
         if (d.history.length > 30) d.history.length = 30;
       }
-      if (!G.bot) G.result.rank = PS.Save.addRun(run);
+      if (!G.bot && !G.rush) G.result.rank = PS.Save.addRun(run);
       else PS.Save.save();
       this.state = 'over';
       PS.Audio.resume();

@@ -9,6 +9,9 @@
   const MAX_GEMS = 340;
   const BOSS_TIMES = [180, 360, 540, 720];
   const FINAL_TIME = 720;
+  // Boss rush: the minute each stage plays at (it sets how tough the boss and its hangers-on are), the bosses in order,
+  // and the levels handed out before each
+  const RUSH_MIN = [3, 6, 9, 12, 13.5], RUSH_ORDER = [0, 1, 2, 3, 4], RUSH_LEVELS = [11, 10, 10, 10, 6];
   const ENDLESS_BOSS_EVERY = 120;
   const HORDE_FIRST = 75, HORDE_EVERY = 80;
   /*
@@ -76,7 +79,8 @@
       this.healAt = 0; this.magnetAt = 0; this.bombAt = 30;
       this.tremorT = 150; this.tremorX = 1e9; this.tremorY = 1e9; this.linger = 0;
     },
-    minutes() { return PS.G.time / 60; },
+    /** minutes into the run; a boss rush is always as late as the boss it has reached */
+    minutes() { const G = PS.G; return G.rush ? RUSH_MIN[Math.min(G.rush.stage, RUSH_MIN.length - 1)] + (G.time - G.rush.at) / 240 : G.time / 60; },
     /** minutes of overtime: the clock starts when the Rift Lord falls, so the final duel itself is not inflated */
     endless() { return this.victory ? Math.max(0, PS.G.time - this.victoryAt) / 60 : 0; },
     hpMult() {
@@ -150,6 +154,7 @@
       // a boss holds back the horde for a while; drag the fight out and the rift stops waiting
       const bossHold = bossAlive && G.time - G.boss.bornAt < 75;
 
+      if (G.rush) { this.updateRush(dt); this.updatePickups(dt); return; }
       // ---- bosses
       if (this.bossIdx < BOSS_TIMES.length) {
         if (G.time >= BOSS_TIMES[this.bossIdx] && !bossAlive) {
@@ -397,6 +402,42 @@
         }
       }
     },
+
+    /* ------------------------------------------------------------ boss rush */
+    /** no horde to speak of, no map events: levels, a breath, then the next boss */
+    updateRush(dt) {
+      const G = PS.G, p = G.player, R = G.rush;
+      if (R.wait > 0) {
+        // between fights: wait for the level-ups to be spent, then count the boss in
+        if (p.pendingLevels > 0 || G.queue.length) return;
+        R.wait -= dt;
+        if (R.wait <= 0) {
+          R.at = G.time;
+          PS.Bosses.spawn(RUSH_ORDER[R.stage], 0);
+        }
+        return;
+      }
+      if (G.boss) {
+        // a thin crowd, so skills that feed on kills still have something to eat
+        const target = 14 + R.stage * 5;
+        this.spawnAcc += (2 + R.stage) * dt;
+        while (this.spawnAcc >= 1) {
+          this.spawnAcc -= 1;
+          if (G.enemies.length > target) { this.spawnAcc = 0; break; }
+          const pos = this.ringPos();
+          PS.Enemies.spawn(this.pickType(), pos.x, pos.y);
+        }
+        return;
+      }
+      // the boss is down
+      R.stage++;
+      if (R.stage >= RUSH_ORDER.length) { PS.Game.rushWon(); return; }
+      for (let i = 0; i < RUSH_LEVELS[R.stage]; i++) p.gainLevel();
+      R.wait = 4;
+      for (const e of G.enemies) if (!e.boss) e.hp = 0, PS.Combat.kill(e, null);
+      PS.UI.banner('Stage ' + (R.stage + 1) + ' of ' + RUSH_ORDER.length, 'Spend your levels. ' + PS.Bosses.DEFS[RUSH_ORDER[R.stage]].name + ' is next.', 3);
+    },
+    rushStages: RUSH_ORDER.length, rushLevels: RUSH_LEVELS,
 
     /** how many elite affixes the rift hands out right now */
     affixCount() { return Math.min(3, PS.G.rules.affixes + (this.victory ? 1 : 0)); },

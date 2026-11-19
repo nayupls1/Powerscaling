@@ -214,6 +214,7 @@
           ${this.depthPicker()}
           ${this.sigilPicker()}
           <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
+          ${locked ? '' : d.stats.wins > 0 ? `<button class="btn btn-rush" id="btnRush">${ico('swords', 18)} Boss rush<small>${d.rush[selClass] ? 'Best ' + U.fmtTime(d.rush[selClass]) : 'Five bosses, back to back'}</small></button>` : `<p class="depth-hint">${ico('lock', 14)} Slay the Rift Lord to open the boss rush: five bosses, back to back.</p>`}
         </div>
         <div class="cd-tree">
           <h3>Ascension paths <small>one talent every 6 levels, and only one path can reach its final tier</small></h3>
@@ -226,6 +227,7 @@
         </div>`;
       const begin = $('btnBegin');
       if (!locked) click(begin, () => PS.Game.start(selClass));
+      if ($('btnRush')) click($('btnRush'), () => PS.Game.start(selClass, { rush: true }));
       const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
       step('depthDown', -1); step('depthUp', 1);
       document.querySelectorAll('#classDetail .sigil').forEach((b) => click(b, () => {
@@ -244,7 +246,7 @@
       const cur = D.SIGILS[d.sigil], peek = D.SIGILS[sigilPeek];
       const peekText = peek ? `${esc(peek.name)}: ${esc(peek.text)} Locked. Feat: ${esc(PS.Feats.BY_ID[peek.feat].name)} (${esc(PS.Feats.BY_ID[peek.feat].text)})` : '';
       return `<div class="depth sigils">
-        <div class="depth-head"><span><b>Sigil</b><small>${peekText || (cur ? esc(cur.name) + ': ' + esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run. Tap one to see its feat.')}</small></span><small>${open.length} / ${ids.length}</small></div>
+        <div class="depth-head"><span><b>Sigil</b><small>${peekText || (cur ? esc(cur.name) + ': ' + esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run. Tap one to see its feat.')}</small></span><small style="white-space:nowrap">${open.length} / ${ids.length}</small></div>
         <div class="sigil-row">${ids.map((id) => {
           const s = D.SIGILS[id], ok = open.includes(id), f = PS.Feats.BY_ID[s.feat];
           const tip = `<b>${esc(s.name)}</b><br>${esc(s.text)}` + (ok ? '' : `<br><span class='off'>Locked. Feat: ${esc(f.name)} (${esc(f.text)})</span>`);
@@ -433,14 +435,14 @@
         <div class="hist-sum">${D.CLASS_IDS.filter((id) => per[id]).map((id) => `<span class="chip" style="--rc:${D.CLASSES[id].color}"><b style="color:${D.CLASSES[id].color}">${D.CLASSES[id].name}</b> ${per[id].n} run${per[id].n > 1 ? 's' : ''}, ${per[id].won} won, best <em>${U.fmtNum(per[id].best)}</em></span>`).join('')}</div>
         <ul class="hist">${rows.map((r, i) => {
           const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
-          const how = r.won ? 'Slew the Rift Lord' : r.retired ? 'Walked away' : r.by ? 'Fell to ' + esc(r.by) : 'Fell';
-          const extras = [r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
+          const how = r.won ? (r.rush ? 'Cleared the gauntlet' : 'Slew the Rift Lord') : r.retired ? 'Walked away' : r.by ? 'Fell to ' + esc(r.by) : 'Fell';
+          const extras = [r.rush ? 'Boss rush' : '', r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
           return `<li class="hist-row${r.won ? ' won' : ''}" style="--c:${c.color}">
             <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
             <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
             <span class="hist-build muted">${esc((r.build || []).join(', '))}</span>
             <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · seed ${esc(String(r.seed).slice(0, 12))}</small>
-              ${r.daily ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
+              ${r.daily || r.rush ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
           </li>`;
         }).join('')}</ul>`;
       $('boardBody').querySelectorAll('[data-replay]').forEach((b) => click(b, () => {
@@ -556,6 +558,7 @@
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it and beat its trial before the timer burns down, and it leaves a relic: slay its spawn, kill its champion, or hold the ring.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
+          <p>Once you have slain the Rift Lord, the class screen offers a boss rush: all five bosses back to back, with a burst of levels to spend before each. It is scored on speed and kept off the leaderboard.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has a boss of its own.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
@@ -719,6 +722,7 @@
       else if (Dr.bossIdx < Dr.BOSS_TIMES.length) next = 'Boss in ' + U.fmtTime(Dr.BOSS_TIMES[Dr.bossIdx] - G.time);
       else if (Dr.victory) next = 'Beyond the rift';
       if (Dr.tide) next = Dr.tide.name + ' ' + Math.ceil(Dr.tideLeft) + 's';
+      if (G.rush) next = 'Boss rush, stage ' + Math.min(G.rush.stage + 1, Dr.rushStages) + ' of ' + Dr.rushStages;
       $('hudNext').textContent = next;
       $('hudNext').style.color = Dr.tide ? Dr.tide.color : '';
       $('bossBar').hidden = !G.boss;
@@ -948,8 +952,8 @@
       const G = PS.G, r = res.run, c = D.CLASSES[r.cls], d = PS.Save.data;
       $('ovChoice').hidden = true; $('ovPause').hidden = true;
       $('hud').hidden = true; $('touch').hidden = true;
-      const title = r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
-      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.`
+      const title = G.rush ? (r.won ? 'Gauntlet cleared' : res.retired ? 'Rush abandoned' : 'You fell') : r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
+      const sub = G.rush ? (r.won ? `All ${PS.Director.rushStages} bosses down in ${U.fmtTime(r.time)}.` : `${r.bosses} of ${PS.Director.rushStages} bosses down after ${U.fmtTime(r.time)}.`) : r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.`
         : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}${G.lastHurt ? '. The last blow: ' + esc(G.lastHurt) : ''}.`;
       const sources = Object.keys(G.dmgBy).length;
       const hurt = Object.entries(G.hurtBy).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -964,7 +968,8 @@
           <div class="score-tags">
             ${res.unlockedDepth ? `<span class="tag gold">${ico('key', 14)} Rift Depth ${res.unlockedDepth} unlocked</span>` : ''}
             ${res.unlockedClass ? `<span class="tag gold">${ico(CLASS_ICON[res.unlockedClass], 14)} ${D.CLASSES[res.unlockedClass].name} unlocked</span>` : ''}
-            ${res.best ? `<span class="tag gold">${G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
+            ${res.best ? `<span class="tag gold">${G.rush ? 'Your fastest clear' : G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
+            ${G.rush ? `<span class="tag">${ico('swords', 14)} Boss rush</span>` : ''}
             ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}
             ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}
             ${res.rank && !G.daily ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}

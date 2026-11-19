@@ -71,6 +71,10 @@
   feat('score100', 'slay',  'Six Figures',       'target',   'Score 100,000 in one run.',                       50,  (G) => PS.Game.finalScore(G) >= 100000);
   feat('score250', 'slay',  'Off the Charts',    'star',     'Score 250,000 in one run.',                       150, (G) => PS.Game.finalScore(G) >= 250000);
 
+  feat('rush1', 'rift', 'Gauntlet',  'swords', 'Clear a boss rush.',                    80,  (G) => G.won);
+  feat('rush2', 'rift', 'No Breath', 'timer',  'Clear a boss rush in under six minutes.', 150, (G) => G.won && G.time < 360);
+  F[F.length - 1].rush = F[F.length - 2].rush = true;
+
   const GROUPS = { rift: 'The rift', class: 'Heroes', depth: 'Rift Depths', build: 'Builds', loot: 'Spoils and pacts', slay: 'Slaughter' };
   const BY_ID = {};
   for (const f of F) BY_ID[f.id] = f;
@@ -87,10 +91,11 @@
     /** test every feat not yet earned against the live run; pays and announces the new ones */
     check(G) {
       if (!G || G.bot) return;
+      const rush = !!G.rush;
       const d = PS.Save.data, have = d.feats, p = G.player;
       let got = 0;
       for (const f of F) {
-        if (have[f.id]) continue;
+        if (have[f.id] || rush !== !!f.rush) continue;
         let ok = false;
         try { ok = !!f.test(G, p, d); } catch (e) { ok = false; }
         if (!ok) continue;

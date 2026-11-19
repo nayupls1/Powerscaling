@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
         if (flags.afk !== undefined) bot.afkAt = +flags.afk;
         if (flags.want) bot.want = String(flags.want).split(',');
         if (flags.tomes) bot.wantTomes = String(flags.tomes).split(',');
-        const opts = { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, sigil: flags.sigil || undefined };
+        const opts = { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, sigil: flags.sigil || undefined, rush: !!flags.rush };
         if (flags.seed !== undefined) opts.seed = flags.seed + (r ? ':' + r : ''); // later runs of a batch get their own seed
         if (flags.daily) opts.daily = flags.daily;
         PS.Game.start(cls, opts);

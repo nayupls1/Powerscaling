@@ -256,6 +256,9 @@ i[data-icon], .count i { display: inline-flex; }
 .sigil.sel { background: var(--gilt); border-color: var(--gilt); color: #2a1c05; }
 .sigil.locked { color: #6d6690; opacity: 0.75; }
 .sigil.peek { border-color: #cdb8ff; opacity: 1; }
+.btn-rush { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 10px; justify-items: start; width: 100%; margin-top: 10px; padding: 0.7em 1.1em; }
+.btn-rush small { grid-column: 2; font-weight: 600; font-size: 0.82rem; color: var(--muted); }
+.btn-rush svg { grid-row: span 2; }
 .depth-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .depth-head > span:first-child { display: grid; }
 .depth-head small { color: var(--muted); font-size: 0.86rem; }

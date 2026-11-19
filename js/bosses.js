@@ -374,7 +374,7 @@
       PS.Audio.play('bossDie');
       PS.Audio.music('run');
       G.slowmo = 1.2;
-      if (e.def.final && !PS.Director.victory) {
+      if (e.def.final && !PS.Director.victory && !G.rush) {
         PS.Director.victory = true;
         PS.Director.victoryAt = G.time;
         PS.Game.victory();
