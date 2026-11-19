@@ -1,0 +1,10 @@
+{
+  "name": "powerscaling",
+  "private": true,
+  "description": "Browser horde survivor; optional Bun server for saves and a global leaderboard",
+  "scripts": {
+    "start": "bun server.ts",
+    "dev": "bun --watch server.ts",
+    "test": "bun test tools/"
+  }
+}

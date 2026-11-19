@@ -1,9 +1,16 @@
-/* POWERSCALING — persistence: meta progression, settings, local leaderboard */
+/* POWERSCALING — persistence: meta progression, settings, leaderboard.
+   localStorage is always the source of truth for the running game (every call here stays synchronous).
+   When the page is served by server.ts the save is mirrored to the server and the leaderboard goes global;
+   on a static host or file:// the server calls are skipped or fail quietly. */
 (function () {
   'use strict';
   const PS = (window.PS = window.PS || {});
   const KEY = 'powerscaling.save.v1';
+  const ID_KEY = 'powerscaling.id.v1';  // kept apart from the save so reset() does not orphan the player id
   const MAX_BOARD = 100;
+  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper'];
+  const READY_WAIT = 1500;              // Save.ready never holds the menu up longer than this
+  const PUSH_DELAY = 800;
 
   const defaults = () => ({
     v: 1,
@@ -13,41 +20,242 @@
     tree: {},            // nodeId -> rank
     unlocked: { vanguard: true, pyromancer: true, ranger: true },
     lastClass: 'vanguard',
-    settings: { sfx: 0.7, music: 0.45, shake: true, dmgNums: true, autoAim: false, autoFire: true },
+    settings: { sfx: 0.7, music: 0.45, shake: true, dmgNums: true, autoAim: false, autoFire: true, quality: 'auto' },
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
+    updatedAt: 0,        // ms, bumped on every save(); decides which copy wins when syncing with the server
   });
 
-  let mem = null; // in-memory fallback when storage is unavailable
+  const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  const num = (v) => typeof v === 'number' && isFinite(v);
+
+  /** coerce anything (local or from the server) into a well-formed save */
+  function sanitize(d) {
+    d = obj(d);
+    const out = Object.assign(defaults(), d);
+    out.settings = Object.assign(defaults().settings, obj(d.settings));
+    out.stats = Object.assign(defaults().stats, obj(d.stats));
+    out.unlocked = Object.assign(defaults().unlocked, obj(d.unlocked));
+    out.board = (Array.isArray(d.board) ? d.board : []).filter((r) => r && typeof r === 'object' && num(r.score));
+    if (!num(out.essence)) out.essence = 0;
+    if (!num(out.essenceTotal)) out.essenceTotal = 0;
+    if (typeof out.name !== 'string') out.name = '';
+    out.tree = obj(d.tree);
+    if (!num(out.updatedAt)) out.updatedAt = 0;
+    return out;
+  }
+
+  const mem = {}; // in-memory fallback when storage is unavailable
+  const store = {
+    get(k) { try { return window.localStorage.getItem(k); } catch (e) { return mem[k] || null; } },
+    set(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { mem[k] = v; } },
+  };
+  const emit = (type, detail) => { try { window.dispatchEvent(new CustomEvent(type, { detail })); } catch (e) { /* no DOM */ } };
+
+  /* ---------------------------------------------------------------- server link */
+  const net = {
+    enabled: typeof fetch === 'function' && /^https?:$/.test(location.protocol),
+    who: null,       // {id, token}
+    fresh: false,    // the id was minted this session, so the server cannot have a profile for it yet
+    synced: false,   // a pull has succeeded since the last connection loss; pushes wait for it
+    syncing: null,   // in-flight sync promise
+    dirty: false,    // local changes not yet on the server
+    timer: 0,
+    holdUntil: 0,    // after a 429, wait before pushing again
+    posted: null,    // last run sent to the server: {run, id, name} so a rename on the results screen follows it
+  };
+
+  function randomId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    // randomUUID needs a secure context; plain-http LAN hosts still get getRandomValues
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').replace(/^(.{8})(.{4})(.{4})(.{4})/, '$1-$2-$3-$4-');
+  }
+  function who() {
+    if (net.who) return net.who;
+    try {
+      const w = JSON.parse(store.get(ID_KEY) || 'null');
+      if (w && typeof w.id === 'string' && typeof w.token === 'string') return (net.who = w);
+    } catch (e) { /* regenerate */ }
+    return newWho();
+  }
+  function newWho() {
+    net.who = { id: randomId(), token: randomId() + randomId() };
+    net.fresh = true;
+    store.set(ID_KEY, JSON.stringify(net.who));
+    return net.who;
+  }
+
+  /** fetch JSON from the server; resolves {status, body}, rejects only on network failure or timeout */
+  async function api(method, path, body, o) {
+    o = o || {};
+    const headers = {};
+    if (o.auth || (o.me && Save.online)) headers['X-Player-Id'] = who().id; // identity is only minted once a server answers
+    if (o.auth) headers.Authorization = 'Bearer ' + who().token;
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = ctl && setTimeout(() => ctl.abort(), o.timeout || 5000);
+    try {
+      // relative so the game also works when the server is mounted under a sub-path
+      const res = await fetch('api/' + path, {
+        method, headers, cache: 'no-store', keepalive: !!o.keepalive, signal: ctl ? ctl.signal : undefined,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* static hosts answer with html */ }
+      return { status: res.status, body: data };
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  const offline = () => { Save.online = false; net.synced = false; };
+  const payload = () => { const d = Object.assign({}, Save.data); delete d.board; return { updatedAt: d.updatedAt, data: d }; };
+
+  function persist() { store.set(KEY, JSON.stringify(Save.data)); }
+
+  /** take the server's copy. Settings and the local board stay: they belong to this device. */
+  function adopt(remote, at) {
+    const cur = Save.data, d = sanitize(remote);
+    d.settings = cur.settings;
+    d.board = cur.board;
+    d.seenTutorial = cur.seenTutorial || d.seenTutorial;
+    d.updatedAt = at;
+    // mutate in place: other modules hold references to Save.data
+    for (const k of Object.keys(cur)) delete cur[k];
+    Object.assign(cur, d);
+    persist();
+    emit('ps:sync', { source: 'server' });
+  }
+
+  /**
+   * Pull the server copy, keep whichever is newer, push if ours is.
+   * base: the local timestamp to compare with. The first sync after load compares with the copy as loaded, so a
+   * setting tweaked in the first second does not make a stale device overwrite newer progress from elsewhere.
+   */
+  function sync(base) {
+    if (net.syncing) return net.syncing;
+    net.syncing = (async () => {
+      try {
+        const h = await api('GET', 'health', undefined, { timeout: READY_WAIT });
+        if (!h.body || h.body.ok !== true) return offline();
+        // a new id skips the GET: its 404 would only add a red line to the console on every first visit
+        let r = who() && net.fresh ? { status: 404 } : await api('GET', 'profile/' + encodeURIComponent(who().id), undefined, { auth: true });
+        if (r.status === 403) { newWho(); r = { status: 404 }; } // id taken by someone else's token: start fresh
+        if (r.status !== 200 && r.status !== 404) return offline();
+        Save.online = true;
+        net.synced = true;
+        const srv = r.status === 200 && r.body && obj(r.body.data) ? r.body : null;
+        const at = srv && num(srv.updatedAt) ? srv.updatedAt : 0;
+        if (srv && at > (num(base) ? base : Save.data.updatedAt)) { adopt(srv.data, at); net.dirty = false; }
+        else if (Save.data.updatedAt > at) { net.dirty = true; await push(); }
+        else net.dirty = false;
+        Save.fetchBoard('all');
+      } catch (e) {
+        offline();
+      } finally {
+        net.syncing = null;
+      }
+      return Save.online;
+    })();
+    return net.syncing;
+  }
+
+  async function push(keepalive) {
+    if (!net.dirty || Date.now() < net.holdUntil) return;
+    net.dirty = false;
+    try {
+      const r = await api('PUT', 'profile/' + encodeURIComponent(who().id), payload(), { auth: true, keepalive });
+      if (r.status === 200 || r.status === 409) net.fresh = false;
+      if (r.status === 200) Save.online = true;
+      else if (r.status === 409) {
+        // another tab or device saved later: pull theirs. Chained, not awaited — push may be running inside sync()
+        net.synced = false;
+        Promise.resolve(net.syncing).then(() => sync());
+      }
+      else if (r.status === 429) {
+        net.dirty = true;
+        net.holdUntil = Date.now() + 15000;
+        clearTimeout(net.timer);
+        net.timer = setTimeout(() => flush(false), 15500);
+      }
+      else if (r.status >= 500 || r.status === 404) { net.dirty = true; offline(); }
+      // other 4xx: the payload itself is unacceptable (e.g. too large); retrying will not help
+    } catch (e) {
+      net.dirty = true;
+      offline();
+    }
+  }
+
+  async function renamePosted() {
+    const p = net.posted;
+    if (!p || p.run.name === p.name) return;
+    const name = p.name = p.run.name;
+    try {
+      const r = await api('PATCH', 'runs/' + p.id, { name }, { auth: true });
+      if (r.status === 200) { Save.fetchBoard('all'); Save.fetchBoard(p.run.cls); }
+    } catch (e) { /* the old name stays on the global board */ }
+  }
+
+  function flush(keepalive) {
+    clearTimeout(net.timer);
+    if (!net.enabled) return;
+    renamePosted();
+    if (!net.dirty) return;
+    if (net.synced) push(keepalive);
+    else if (!keepalive) sync(); // reconnecting: pull first so we never blindly overwrite newer progress
+  }
+
+  async function postRun(run) {
+    const body = { name: run.name, cls: run.cls, score: run.score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: !!run.won, build: run.build || [] };
+    try {
+      const r = await api('POST', 'runs', body, { auth: true });
+      if (r.status !== 201 || !r.body) { if (r.status >= 500) offline(); return; }
+      Save.online = true;
+      net.posted = { run, id: r.body.id, name: run.name };
+      run.globalRank = r.body.rank;
+      persist();
+      emit('ps:run', { run, rank: r.body.rank, total: r.body.total, classRank: r.body.classRank, classTotal: r.body.classTotal });
+      Save.fetchBoard('all');
+      Save.fetchBoard(run.cls);
+    } catch (e) {
+      offline();
+    }
+  }
+
+  let readyDone;
+  const ready = new Promise((res) => { readyDone = res; });
+  if (!net.enabled) readyDone(false);
+  if (net.enabled) {
+    window.addEventListener('pagehide', () => flush(true));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(true); });
+  }
 
   const Save = {
     data: defaults(),
+    online: false,             // true while the server answers
+    ready,                     // resolves (never rejects) once the first server sync settles, or after ~1.5s
+    remote: { board: {} },     // cls|'all' -> rows from the global leaderboard
+
     load() {
-      let raw = null;
-      try { raw = window.localStorage.getItem(KEY); } catch (e) { raw = mem; }
+      const raw = store.get(KEY);
       if (raw) {
-        try {
-          const d = JSON.parse(raw);
-          const base = defaults();
-          this.data = Object.assign(base, d);
-          this.data.settings = Object.assign(defaults().settings, d.settings || {});
-          this.data.stats = Object.assign(defaults().stats, d.stats || {});
-          this.data.unlocked = Object.assign(defaults().unlocked, d.unlocked || {});
-          if (!Array.isArray(this.data.board)) this.data.board = [];
-          this.data.board = this.data.board.filter((r) => r && typeof r === 'object' && typeof r.score === 'number' && isFinite(r.score));
-          if (typeof this.data.essence !== 'number' || !isFinite(this.data.essence)) this.data.essence = 0;
-          if (typeof this.data.name !== 'string') this.data.name = '';
-          if (!this.data.tree || typeof this.data.tree !== 'object') this.data.tree = {};
-        } catch (e) {
-          this.data = defaults();
-        }
+        try { this.data = sanitize(JSON.parse(raw)); } catch (e) { this.data = defaults(); }
+      }
+      if (net.enabled) {
+        const done = sync(this.data.updatedAt);
+        Promise.race([done, new Promise((r) => setTimeout(r, READY_WAIT))]).then(() => readyDone(this.online), () => readyDone(false));
       }
       return this.data;
     },
     save() {
-      const raw = JSON.stringify(this.data);
-      try { window.localStorage.setItem(KEY, raw); } catch (e) { mem = raw; }
+      // never move backwards, even if the adopted server copy came from a device whose clock runs ahead
+      this.data.updatedAt = Math.max(Date.now(), (this.data.updatedAt || 0) + 1);
+      persist();
+      if (!net.enabled) return;
+      net.dirty = true;
+      clearTimeout(net.timer);
+      net.timer = setTimeout(() => flush(false), PUSH_DELAY);
     },
     reset() {
       const keep = this.data.settings;
@@ -55,7 +263,8 @@
       this.data.settings = keep;
       this.save();
     },
-    /** add a finished run; returns its 1-based rank on the board (or 0 if it fell off) */
+    /** add a finished run; returns its 1-based rank on the local board (or 0 if it fell off).
+        The global rank arrives later as run.globalRank plus a 'ps:run' event. */
     addRun(run) {
       const b = this.data.board;
       b.push(run);
@@ -63,11 +272,61 @@
       if (b.length > MAX_BOARD) b.length = MAX_BOARD;
       const rank = b.indexOf(run) + 1;
       this.save();
+      if (net.enabled) postRun(run);
       return rank;
     },
+    /** the global board when it is loaded and the server is up, otherwise this device's runs */
     board(filterCls) {
+      const key = filterCls || 'all', rows = this.online && this.remote.board[key];
+      if (rows) return rows.slice();
       const b = this.data.board;
-      return filterCls && filterCls !== 'all' ? b.filter((r) => r.cls === filterCls) : b.slice();
+      return key !== 'all' ? b.filter((r) => r.cls === key) : b.slice();
+    },
+    boardScope(filterCls) {
+      return this.online && this.remote.board[filterCls || 'all'] ? 'global' : 'device';
+    },
+    /** refresh the global board cache; resolves with rows (local ones when offline) and fires 'ps:board' */
+    async fetchBoard(filterCls) {
+      const cls = CLASSES.includes(filterCls) ? filterCls : 'all';
+      if (!net.enabled) return this.board(cls);
+      try {
+        const r = await api('GET', 'leaderboard?cls=' + cls + '&limit=' + MAX_BOARD, undefined, { me: true });
+        if (r.status === 200 && r.body && Array.isArray(r.body.rows)) {
+          this.online = true;
+          this.remote.board[cls] = r.body.rows;
+          emit('ps:board', { cls });
+        }
+      } catch (e) {
+        offline();
+      }
+      return this.board(cls);
+    },
+    /** "id.token": paste into another device's useSyncCode() to share one profile */
+    syncCode() {
+      return net.enabled ? who().id + '.' + who().token : '';
+    },
+    /** link this device to an existing profile; the server copy replaces local progress. Resolves true on success. */
+    async useSyncCode(code) {
+      const m = /^([A-Za-z0-9-]{8,64})\.([A-Za-z0-9._-]{16,128})$/.exec(String(code || '').trim());
+      if (!net.enabled || !m) return false;
+      const prev = who();
+      if (net.syncing) await net.syncing;
+      net.who = { id: m[1], token: m[2] };
+      try {
+        const r = await api('GET', 'profile/' + encodeURIComponent(m[1]), undefined, { auth: true });
+        if (r.status !== 200 || !r.body || !obj(r.body.data)) throw new Error('no profile');
+        store.set(ID_KEY, JSON.stringify(net.who));
+        net.fresh = false;
+        this.online = net.synced = true;
+        net.dirty = false;
+        adopt(r.body.data, num(r.body.updatedAt) ? r.body.updatedAt : Date.now());
+        this.remote.board = {};
+        this.fetchBoard('all');
+        return true;
+      } catch (e) {
+        net.who = prev;
+        return false;
+      }
     },
     rank(nodeId) {
       return this.data.tree[nodeId] || 0;
