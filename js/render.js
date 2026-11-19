@@ -1220,12 +1220,12 @@
       if (s.kind === 'meteor') {
         // the hero's own strike: a thin aiming reticle with four ticks, never a filling disc (those are the rift's)
         const rr = s.r * (1.2 - 0.2 * t);
-        ctx.globalAlpha = 0.4;
+        ctx.globalAlpha = 0.22;
         ctx.strokeStyle = '#ffe2b8'; ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 8]);
         ctx.beginPath(); ctx.arc(s.x, s.y, rr, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.globalAlpha = 0.6; ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.45; ctx.lineWidth = 2;
         ctx.beginPath();
         for (let i = 0; i < 4; i++) {
           const a = i * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), sn = Math.sin(a);
