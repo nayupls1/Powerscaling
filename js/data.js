@@ -305,6 +305,9 @@
     molten:   { name: 'Molten',   color: '#ff5a3d', text: 'Leaves erupting ground in its wake.' },
     brooding: { name: 'Brooding', color: '#b6ff5a', text: 'Keeps spawning lesser enemies.' },
     frenzied: { name: 'Frenzied', color: '#ffd35c', text: 'Faster, and faster still when wounded.' },
+    splitting: { name: 'Splitting', color: '#5ff0d0', text: 'Breaks into three lesser copies of itself when it dies.' },
+    warding:  { name: 'Warding',  color: '#bff3ff', text: 'Shields the horde around it, as a Warder does.' },
+    grasping: { name: 'Grasping', color: '#ff7ad9', text: 'Drags you toward it while it is close.' },
   };
   D.AFFIX_IDS = Object.keys(D.AFFIXES);
 

@@ -782,6 +782,11 @@
         ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 7, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, e.life / 15)); ctx.stroke(); ctx.globalAlpha = 1;
       }
+      if (e.affixes && (e.affixes.includes('warding') || e.affixes.includes('grasping'))) {
+        const gr = e.affixes.includes('grasping');
+        ctx.globalAlpha = 0.45; ctx.strokeStyle = gr ? '#ff7ad9' : '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * (gr ? 26 : 12);
+        ctx.beginPath(); ctx.arc(e.x, e.y, gr ? 330 : 150, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
       if (e.def.ward) {
         // the Warder's reach: pale, thin and dotted, nothing like the red of a blast
         ctx.globalAlpha = 0.5; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * 12;

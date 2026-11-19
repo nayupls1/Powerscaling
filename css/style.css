@@ -349,6 +349,7 @@ i[data-icon], .count i { display: inline-flex; }
 .feat.done .feat-text b { color: var(--gilt); }
 .feat.done .feat-ess { color: #7fe0a0; }
 .over-feats { margin: 4px 0 14px; }
+.over-sub { margin: 16px 0 8px; }
 .over-feats h3 small { font-family: var(--body); font-size: 0.85rem; font-weight: 700; color: #cdb8ff; margin-left: 8px; }
 .chip.feat-chip { --rc: rgba(240, 185, 74, 0.6); color: #ffe2a6; }
 .tab small { font-weight: 700; opacity: 0.7; margin-left: 4px; }

@@ -122,6 +122,35 @@
         PS.FX.puff(e.x, e.y, '#b6ff5a', 8);
       },
     },
+    splitting: {
+      death(e) {
+        // three of its own kind, tougher than the rank and file but nothing like an elite
+        for (let i = 0; i < 3; i++) {
+          const a = (i * TAU) / 3 + U.rnd();
+          const c = E.spawn(e.def.id, e.x + Math.cos(a) * e.r, e.y + Math.sin(a) * e.r, { hpMult: 2.5 });
+          c.kx = Math.cos(a) * 220; c.ky = Math.sin(a) * 220; c.spawnT = 0.25;
+        }
+        PS.FX.puff(e.x, e.y, '#5ff0d0', 12);
+      },
+    },
+    warding: {
+      spawn(e) { e.afT = 0.4; },
+      update(e, dt, G) {
+        e.afT -= dt;
+        if (e.afT > 0) return;
+        e.afT = 0.4;
+        const until = G.time + 0.6;
+        G.grid.query(e.x, e.y, 150, (o) => { if (o !== e && !o.big && o.def.ai !== 'warder') { o.wardT = until; o.wardCut = 0.33; } });
+      },
+    },
+    grasping: {
+      // a steady tug while it is near: not enough to pin the hero, enough to spoil a line of retreat. A dash breaks free
+      update(e, dt, G, p, d) {
+        if (d > 330 || d < 50 || p.dashT > 0) return;
+        const pull = 38 * dt;
+        p.x += ((e.x - p.x) / d) * pull; p.y += ((e.y - p.y) / d) * pull;
+      },
+    },
     frenzied: {
       spawn(e) { e.speed *= 1.25; },
       update(e) { e.rage = e.hp < e.maxHp * 0.5; },

@@ -949,6 +949,14 @@
             <h3>Reactions set off</h3>
             ${rx.length ? `<div class="chips">${rx.map(([name, n]) => `<span class="chip"><i class="dot" style="background:${elColor(srcEl(name))}"></i>${esc(name)} <em>${U.fmtNum(n)}</em></span>`).join('')}</div>`
               : '<p class="muted">None. Skills of two different elements react when both hit the same enemy.</p>'}
+            ${(() => {
+              const p = G.player, bits = [];
+              if (G.sigil) bits.push(`<span class="chip" data-tip="${esc(D.SIGILS[G.sigil].text)}">${ico(D.SIGILS[G.sigil].icon, 15)} ${esc(D.SIGILS[G.sigil].name)}</span>`);
+              for (const id of p.pacts) bits.push(`<span class="chip pact" data-tip="${esc(D.PACTS[id].gift)}<br><span class='off'>${esc(D.PACTS[id].price)}</span>">${ico(D.PACTS[id].icon, 15)} ${esc(D.PACTS[id].name)}</span>`);
+              if (G.breaches || G.breachesLost) bits.push(`<span class="chip">${ico('rift', 15)} Breaches sealed <em>${G.breaches}</em>${G.breachesLost ? ` of ${G.breaches + G.breachesLost}` : ''}</span>`);
+              if (G.hoarders) bits.push(`<span class="chip">${ico('coin', 15)} Hoarders caught <em>${G.hoarders}</em></span>`);
+              return bits.length ? `<h3 class="over-sub">Along the way</h3><div class="chips">${bits.join('')}</div>` : '';
+            })()}
             <p class="muted seed">Seed ${esc(G.seed)}</p>
           </div>
         </div>
