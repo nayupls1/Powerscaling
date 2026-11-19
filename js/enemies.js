@@ -158,6 +158,7 @@
   };
 
   let nextId = 1;
+  let leaps = 0; // toad landings marked right now, recounted every frame
 
   const E = {
     DEFS,
@@ -207,6 +208,8 @@
       const burnMul = s.statusDmg * (aff.fire >= 2 ? 1.6 : 1) * (aff.fire >= 6 ? 2 : 1) * (f.combustion ? 1.5 : 1);
       const poisMul = s.statusDmg * (aff.venom >= 2 ? 1.5 : 1);
       const venom6 = aff.venom >= 6;
+      leaps = 0;
+      for (const h of G.hazards) if (h.leap && !h.dead) leaps++;
       const pandemic = !!f.pandemic;
       const parity = G.frame & 1;
 
@@ -368,11 +371,13 @@
       if (e.state === 0) {
         moveTo(e, dx, dy, d, sp, dt);
         e.st -= dt;
-        if (e.st <= 0 && d < L.range && d > 70) {
+        // only a couple may be in the air at once: a screen of landing marks is noise, not a threat to read
+        if (e.st <= 0 && d < L.range && d > 70 && leaps < (PS.Director.minutes() > 9 ? 3 : 2)) {
+          leaps++;
           e.state = 1; e.st = 0.65;
           e.tx = p.x; e.ty = p.y; e.dx = e.x; e.dy = e.y;
           // it lands where you stood when it crouched: step off the mark
-          C.hazard({ kind: 'circle', x: e.tx, y: e.ty, r: L.r * (e.elite ? 1.35 : 1), delay: 1.0, dmg: L.dmg * PS.Director.dmgMult() * (e.elite ? 1.4 : 1), color: '#3fbf6a', owner: e });
+          C.hazard({ kind: 'circle', x: e.tx, y: e.ty, r: L.r * (e.elite ? 1.35 : 1), delay: 1.0, dmg: L.dmg * PS.Director.dmgMult() * (e.elite ? 1.4 : 1), color: '#3fbf6a', owner: e, leap: true });
         }
       } else if (e.state === 1) {
         e.st -= dt;
