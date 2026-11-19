@@ -221,6 +221,7 @@
       e.score = 2500 * (idx + 1) * (endlessK ? 1 + endlessK : 1);
       G.boss = e;
       e.bornAt = G.time;
+      e.hurtAt = G.dmgTaken;
       PS.UI.bossIntro(def);
       PS.Audio.play('bossWarn');
       PS.Audio.music('boss');
@@ -292,6 +293,7 @@
       const G = PS.G;
       if (G.boss === e) G.boss = null;
       G.bossesKilled++;
+      if (G.dmgTaken === e.hurtAt) G.flawless++;
       G.bossLog.push({ name: e.def.name, at: Math.round(e.bornAt), took: Math.round(G.time - e.bornAt) });
       G.eprojs.length = 0;
       for (const h of G.hazards) if (h.owner === e) h.dead = true;

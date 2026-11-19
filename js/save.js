@@ -24,6 +24,7 @@
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
+    feats: {},           // featId -> when it was earned (ms)
     depth: { max: 0, sel: 0, clear: {} },                 // Rift Depths: deepest unlocked, the one selected, deepest cleared per class
     daily: { date: '', best: 0, attempts: 0, runs: [] },  // this player's daily rift for `date` (UTC); starts over each day
     updatedAt: 0,        // ms, bumped on every save(); decides which copy wins when syncing with the server
@@ -44,6 +45,7 @@
     if (!num(out.essenceTotal)) out.essenceTotal = 0;
     if (typeof out.name !== 'string') out.name = '';
     out.tree = obj(d.tree);
+    out.feats = obj(d.feats);
     const dp = obj(d.depth), cap = PS.Data ? PS.Data.DEPTH_MAX : 10;
     const max = num(dp.max) ? Math.max(0, Math.min(cap, Math.floor(dp.max))) : 0;
     out.depth = { max, sel: num(dp.sel) ? Math.max(0, Math.min(max, Math.floor(dp.sel))) : 0, clear: obj(dp.clear) };

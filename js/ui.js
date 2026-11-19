@@ -52,6 +52,7 @@
       click($('navPlay'), () => this.showScreen('scrClass'));
       click($('navDaily'), () => this.showScreen('scrDaily'));
       click($('navTree'), () => this.showScreen('scrTree'));
+      click($('navFeats'), () => this.showScreen('scrFeats'));
       click($('navBoard'), () => this.showScreen('scrBoard'));
       click($('navHelp'), () => this.showScreen('scrHelp'));
       click($('navSettings'), () => this.showScreen('scrSettings'));
@@ -117,6 +118,7 @@
       if (id === 'scrTree') this.renderTree();
       if (id === 'scrBoard') this.renderBoard();
       if (id === 'scrHelp') this.renderHelp();
+      if (id === 'scrFeats') this.renderFeats();
       if (id === 'scrSettings') this.renderSettings($('settingsBody'));
     },
     renderTitle() {
@@ -124,6 +126,8 @@
       $('navEssence').innerHTML = `${ico('essence', 14)} ${U.fmtNum(d.essence)}`;
       const affordable = D.META.some((n) => (d.tree[n.id] || 0) < n.max && this.nodeOpen(n) && d.essence >= D.metaCost(n, d.tree[n.id] || 0));
       $('navTree').classList.toggle('has-news', affordable);
+      const fs = PS.Feats.summary();
+      $('navFeatsPill').innerHTML = `${ico('trophy', 13)} ${fs.done} / ${fs.total}`;
       const scope = PS.Save.boardScope ? PS.Save.boardScope('all') : 'device';
       const top = PS.Save.board().slice(0, 5);
       const day = this.dailyInfo();
@@ -371,6 +375,19 @@
         }).join('')}</tbody></table>`;
     },
 
+    renderFeats() {
+      const have = PS.Save.data.feats, F = PS.Feats, s = F.summary();
+      $('featsScope').innerHTML = `${s.done} of ${s.total} earned` + (s.left ? `, ${ico('essence', 13)} ${U.fmtNum(s.left)} Essence still to claim` : '');
+      $('featsBody').innerHTML = Object.keys(F.GROUPS).map((g) => {
+        const list = F.LIST.filter((f) => f.group === g);
+        return `<section class="feat-group"><h3>${F.GROUPS[g]} <small>${list.filter((f) => have[f.id]).length} / ${list.length}</small></h3><ul class="feat-list">${list.map((f) => `
+          <li class="feat${have[f.id] ? ' done' : ''}">
+            <span class="feat-ico">${ico(have[f.id] ? f.icon : 'lock', 22)}</span>
+            <span class="feat-text"><b>${esc(f.name)}</b><span>${esc(f.text)}</span></span>
+            <span class="feat-ess">${have[f.id] ? ico('check', 14) : ico('essence', 13) + ' ' + f.essence}</span>
+          </li>`).join('')}</ul></section>`;
+      }).join('');
+    },
     renderHelp() {
       const k = (s) => `<kbd>${s}</kbd>`;
       $('helpBody').innerHTML = `
@@ -393,6 +410,7 @@
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it, then slay enough of what pours out before its timer burns down, and it leaves a relic.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
@@ -803,6 +821,8 @@
             <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' : ''}</span>
           </div>
         </div>
+        ${res.feats && res.feats.length ? `<section class="over-feats"><h3>Feats earned <small>+${U.fmtNum(res.feats.reduce((n, id) => n + PS.Feats.BY_ID[id].essence, 0))} Essence</small></h3>
+          <div class="chips">${res.feats.map((id) => { const f = PS.Feats.BY_ID[id]; return `<span class="chip feat-chip" data-tip="${esc(f.text)}">${ico(f.icon, 15)} ${esc(f.name)} <em>+${f.essence}</em></span>`; }).join('')}</div></section>` : ''}
         <div class="over-grid">
           <dl class="over-stats">
             <div><dt>Class</dt><dd style="color:${c.color}">${c.name}</dd></div>

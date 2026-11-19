@@ -52,6 +52,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Rift Depths** — beating the Rift Lord opens Depth 1, and winning at your deepest depth opens the next, up to 10. Each depth adds one named modifier on top of all the ones before it (sturdier hordes, elites in pairs, bosses that enrage early), hardens the horde by a further 6% health and 3% damage, and adds 15% to score and 10% to Essence. Depth 10 is meant for a full skill tree and clean play.
 - **Daily rift** — one seed a day, the same for everyone: a set class, one of eight mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence.
 - **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
+- **Feats** — 44 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 
@@ -90,6 +91,7 @@ js/util.js        math helpers, spatial hash
 js/save.js        local storage plus server sync: progress, settings, leaderboard
 js/audio.js       synthesized sound effects and music
 js/icons.js       vector glyph library used by the UI and canvas
+js/feats.js       feats: one-time goals that pay Essence
 js/data.js        elements, rarities, affinities, tomes, relics, pacts, meta tree, reactions, elite affixes, depths, mutators
 js/skills.js      skill definitions and behaviour
 js/classes.js     classes, abilities, talent paths
