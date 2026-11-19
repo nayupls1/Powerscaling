@@ -334,6 +334,7 @@
     },
     flash(color, a) {
       const G = PS.G;
+      if (PS.Save.data.settings.flash === false) a *= 0.2; // switched off in Settings: a hint of colour, no more
       G.flashA = Math.max(G.flashA, a);
       G.flashCol = color;
     },

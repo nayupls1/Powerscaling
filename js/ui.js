@@ -597,6 +597,7 @@
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
+        ${tog('flash', 'Screen flashes', 'Full-screen flashes on big hits, bombs and evolutions')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
         <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>
           <select data-quality>${[['auto', 'Auto'], ['high', 'Sharp'], ['low', 'Fast']].map(([v, l]) => `<option value="${v}"${(s.quality || 'auto') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
