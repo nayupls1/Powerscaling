@@ -813,6 +813,7 @@
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-tags">
             ${res.unlockedDepth ? `<span class="tag gold">${ico('key', 14)} Rift Depth ${res.unlockedDepth} unlocked</span>` : ''}
+            ${res.unlockedClass ? `<span class="tag gold">${ico(CLASS_ICON[res.unlockedClass], 14)} ${D.CLASSES[res.unlockedClass].name} unlocked</span>` : ''}
             ${res.best ? `<span class="tag gold">${G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
             ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}
             ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}

@@ -366,7 +366,7 @@
       // the daily rift lends everyone the full tree, so it keeps its own best score
       const best = G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
       if (!G.daily) d.stats.bestScore = Math.max(d.stats.bestScore, score);
-      G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0 };
+      G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
       if (G.daily && !G.bot) {
         if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
         d.daily.attempts++;
