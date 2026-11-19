@@ -192,6 +192,7 @@ i[data-icon], .count i { display: inline-flex; }
   padding: 0.52em 0.9em; cursor: pointer; text-align: left; transition: background 0.12s, border-color 0.12s, padding 0.12s;
 }
 .nav-row:hover, .nav-row:focus-visible { background: rgba(241, 233, 214, 0.07); border-left-color: var(--gilt); padding-left: 1.15em; }
+.nav-row.pad-focus, .btn-enter.pad-focus { outline: 3px solid #fff; outline-offset: 2px; }
 .nav-row.has-news { border-left-color: var(--rift); }
 .side-card { background: rgba(25, 19, 44, 0.9); border: 2px solid var(--line); border-radius: 16px; padding: 20px 22px; }
 .side-card h3 { margin-bottom: 12px; }

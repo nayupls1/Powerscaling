@@ -9,7 +9,7 @@
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
-  let codexTab = 'relics', sigilPeek = '';
+  let codexTab = 'relics', sigilPeek = '', padNav = 0;
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -546,7 +546,7 @@
             <li>${k('Esc')}<span>Pause and inspect your build</span></li>
             <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
           </ul>
-          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
+          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus up and down walk the list, left and right change tabs, A confirms and B goes back.</p>
         </div>
         <div class="help-col">
           <h3>The run</h3>
@@ -1173,8 +1173,23 @@
         if (btn === 'a') PS.Game.again();
         else if (btn === 'b') PS.Game.toMenu();
       } else if (st === 'menu') {
-        if (lastScreen === 'scrTitle') { if (btn === 'a') this.showScreen('scrClass'); else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard'); }
+        if (lastScreen === 'scrTitle') {
+          // up and down walk the menu, A opens the row in focus; X and Y stay as shortcuts
+          const rows = [...document.querySelectorAll('#scrTitle .mainnav button')];
+          if (btn === 'up' || btn === 'down') {
+            padNav = (padNav + (btn === 'up' ? rows.length - 1 : 1)) % rows.length;
+            rows.forEach((r, i) => r.classList.toggle('pad-focus', i === padNav));
+            PS.Audio.play('uiHover');
+          } else if (btn === 'a') rows[padNav].click();
+          else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard');
+        }
         else if (btn === 'b') this.showScreen('scrTitle');
+        else if ((lastScreen === 'scrCodex' || lastScreen === 'scrBoard') && (btn === 'left' || btn === 'right')) {
+          const tabs = [...document.querySelectorAll(`#${lastScreen} .tab`)], i = tabs.findIndex((t) => t.classList.contains('sel'));
+          if (tabs.length) tabs[(i + (btn === 'left' ? tabs.length - 1 : 1)) % tabs.length].click();
+        } else if (btn === 'up' || btn === 'down') {
+          document.getElementById('screens').scrollBy({ top: btn === 'up' ? -260 : 260, behavior: 'smooth' });
+        }
         else if (lastScreen === 'scrClass') {
           const ids = D.CLASS_IDS, i = ids.indexOf(selClass);
           if (btn === 'left' || btn === 'right') { selClass = ids[(i + (btn === 'left' ? ids.length - 1 : 1)) % ids.length]; this.renderClasses(); PS.Audio.play('uiHover'); }
