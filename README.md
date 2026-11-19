@@ -83,7 +83,7 @@ Every direct hit from a skill, an ability or a minion marks the enemy with its e
 
 ### Depths and mutators
 
-A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, damage and speed, elite and horde timing, affix count, chest cost, healing, and a few hero-side knobs. Rift Depths and daily mutators are just functions that turn those knobs, so adding one is a line in `DEPTHS` or `MUTATORS`. With the full tree, the bot's careless player model (`--sloppy`) wins about four runs in five at depth 0, about two in three at depth 6 and one in seven at depth 10; the careful one still wins most of its runs there. Nothing in the rules moves the boss schedule, which the server's run validation relies on.
+A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, damage and speed, elite and horde timing, affix count, chest cost, healing, and a few hero-side knobs. Rift Depths and daily mutators are just functions that turn those knobs, so adding one is a line in `DEPTHS` or `MUTATORS`. With the full tree, the bot's careless player model (`--sloppy`) wins nearly every run at depth 0, about six in seven at depth 3, three in five at depth 6 and one in ten at depth 10; the careful one still wins most of its runs there. Without the tree, the careful model wins about four runs in five at depth 0. Nothing in the rules moves the boss schedule, which the server's run validation relies on.
 
 ### Seeds
 
