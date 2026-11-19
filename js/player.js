@@ -82,6 +82,7 @@
       for (const t of this.tomes) t.def.apply(s, t.val);
       for (const id in this.boons) D.BOONS[id].apply(s, this.boons[id]);
       for (const id of this.pacts) if (D.PACTS[id].stats) D.PACTS[id].stats(s);
+      if (G && G.sigil && D.SIGILS[G.sigil].stats) D.SIGILS[G.sigil].stats(s);
       for (const id in this.relics) D.RELICS[id].apply(s, this.relics[id], this);
       cls.branches.forEach((br, bi) => {
         for (let i = 0; i < this.talents[bi]; i++) br.nodes[i].apply(s, this);

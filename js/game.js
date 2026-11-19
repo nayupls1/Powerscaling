@@ -61,6 +61,10 @@
         ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
         breaches: 0, breachesLost: 0, flawless: 0, hoarders: 0, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
+      // one sigil, if its feat is earned; tools and the bot may ask for any (opts.sigil), the daily rift allows none
+      const sg = daily ? null : D.SIGILS[opts.bot ? opts.sigil : save.sigil];
+      G.sigil = sg && (opts.bot || save.feats[sg.feat]) ? sg.id : '';
+      if (G.sigil && sg.rules) sg.rules(G.rules);
       PS.G = G;
       PS.FX.reset();
       PS.Director.reset();
@@ -70,6 +74,7 @@
         const r = PS.Rewards.rollRelic(p, 0);
         if (r) p.addRelic(r.id);
       }
+      if (G.sigil && D.SIGILS[G.sigil].start) D.SIGILS[G.sigil].start(G, p);
       if (m.startLevels) {
         for (let i = 0; i < m.startLevels; i++) { p.level++; p.pendingLevels++; }
         p.xpNext = PS.xpFor(p.level);

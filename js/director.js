@@ -256,7 +256,7 @@
       }
       this.breachT -= dt;
       if (this.breachT <= 0 && !bossAlive) {
-        this.breachT = 115;
+        this.breachT = G.sigilBreach ? 58 : 115;
         if (!G.props.some((x) => x.kind === 'breach')) {
           const a = U.rnd() * TAU, d = U.rand(520, 760);
           G.props.push({ kind: 'breach', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
@@ -294,7 +294,7 @@
       if (!b) return;
       this.breach = null;
       b.dead = true;
-      this.breachT = Math.max(this.breachT, 70);
+      this.breachT = Math.max(this.breachT, PS.G.sigilBreach ? 35 : 70);
       if (won) {
         G.breaches++;
         G.score += 400 + 40 * b.need;

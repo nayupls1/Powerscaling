@@ -57,6 +57,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
 - **Codex** — a record of every relic you have held, evolution awakened, reaction set off and pact struck, and a bestiary with a note and a kill count for each enemy. Undiscovered entries stay hidden.
 - **Feats** — 49 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
+- **Sigils** — ten perks, each unlocked by a feat. Wear one into a run: 80 gold in your purse, a spare dash, stronger reactions, or a dark altar waiting at your feet. The daily rift allows none.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 

@@ -133,6 +133,22 @@
   };
   for (const id in D.PACTS) D.PACTS[id].id = id;
 
+  /* ---------- Sigils: one perk worn into a run, each unlocked by a feat (PS.Feats). The daily rift allows none ---------- */
+  // feat: the feat id that unlocks it. stats(s) on every recalc, rules(r) and start(G, p) once when the run begins.
+  D.SIGILS = {
+    purse:    { name: 'Sigil of the Purse',   icon: 'coin',     feat: 'gold5k',   text: 'Begin with 80 gold.',                                   start: (G, p) => { p.gold += 80; } },
+    scholar:  { name: 'Sigil of the Scholar', icon: 'book',     feat: 'lvl40',    text: '+10% experience.',                                      stats: (s) => { s.xp += 0.1; } },
+    bulwark:  { name: 'Sigil of the Bulwark', icon: 'shield',   feat: 'win',      text: '+20 max health and +6 armor.',                          stats: (s) => { s.maxHp += 20; s.armor += 6; } },
+    wind:     { name: 'Sigil of the Wind',    icon: 'feather',  feat: 'flawless', text: '+1 dash charge, but 10% less max health.',              stats: (s) => { s.dashCharges += 1; s.hpMult -= 0.1; } },
+    gambler:  { name: 'Sigil of the Gambler', icon: 'dice',     feat: 'legend',   text: '+15 luck and one more reroll.',                         stats: (s) => { s.luck += 15; }, start: (G, p) => { p.rerolls += 1; } },
+    warlord:  { name: 'Sigil of the Warlord', icon: 'skull',    feat: 'boss3',    text: '+15% damage to elites and bosses. Elites arrive 25% more often.', stats: (s) => { s.bossDmg += 0.15; }, rules: (r) => { r.eliteEvery *= 0.8; } },
+    alchemy:  { name: 'Sigil of Alchemy',     icon: 'flask',    feat: 'rx8',      text: 'Reactions hit 25% harder.',                             rules: (r) => { r.react *= 1.25; } },
+    oath:     { name: 'Sigil of the Oath',    icon: 'blood',    feat: 'pact1',    text: 'A dark altar stands beside you when the run begins.',    start: (G, p) => { G.props.push({ kind: 'altar', x: p.x + 150, y: p.y - 40, r: 64, dead: false, t: 0, charge: 0, bob: 0 }); } },
+    breaker:  { name: 'Sigil of the Breaker', icon: 'rift',     feat: 'breach4',  text: 'Breaches open twice as often.',                         start: (G) => { G.sigilBreach = true; } },
+    star:     { name: 'Sigil of the Star',    icon: 'sun',      feat: 'solenne',  text: '+8% damage, +8% attack speed and +8% move speed.',      stats: (s) => { s.dmg += 0.08; s.atkSpd += 0.08; s.speed *= 1.08; } },
+  };
+  for (const id in D.SIGILS) D.SIGILS[id].id = id;
+
   /* ---------- Relics: found in chests and dropped by bosses. No slot limit. ---------- */
   const affRelic = (el, name, icon) => ({
     name, icon, tier: 1, max: 2,

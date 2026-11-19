@@ -196,6 +196,7 @@
             <div class="kit"><span class="kit-ico" style="--c:#bcd0ff">${ico('dash', 26)}</span><div><b>${c.dashName}</b><small>Dash</small><p>A quick burst of movement. You cannot be hurt while dashing.${c.passive ? ' ' + c.passive : ''}</p></div></div>
           </div>
           ${this.depthPicker()}
+          ${this.sigilPicker()}
           <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
         </div>
         <div class="cd-tree">
@@ -211,6 +212,25 @@
       if (!locked) click(begin, () => PS.Game.start(selClass));
       const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
       step('depthDown', -1); step('depthUp', 1);
+      document.querySelectorAll('#classDetail .sigil').forEach((b) => click(b, () => {
+        if (b.disabled) return;
+        d.sigil = d.sigil === b.dataset.sigil ? '' : b.dataset.sigil;
+        PS.Save.save(); this.renderClasses();
+      }));
+    },
+    /** one perk to wear into the run; each is unlocked by a feat */
+    sigilPicker() {
+      const d = PS.Save.data, ids = Object.keys(D.SIGILS), open = ids.filter((id) => d.feats[D.SIGILS[id].feat]);
+      if (d.sigil && !open.includes(d.sigil)) d.sigil = '';
+      const cur = D.SIGILS[d.sigil];
+      return `<div class="depth sigils">
+        <div class="depth-head"><span><b>Sigil</b><small>${cur ? esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run.'}</small></span><small>${open.length} / ${ids.length}</small></div>
+        <div class="sigil-row">${ids.map((id) => {
+          const s = D.SIGILS[id], ok = open.includes(id), f = PS.Feats.BY_ID[s.feat];
+          const tip = `<b>${esc(s.name)}</b><br>${esc(s.text)}` + (ok ? '' : `<br><span class='off'>Locked. Feat: ${esc(f.name)} (${esc(f.text)})</span>`);
+          return `<button class="sigil${id === d.sigil ? ' sel' : ''}${ok ? '' : ' locked'}" data-sigil="${id}" data-tip="${tip}" aria-label="${esc(s.name)}" ${ok ? '' : 'disabled'}>${ico(ok ? s.icon : 'lock', 20)}</button>`;
+        }).join('')}</div>
+      </div>`;
     },
     /** Rift Depth stepper on the class screen: the modifiers stack, so the list shows everything in force */
     depthPicker() {
@@ -449,14 +469,15 @@
       $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
     },
     renderFeats() {
-      const have = PS.Save.data.feats, F = PS.Feats, s = F.summary();
+      const have = PS.Save.data.feats, F = PS.Feats, s = F.summary(), sigilOf = {};
+      for (const id in D.SIGILS) sigilOf[D.SIGILS[id].feat] = D.SIGILS[id];
       $('featsScope').innerHTML = `${s.done} of ${s.total} earned` + (s.left ? `, ${ico('essence', 13)} ${U.fmtNum(s.left)} Essence still to claim` : '');
       $('featsBody').innerHTML = Object.keys(F.GROUPS).map((g) => {
         const list = F.LIST.filter((f) => f.group === g);
         return `<section class="feat-group"><h3>${F.GROUPS[g]} <small>${list.filter((f) => have[f.id]).length} / ${list.length}</small></h3><ul class="feat-list">${list.map((f) => `
           <li class="feat${have[f.id] ? ' done' : ''}">
             <span class="feat-ico">${ico(have[f.id] ? f.icon : 'lock', 22)}</span>
-            <span class="feat-text"><b>${esc(f.name)}</b><span>${esc(f.text)}</span></span>
+            <span class="feat-text"><b>${esc(f.name)}</b><span>${esc(f.text)}</span>${sigilOf[f.id] ? `<small class="feat-sigil">${ico(sigilOf[f.id].icon, 12)} Unlocks the ${esc(sigilOf[f.id].name)}</small>` : ''}</span>
             <span class="feat-ess">${have[f.id] ? ico('check', 14) : ico('essence', 13) + ' ' + f.essence}</span>
           </li>`).join('')}</ul></section>`;
       }).join('');
@@ -842,6 +863,7 @@
           <div class="chips">${p.tomes.map((t) => `<span class="chip" data-tip="+${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 15)} ${t.def.name.replace('Tome of ', '')} <em>${t.level}</em></span>`).join('') || '<span class="muted">None yet.</span>'}</div>
           <h3>Relics</h3>
           <div class="chips">${p.relicOrder.map((id) => { const r = D.RELICS[id]; return `<span class="chip r-${D.RARITY[r.tier].id}" style="--rc:${D.RARITY[r.tier].color}" data-tip="${esc(r.desc)}">${ico(r.icon, 15)} ${esc(r.name)}${p.relics[id] > 1 ? ` <em>×${p.relics[id]}</em>` : ''}</span>`; }).join('') || '<span class="muted">Open chests to find relics.</span>'}</div>
+          ${G.sigil ? `<h3>Sigil</h3><div class="chips"><span class="chip" data-tip="${esc(D.SIGILS[G.sigil].text)}">${ico(D.SIGILS[G.sigil].icon, 15)} ${esc(D.SIGILS[G.sigil].name)}</span></div>` : ''}
           ${p.pacts.length ? `<h3>Pacts</h3><div class="chips">${p.pacts.map((id) => { const b = D.PACTS[id]; return `<span class="chip pact" data-tip="<b>${esc(b.name)}</b><br>${esc(b.gift)}<br><span class='off'>${esc(b.price)}</span>">${ico(b.icon, 15)} ${esc(b.name)}</span>`; }).join('')}</div>` : ''}
           ${Object.keys(p.boons).length ? `<h3>Blessings</h3><div class="chips">${Object.keys(p.boons).map((id) => { const b = D.BOONS[id]; return `<span class="chip">${ico(b.icon, 15)} +${b.fmt(p.boons[id])} ${b.stat.toLowerCase()}</span>`; }).join('')}</div>` : ''}
           <h3>Stats</h3>
@@ -1086,6 +1108,7 @@
         if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
         else if (btn === 'a') this.pickCard(padCard);
         else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
+        else if (btn === 'b' && curSpec.kind === 'pact') PS.Game.choose(curSpec, null); // walk away
         else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'paused') {
         if (btn === 'b' || btn === 'a') PS.Game.resume();
