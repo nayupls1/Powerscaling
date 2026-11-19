@@ -195,6 +195,12 @@ With `--seed`, each run gets its own seed derived from it, so two reports with t
 node tools/stress.js 3
 ```
 
+`tools/determinism.js` plays a seed, then a different run, then the same seed again in one page, for every class, and fails unless both plays match exactly. It catches state a run leaves behind (a module variable, a Director field that `reset()` forgets), which would make a shared seed or the daily rift play differently depending on what was played before:
+
+```sh
+node tools/determinism.js 5
+```
+
 `tools/perf.js` measures frame cost. It plays a seeded run with the bot and, at each checkpoint, renders a burst of real frames, splitting the time into simulation, HUD and each canvas layer:
 
 ```sh
