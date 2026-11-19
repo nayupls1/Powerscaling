@@ -468,6 +468,7 @@
   const DANGER = '#ff2f4e', DANGER_INK = '#2a0410';
 
   function drawHazards(G) {
+    const few = G.hazards.length <= 12;
     for (const h of G.hazards) {
       if (h.kind === 'circle') {
         if (!visible(h.x, h.y, h.r + 8)) continue;
@@ -479,9 +480,12 @@
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
         ctx.globalAlpha = 0.22 + 0.28 * t;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r * t, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.7;
-        ctx.strokeStyle = DANGER_INK; ctx.lineWidth = 7;
-        ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        if (few) {
+          // the dark backing costs a stroke apiece: worth it while there are a handful, not when a boss carpets the floor
+          ctx.globalAlpha = 0.7;
+          ctx.strokeStyle = DANGER_INK; ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        }
         ctx.globalAlpha = 1;
         ctx.strokeStyle = hot ? '#ffffff' : DANGER; ctx.lineWidth = 3.5;
         ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
