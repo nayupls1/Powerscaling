@@ -230,7 +230,9 @@
         }
         if (near < 2) {
           const a = U.rnd() * TAU, d = U.rand(520, 860);
-          G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: U.rnd() * 6 });
+          // now and then a chest that asks no gold: an elite stands guard inside it
+          const cursed = this.minutes() > 2.5 && U.rnd() < 0.22 && !G.props.some((x) => x.cursed);
+          G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: U.rnd() * 6, cursed });
         }
         U.compact(G.props);
       }
@@ -559,7 +561,20 @@
         pr.t += dt;
         const d2 = U.dist2(pr.x, pr.y, p.x, p.y);
         if (pr.kind === 'chest') {
-          if (d2 < 38 * 38) {
+          if (pr.cursed) {
+            if (d2 < 38 * 38) {
+              pr.dead = true;
+              const pool = ['imp', 'hound', 'brute', 'wraith'].filter((id) => this.minutes() >= TABLE.find((r) => r.id === id).from);
+              const a = U.rnd() * TAU;
+              const e = PS.Enemies.spawn(U.pick(pool), pr.x + Math.cos(a) * 90, pr.y + Math.sin(a) * 90, { elite: true });
+              e.spawnT = 0.9;
+              PS.FX.portal(e.x, e.y, 70, '#c06bff');
+              PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
+              PS.UI.toast(`The chest was guarded: ${e.label}`, 'skull');
+              G.cursedOpened = (G.cursedOpened || 0) + 1;
+              PS.Game.openChest(1, 1);
+            }
+          } else if (d2 < 38 * 38) {
             const cost = this.chestPrice();
             if (p.gold >= cost) {
               p.gold -= cost;

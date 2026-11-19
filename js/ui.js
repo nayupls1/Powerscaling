@@ -507,7 +507,7 @@
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
-          <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it, then slay enough of what pours out before its timer burns down, and it leaves a relic.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>

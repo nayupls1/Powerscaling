@@ -44,6 +44,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 52 relics from chests, elites and bosses, and blessings from shrines on the map.
 - **Altars and breaches** — dark altars offer one of nine pacts: a strong gift with a price that lasts the run (35% more damage for a fifth of your health, a rare relic for elites that come 40% more often), or you can walk away. Breaches are a trial: step in to wake one, then slay enough of what pours out before the timer on its rim burns down, and it leaves a relic behind.
+- **Guarded chests** — some chests on the map ask no gold. Open one and an elite steps out of it; you keep the relic either way, and the elite drops another if you can kill it.
 - **Hoarders** — every couple of minutes a Rift Hoarder scurries out with a sack of gold and a relic and runs for it, shedding coins as it is hurt. Kill it before the ring around it empties, or it slips away.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
 - **Red means danger** — every enemy blast, beam and shockwave is drawn in one reserved red with a dashed rim that flashes white before it lands, whoever cast it. The hero's own ground effects are soft-edged, and their strikes are marked with a thin reticle, so a glance tells you which circles to leave.
@@ -170,7 +171,7 @@ tools/batch.sh "--sloppy" 14               # two runs per class in parallel
 tools/afk.sh "300 600"                   # idle test: play to T seconds, then let go of the controls
 ```
 
-Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--seed=<text>` (reproducible: the same seed, class and flags replay the same run), `--depth=<0-10>`, `--mutator=<id>`, `--daily[=YYYY-MM-DD]` (that day's rift: its seed, class and mutator, full tree), `--quiet`.
+Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--seed=<text>` (reproducible: the same seed, class and flags replay the same run), `--depth=<0-10>`, `--mutator=<id>`, `--sigil=<id>`, `--daily[=YYYY-MM-DD]` (that day's rift: its seed, class and mutator, full tree), `--quiet`.
 
 `tools/curve.js` is the balance report. It plays many runs in parallel and averages, per time bucket, the hero's level and loadout against how hard the rift is pushing back: seconds to kill a normal enemy and an elite, how full the screen is relative to the director's target, clearing headroom (raw damage against the toughness of what spawns), damage taken and lowest health. It also lists death times and the average length of each boss fight:
 

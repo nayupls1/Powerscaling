@@ -540,7 +540,18 @@
     const p = G.player, t = G.time;
     for (const pr of G.props) {
       if (pr.dead || !visible(pr.x, pr.y, pr.r + 30)) continue;
-      if (pr.kind === 'chest') {
+      if (pr.kind === 'chest' && pr.cursed) {
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y, 60, '#a35cff', 0.4 + 0.12 * Math.sin(t * 4 + pr.bob));
+        ctx.globalCompositeOperation = 'source-over';
+        drawChest(pr.x, pr.y, 1, true);
+        ctx.font = `800 14px ${PS.FONT_NUM}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,8,28,0.9)';
+        ctx.strokeText('Guarded, free', pr.x, pr.y - 34);
+        ctx.fillStyle = '#e3b8ff';
+        ctx.fillText('Guarded, free', pr.x, pr.y - 34);
+      } else if (pr.kind === 'chest') {
         const cost = PS.Director.chestPrice(), can = p.gold >= cost;
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(pr.x, pr.y, 56, can ? '#ffcf5c' : '#7a6a9a', 0.35 + 0.1 * Math.sin(t * 3 + pr.bob));
@@ -1311,7 +1322,7 @@
       ctx.closePath(); ctx.fill();
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
-    for (const pr of G.props) if (!pr.dead) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, m[0], m[1]); }
+    for (const pr of G.props) if (!pr.dead) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, pr.cursed ? '#c77dff' : m[0], m[1]); }
     const hoarder = PS.Director.hoarder;
     if (hoarder && !hoarder.dead) mark(hoarder.x, hoarder.y, '#ffd35c', 'coin');
     // only the nearest heal/magnet is worth pointing at, and heals only when hurt
