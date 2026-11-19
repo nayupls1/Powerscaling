@@ -58,14 +58,6 @@
     get claimedLevel() { return this.level - this.pendingLevels; }
     get tomeSlots() { return slotsAt(TOME_SLOT_LEVELS, this.claimedLevel) + (this.stats.m.tomeSlots || 0); }
     get skillSlots() { return slotsAt(SKILL_SLOT_LEVELS, this.claimedLevel); }
-    get maxTomeSlots() { return TOME_SLOT_LEVELS.length + (this.stats.m.tomeSlots || 0); }
-    get maxSkillSlots() { return SKILL_SLOT_LEVELS.length; }
-    /** level at which the next locked skill / tome slot opens, or 0 */
-    nextSlotLevel(kind) {
-      const table = kind === 'tome' ? TOME_SLOT_LEVELS : SKILL_SLOT_LEVELS;
-      for (const l of table) if (l > this.claimedLevel) return l;
-      return 0;
-    }
 
     recalc(first) {
       const cls = this.cls;

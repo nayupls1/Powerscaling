@@ -16,7 +16,7 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.5], [1, 2.1], [2, 2.9], [3, 4], [4.5, 7], [6, 12.5], [7.5, 18], [9, 26], [10.5, 37], [12, 52]];
+  const HP_KNOTS = [[0, 1.5], [1, 2.1], [2, 2.9], [3, 4], [4.5, 7], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
 
   // from: minute the type first appears, w: weight once established
@@ -50,21 +50,22 @@
     BOSS_TIMES, FINAL_TIME,
     reset() {
       this.spawnAcc = 0;
-      this.eliteT = 55;
+      this.eliteT = 60;
       this.hordeT = HORDE_FIRST;
       this.hordeN = 0;
       this.bossIdx = 0;
       this.endlessBossT = 0;
       this.chestT = 6;
       this.shrineT = 40;
-      this.chestCost = 30;
+      this.chestCost = 35;
       this.chestsOpened = 0;
-      this.victory = false;
+      this.victory = false; this.victoryAt = 0;
       this.healAt = 0; this.magnetAt = 0; this.bombAt = 30;
       this.tremorT = 150; this.tremorX = 1e9; this.tremorY = 1e9; this.linger = 0;
     },
     minutes() { return PS.G.time / 60; },
-    endless() { return Math.max(0, PS.G.time - FINAL_TIME) / 60; },
+    /** minutes of overtime: the clock starts when the Rift Lord falls, so the final duel itself is not inflated */
+    endless() { return this.victory ? Math.max(0, PS.G.time - this.victoryAt) / 60 : 0; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(1.75, o);
@@ -73,7 +74,7 @@
     depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.72 + 0.15 * t) * (1 + 0.06 * this.depth()) * (1 + 0.35 * o);
+      return (0.72 + 0.13 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o);
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
     xpMult() { return 1 + this.endless() * 0.1; },
@@ -94,7 +95,7 @@
     },
     spawnRate() {
       const t = this.minutes();
-      return (5 + 6 * t + Math.max(0, t - 12) * 4) * this.pressure();
+      return (5 + 6 * Math.min(t, 12) + this.endless() * 10) * this.pressure();
     },
 
     /** a point just off-screen around the player */
@@ -179,7 +180,7 @@
       // ---- elites
       this.eliteT -= dt;
       if (this.eliteT <= 0 && !bossHold) {
-        this.eliteT = Math.max(32, 58 - this.minutes() * 1.5);
+        this.eliteT = Math.max(50, 75 - this.minutes() * 1.2);
         const pos = this.ringPos();
         const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith'].filter((id) => {
           const row = TABLE.find((r) => r.id === id);
@@ -272,11 +273,12 @@
         return;
       }
       const r = Math.random();
-      if (r < 0.085) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.15) * s.gold)));
+      // kill counts already climb with the horde, so a coin barely grows with time: gold, and the chests it buys, stay an event
+      if (r < 0.05) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.05) * s.gold)));
       // rare drops are rate-limited: kill counts late in a run would otherwise rain them
-      else if (r < 0.0885) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
-      else if (r < 0.0895) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
-      else if (r < 0.0902) { if (G.time > this.bombAt) { this.bombAt = G.time + 90; this.pickup('bomb', e.x, e.y, 0); } }
+      else if (r < 0.0535) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
+      else if (r < 0.0545) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
+      else if (r < 0.0552) { if (G.time > this.bombAt) { this.bombAt = G.time + 90; this.pickup('bomb', e.x, e.y, 0); } }
     },
     gem(x, y, val) {
       const G = PS.G;
@@ -389,7 +391,7 @@
             const cost = this.chestPrice();
             if (p.gold >= cost) {
               p.gold -= cost;
-              this.chestCost = Math.round(this.chestCost * 1.22 + 6);
+              this.chestCost = Math.round(this.chestCost * 1.3 + 10);
               this.chestsOpened++;
               pr.dead = true;
               PS.Game.openChest(1, 0);

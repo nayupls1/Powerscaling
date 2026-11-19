@@ -54,7 +54,8 @@
 
       let picks = sample(cands, 3);
       // a freshly opened skill slot should always be offered something to fill it
-      if (p.skills.length < p.skillSlots && p.skills.length < 3 && !picks.some((c) => c.type === 'skill')) {
+      const opened = PS.SLOT_LEVELS.skill.includes(p.claimedLevel);
+      if (p.skills.length < p.skillSlots && (p.skills.length < 3 || opened) && !picks.some((c) => c.type === 'skill')) {
         const sk = cands.filter((c) => c.type === 'skill');
         if (sk.length && picks.length) picks[picks.length - 1] = U.weighted(sk);
       }

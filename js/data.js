@@ -161,7 +161,7 @@
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },
-    infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+1.5% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.015 * (p.level || 1); }, dynamic: true },
+    infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+2% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.02 * (p.level || 1); }, dynamic: true },
     paradox:    { name: 'Paradox Engine',  icon: 'gear',    tier: 4, max: 1, desc: '+30% attack speed and +40% ability haste.', apply: (s) => { s.atkSpd += 0.3; s.abilityHaste += 0.4; } },
     colossus:   { name: 'Heart of the Colossus', icon: 'mountain', tier: 4, max: 1, desc: '+100 max health, +10 armor, +25% area of effect.', apply: (s) => { s.maxHp += 100; s.armor += 10; s.area += 0.25; } },
     midas:      { name: 'Midas Sigil',     icon: 'trophy',  tier: 4, max: 1, desc: 'Double gold. Chests cost 30% less.', apply: (s) => { s.gold += 1; s.f.discount = 0.3; } },
@@ -195,9 +195,9 @@
   node('v7', 'vitality', 'Undying',      'phoenix', -5.95, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });
 
   // Fortune — right
-  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${3 * r}% experience`, (s, r) => { s.xp += 0.03 * r; });
+  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${2 * r}% experience`, (s, r) => { s.xp += 0.02 * r; });
   node('f2', 'fortune', 'Prospector',   'coin',   2.6, -1.15,   5, 35,  ['f1'],   (r) => `+${6 * r}% gold found`, (s, r) => { s.gold += 0.06 * r; });
-  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${5 * r} luck`, (s, r) => { s.luck += 5 * r; });
+  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${4 * r} luck`, (s, r) => { s.luck += 4 * r; });
   node('f4', 'fortune', 'Second Opinion', 'dice', 3.85, -1.15,   3, 60,  ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = r; });
   node('f5', 'fortune', 'Exile',        'ban',    3.85, 1.15,    2, 80,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = r; });
   node('f6', 'fortune', 'Soul Tithe',   'essence', 4.75, 0,   3, 90,  ['f4', 'f5'], (r) => `+${10 * r}% Essence earned`, (s, r) => { s.m.essence = 0.10 * r; });

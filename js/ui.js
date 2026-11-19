@@ -300,7 +300,7 @@
         </div>
         <div class="help-col">
           <h3>The run</h3>
-          <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger.</p>
+          <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
@@ -461,9 +461,7 @@
     },
     /** slots the hero has not grown into yet, each labelled with the level that opens it */
     lockedSlots(p, kind, cls) {
-      const open = kind === 'tome' ? p.tomeSlots : p.skillSlots, max = kind === 'tome' ? p.maxTomeSlots : p.maxSkillSlots;
-      const levels = PS.SLOT_LEVELS[kind].filter((l) => l > p.claimedLevel).slice(-(max - open));
-      return levels.map((l) => `<span class="slot${cls} locked" data-tip="<b>Locked ${kind} slot</b><br>Opens at level ${l}">${ico('lock', kind === 'tome' ? 12 : 16)}<em>${l}</em></span>`).join('');
+      return PS.SLOT_LEVELS[kind].filter((l) => l > p.claimedLevel).map((l) => `<span class="slot${cls} locked" data-tip="<b>Locked ${kind} slot</b><br>Opens at level ${l}">${ico('lock', kind === 'tome' ? 12 : 16)}<em>${l}</em></span>`).join('');
     },
     skillTile(k) {
       const def = k.def, col = elColor(def.el);

@@ -160,14 +160,14 @@
     },
     /* ---------------------------------------------------------------- 3: Azhmodai */
     {
-      id: 'azhmodai', name: 'Azhmodai', title: 'the Rift Lord', r: 54, hp: 1700, spd: 68, dmg: 30, atk: 38, xp: 1500, color: '#c06bff', sprite: 'boss3',
+      id: 'azhmodai', name: 'Azhmodai', title: 'the Rift Lord', r: 54, hp: 1700, spd: 68, dmg: 30, atk: 34, xp: 1500, color: '#c06bff', sprite: 'boss3',
       cd: 1.5, pattern: ['cross', 'rain', 'hell', 'charge', 'rain'], final: true,
       attacks: {
         cross(e, bs) {
           if (!bs.init) {
             bs.init = true;
             const n = bs.rage ? 6 : 4, dir = Math.random() < 0.5 ? 1 : -1, a0 = Math.random() * TAU;
-            for (let i = 0; i < n; i++) C.hazard({ kind: 'beam', x: e.x, y: e.y, ang: a0 + (i * TAU) / n, len: 950, w: 34, delay: 1.2, dur: 4, dmg: e.atk, rot: 0.5 * dir, follow: e, owner: e, color: '#c06bff' });
+            for (let i = 0; i < n; i++) C.hazard({ kind: 'beam', x: e.x, y: e.y, ang: a0 + (i * TAU) / n, len: 950, w: 34, delay: 1.2, dur: 4, dmg: e.atk * 0.7, rot: 0.5 * dir, follow: e, owner: e, color: '#c06bff' });
             PS.Audio.play('telegraph');
           }
           const k = Math.floor(bs.at / 1.1);
@@ -301,9 +301,12 @@
       G.slowmo = 1.2;
       if (e.def.final && !PS.Director.victory) {
         PS.Director.victory = true;
+        PS.Director.victoryAt = G.time;
         PS.Game.victory();
       } else {
         PS.UI.toast(e.def.name + ' has fallen', 'trophy');
+        // the spoils are the spike; this is the fall that follows (see Director.hpMult)
+        if (G.bossesKilled < PS.Director.BOSS_TIMES.length) PS.UI.toast('The rift deepens. The horde grows sturdier', 'vortex');
       }
       PS.Game.bossKilled(e);
     },
