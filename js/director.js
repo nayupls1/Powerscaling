@@ -125,9 +125,10 @@
       const t = this.minutes();
       let total = 0;
       const ws = [];
+      const early = PS.G.rules.early;
       for (const row of TABLE) {
         let w = 0;
-        if (t >= row.from) w = row.w(t) * U.clamp((t - row.from) / 0.8, 0.2, 1);
+        if (t >= row.from * early) w = row.w(t) * U.clamp((t - row.from * early) / 0.8, 0.2, 1);
         ws.push(w);
         total += w;
       }
@@ -258,7 +259,7 @@
       }
       this.breachT -= dt;
       if (this.breachT <= 0 && !bossAlive) {
-        this.breachT = G.sigilBreach ? 58 : 115;
+        this.breachT = (G.sigilBreach ? 58 : 115) * G.rules.breachEvery;
         if (!G.props.some((x) => x.kind === 'breach')) {
           const a = U.rnd() * TAU, d = U.rand(520, 760);
           G.props.push({ kind: 'breach', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
@@ -268,7 +269,7 @@
       }
       this.hoarderT -= dt;
       if (this.hoarderT <= 0 && !bossAlive) {
-        this.hoarderT = 150 + EV() * 60;
+        this.hoarderT = (150 + EV() * 60) * G.rules.hoarderEvery;
         const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
         const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
         const e = PS.Enemies.spawn('hoarder', x, y, { hpMult: 5 });
@@ -296,7 +297,7 @@
       if (!b) return;
       this.breach = null;
       b.dead = true;
-      this.breachT = Math.max(this.breachT, PS.G.sigilBreach ? 35 : 70);
+      this.breachT = Math.max(this.breachT, (PS.G.sigilBreach ? 35 : 70) * PS.G.rules.breachEvery);
       if (won) {
         G.breaches++;
         G.score += 400 + 40 * b.need;

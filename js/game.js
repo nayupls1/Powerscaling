@@ -75,6 +75,7 @@
         if (r) p.addRelic(r.id);
       }
       if (G.sigil && D.SIGILS[G.sigil].start) D.SIGILS[G.sigil].start(G, p);
+      if (G.rules.startPacts) for (const id of U.shuffle(Object.keys(D.PACTS).filter((k) => !D.PACTS[k].now), PS.RNG.loot).slice(0, G.rules.startPacts)) p.addPact(id);
       if (m.startLevels) {
         for (let i = 0; i < m.startLevels; i++) { p.level++; p.pendingLevels++; }
         p.xpNext = PS.xpFor(p.level);

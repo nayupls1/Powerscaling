@@ -319,6 +319,7 @@
     chestCost: 1, heal: 1, xp: 1,     // heal covers pickups, tonics and the level-up breather
     pDmg: 1, pHp: 1, pSpeed: 1, dashCd: 1, noWard: false, startRelics: 0, // the hero
     react: 1,                         // reactions: how often they may trigger and how hard they hit
+    breachEvery: 1, hoarderEvery: 1, startPacts: 0, early: 1, // map events, pacts struck before the run, and how soon each enemy type arrives
     score: 1, essence: 1,
   });
 
@@ -358,6 +359,12 @@
     openguard:   { name: 'Open Guard',     icon: 'dash',      text: 'No Ward. Your dash recharges 40% faster.',                        apply: (r) => { r.noWard = true; r.dashCd *= 0.6; } },
     scholar:     { name: 'Scholar\'s Rift', icon: 'book',     text: '40% more experience, but the horde has 25% more health.',         apply: (r) => { r.xp *= 1.4; r.hp *= 1.25; } },
   };
+  Object.assign(D.MUTATORS, {
+    breached:  { name: 'Torn Sky',        icon: 'rift',      text: 'Breaches open three times as often.',                              apply: (r) => { r.breachEvery *= 0.34; } },
+    pacted:    { name: 'Sworn In',        icon: 'blood',     text: 'You begin with two pacts already struck, prices and all.',         apply: (r) => { r.startPacts += 2; } },
+    goldrush:  { name: 'Gold Rush',       icon: 'coin',      text: 'Hoarders appear three times as often. Chests cost 50% more.',     apply: (r) => { r.hoarderEvery *= 0.34; r.chestCost *= 1.5; } },
+    menagerie: { name: 'Menagerie',       icon: 'paw',       text: 'Every kind of enemy arrives in the first few minutes. 25% more experience.', apply: (r) => { r.early *= 0.3; r.xp *= 1.25; } },
+  });
   for (const id in D.MUTATORS) D.MUTATORS[id].id = id;
 
   /** the rules for a run at this depth, with this mutator (either may be absent) */
