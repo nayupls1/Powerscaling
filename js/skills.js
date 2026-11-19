@@ -444,6 +444,135 @@
     },
 
     /* =============================== CLASS PRIMARIES =============================== */
+    firewave: {
+      name: 'Flame Wave', el: 'fire', icon: 'wave', usesProj: true, unit: 'wave',
+      desc: 'A wall of flame rolls out through everything in its path.',
+      base: { dmg: 22, cd: 2.6, count: 1, area: 1, speed: 470 },
+      up: [{ dmg: 6 }, { area: 0.2 }, { count: 1 }, { cd: -0.4 }, { dmg: 9 }],
+      evo: { name: 'Firestorm', tome: 'swiftness', desc: 'Waves roll out in every direction and leave the ground burning where they die.', mod: { dmg: 6, count: 3 } },
+      fire(inst, s, p) {
+        const a = autoAim(p);
+        if (a === null) return false;
+        const ev = inst.evolved, n = s.count, dmg = s.dmg, area = s.area, dur = p.stats.duration, name = inst.name;
+        fan(n, ev ? TAU / n : 0.5, (off) => {
+          C.proj({
+            x: p.x, y: p.y, ang: a + off, speed: s.speed, dmg, el: 'fire', src: name, r: 30 * area, size: 0.8 + 0.2 * area, life: 0.85, pierce: 99, kind: 'wave', color: '#ffb061', knock: 90,
+            onEnd: ev ? (pr) => { C.zone({ x: pr.x, y: pr.y, r: 60 * area, life: 3 * dur, tick: 0.5, dmg: dmg * 0.18, el: 'fire', src: name, kind: 'fire', color: '#ff7a3d' }); } : null,
+          });
+        });
+        PS.Audio.play('fire', { vol: 0.4 });
+      },
+    },
+    blizzard: {
+      name: 'Blizzard', el: 'frost', icon: 'snow', unit: 'storm',
+      desc: 'A snowstorm settles where the horde is thickest, slowing and wearing down everything inside.',
+      base: { dmg: 6, cd: 7, area: 1, dur: 1 },
+      up: [{ dmg: 2 }, { area: 0.2 }, { dur: 0.25 }, { cd: -1 }, { dmg: 3, area: 0.15 }],
+      evo: { name: 'Whiteout', tome: 'vitality', desc: 'Half again as large, and it keeps freezing what it touches.', mod: { dmg: 3 } },
+      fire(inst, s, p) {
+        const e = C.clusterPoint(430);
+        if (!e) return false;
+        const ev = inst.evolved;
+        C.zone({ x: e.x, y: e.y, r: 115 * s.area * (ev ? 1.5 : 1), life: 4 * s.dur, tick: 0.5, firstTick: 0.1, dmg: s.dmg, el: 'frost', src: inst.name, kind: 'blizzard', color: EL.frost.color, slow: 1,
+          opts: { freeze: ev ? 0.3 : 0.04, freezeDur: 1 } });
+        PS.Audio.play('frost', { vol: 0.4 });
+      },
+    },
+    staticfield: {
+      name: 'Static Field', el: 'storm', icon: 'spark', usesProj: true, unit: 'arc',
+      desc: 'Sparks leap from you to the nearest enemies, Shocking them.',
+      base: { dmg: 9, cd: 1.0, count: 2, area: 1 },
+      up: [{ dmg: 3 }, { count: 1 }, { area: 0.2 }, { cd: -0.15 }, { count: 1, dmg: 3 }],
+      evo: { name: 'Storm Aegis', tome: 'plating', desc: 'Every spark leaps on to two more enemies, and each discharge mends you a little.', mod: { dmg: 3 } },
+      fire(inst, s, p) {
+        const near = [], r = 230 * s.area;
+        PS.G.grid.query(p.x, p.y, r, (e) => { near.push(e); });
+        if (!near.length) return false;
+        near.sort((a, b) => U.dist2(a.x, a.y, p.x, p.y) - U.dist2(b.x, b.y, p.x, p.y));
+        const ev = inst.evolved, o = { el: 'storm', src: inst.name, shock: 1 };
+        for (let i = 0; i < Math.min(s.count, near.length); i++) {
+          const e = near[i];
+          if (e.dead) continue;
+          if (ev) C.chain(p.x, p.y, e, s.dmg, 2, 170, { src: inst.name, shock: 1, growth: 0.8 });
+          else { PS.FX.bolt(p.x, p.y, e.x, e.y, '#ffe14d'); C.damage(e, s.dmg, o); }
+        }
+        if (ev) p.heal(p.stats.maxHp * 0.004 * PS.G.rules.heal, true);
+        PS.Audio.play('zap', { vol: 0.25, pitch: 1.4 });
+      },
+    },
+    miasma: {
+      name: 'Miasma', el: 'venom', icon: 'ghost', unit: 'cloud',
+      desc: 'A cloud of rot hangs around you, poisoning whatever comes close.',
+      base: { dmg: 4, cd: 0.8, area: 1 },
+      up: [{ dmg: 2 }, { area: 0.18 }, { dmg: 2 }, { area: 0.18, cd: -0.1 }, { dmg: 3 }],
+      evo: { name: 'Pestilence', tome: 'magnet', desc: 'The cloud lays on two stacks of Poison at a time and leaves everything in it Exposed: 20% more damage taken.', mod: { dmg: 2, area: 0.15 } },
+      tick(inst, s, dt, p) {
+        const r = 125 * s.area, ev = inst.evolved;
+        p.miasmaR = r;
+        inst.t = (inst.t || 0) - dt;
+        if (inst.t > 0) return;
+        inst.t += s.b.cd;
+        C.aoe(p.x, p.y, r, s.dmg, { el: 'venom', src: inst.name, poison: ev ? 2 : 1 });
+        if (ev) PS.G.grid.query(p.x, p.y, r, (e) => { e.exposeT = Math.max(e.exposeT, 1.2); });
+      },
+    },
+    sword: {
+      name: 'Falling Sword', el: 'steel', icon: 'swords', usesProj: true, unit: 'sword',
+      desc: 'A great blade drops on the toughest enemy nearby. Likely to crit, and it opens a Bleed.',
+      base: { dmg: 52, cd: 3.2, count: 1, area: 1 },
+      up: [{ dmg: 18 }, { cd: -0.4 }, { count: 1 }, { dmg: 22 }, { cd: -0.5, area: 0.3 }],
+      evo: { name: 'Executioner', tome: 'fortune', desc: 'Always a critical hit, and it slays outright any enemy but a boss below a fifth of its health.', mod: { dmg: 20 } },
+      fire(inst, s, p) {
+        const found = [];
+        PS.G.grid.query(p.x, p.y, 430, (e) => { found.push(e); });
+        if (!found.length) return false;
+        found.sort((a, b) => b.hp - a.hp);
+        const ev = inst.evolved, r = 46 * s.area;
+        for (let i = 0; i < Math.min(s.count, found.length); i++) {
+          const e = found[i];
+          if (e.dead) continue;
+          const x = e.x, y = e.y;
+          PS.FX.bolt(x, y - 360, x, y, '#e8eeff', 4);
+          PS.FX.ring(x, y, r + 20, '#e8eeff', 0.25);
+          if (ev && !e.boss && e.hp < e.maxHp * 0.2) { PS.FX.text(x, y - e.r - 12, 'Executed', '#ffffff'); C.damage(e, e.hp * 3 + 1, { el: 'steel', src: inst.name, noCrit: true }); }
+          else C.damage(e, s.dmg, { el: 'steel', src: inst.name, crit: ev ? true : undefined, critBonus: 0.3, knock: 60 });
+          if (!e.dead) { e.bleedT = 3; e.bleedDps = Math.max(e.bleedDps, s.dmg * 0.12); }
+          C.aoe(x, y, r, s.dmg * 0.35, { el: 'steel', src: inst.name, knock: 120 });
+        }
+        PS.Audio.play('crit', { vol: 0.4, pitch: 0.7 });
+      },
+    },
+    lance: {
+      name: 'Void Lance', el: 'void', icon: 'dash', usesProj: true, unit: 'lance',
+      desc: 'A ray of nothing is driven through the nearest enemy and everything behind it.',
+      base: { dmg: 28, cd: 2.4, count: 1, area: 1 },
+      up: [{ dmg: 8 }, { cd: -0.3 }, { area: 0.3 }, { dmg: 10 }, { count: 1 }],
+      evo: { name: 'Annihilation Ray', tome: 'wisdom', desc: 'Twice as wide, and everything it passes through is left Exposed: 20% more damage taken for 4 seconds.', mod: { dmg: 8 } },
+      fire(inst, s, p) {
+        const G = PS.G, ev = inst.evolved, len = 560, w = 22 * s.area * (ev ? 2 : 1);
+        const seen = new Set();
+        let any = false;
+        for (let i = 0; i < s.count; i++) {
+          const t = i === 0 ? C.nearest(p.x, p.y, 480) : C.randomEnemy(480);
+          if (!t) break;
+          any = true;
+          const a = Math.atan2(t.y - p.y, t.x - p.x), x2 = p.x + Math.cos(a) * len, y2 = p.y + Math.sin(a) * len;
+          PS.FX.bolt(p.x, p.y, x2, y2, '#c06bff', ev ? 7 : 4);
+          seen.clear();
+          // walk the ray in steps and hit each enemy once
+          for (let d = 0; d <= len; d += 60) {
+            G.grid.query(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 60 + w, (e) => {
+              if (seen.has(e.id) || !U.segCircle(p.x, p.y, x2, y2, e.x, e.y, w + e.r)) return;
+              seen.add(e.id);
+              C.damage(e, s.dmg, { el: 'void', src: inst.name, ang: a, knock: 50 });
+              if (ev) e.exposeT = 4;
+            });
+          }
+        }
+        if (!any) return false;
+        PS.Audio.play('void', { vol: 0.4, pitch: 1.2 });
+      },
+    },
     cleave: {
       name: 'Cleave', el: 'steel', icon: 'cleave', primary: true, unit: 'swing',
       desc: 'A wide sword sweep in the direction you aim.',

@@ -179,7 +179,7 @@
       }
 
       // aim
-      this.auraR = 0;
+      this.auraR = 0; this.miasmaR = 0;
       const autoAim = ctrl.autoAim;
       let target = null;
       if (autoAim) {

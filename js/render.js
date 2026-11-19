@@ -914,10 +914,16 @@
     if (p.auraR > 0) {
       ctx.globalCompositeOperation = 'lighter';
       drawGlow(x, y, p.auraR * 1.15, '#ff5a1f', 0.14 + 0.04 * Math.sin(t * 9));
-      ctx.globalAlpha = 0.6; ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2.5;
-      ctx.setLineDash([14, 10]); ctx.lineDashOffset = -t * 60;
+      // the hero's own aura: a soft solid edge (marching dashes belong to the rift's danger zones)
+      ctx.globalAlpha = 0.4; ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, p.auraR, 0, TAU); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (p.miasmaR > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      drawGlow(x, y, p.miasmaR * 1.1, '#5fb82e', 0.13 + 0.04 * Math.sin(t * 5));
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#b8f078'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, p.miasmaR, 0, TAU); ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
     PS.FX.drawGhosts(ctx);
@@ -1110,7 +1116,7 @@
       else if (k === 'spore') { drawGlow(p.x, p.y, 15, '#8fe04a', 0.8); }
       else if (k === 'shard') { drawGlow(p.x, p.y, 15, '#6fd8ff', 0.55); }
       else if (k === 'scythe') { drawGlow(p.x, p.y, 36 * p.size, p.color, 0.4); }
-      else if (k === 'wave') { drawGlow(p.x, p.y, 40, '#bcd0ff', 0.4); }
+      else if (k === 'wave') { drawGlow(p.x, p.y, 40 * p.size, p.color === '#fff' ? '#bcd0ff' : p.color, 0.4); }
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -1156,7 +1162,7 @@
         ctx.strokeStyle = '#3a2a4a'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(Math.cos(1.0) * 20, Math.sin(1.0) * 20); ctx.lineTo(-10, 4); ctx.stroke();
       } else if (k === 'wave') {
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+        ctx.strokeStyle = p.color; ctx.lineWidth = 6; ctx.lineCap = 'round';
         ctx.globalAlpha = Math.min(1, p.life * 4);
         ctx.beginPath(); ctx.arc(-22, 0, 36, -0.85, 0.85); ctx.stroke();
         ctx.globalAlpha = 1;
