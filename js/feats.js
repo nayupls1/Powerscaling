@@ -57,6 +57,7 @@
   feat('relic45',  'loot',  'Hoarder',           'jar',      'Hold 45 relics.',                                 100, (G, p) => relicCount(p) >= 45);
   feat('legend',   'loot',  'Storied',           'phoenix',  'Find a legendary relic.',                         40,  (G, p) => p.relicOrder.some((id) => D.RELICS[id].tier === 4));
   feat('curator',  'loot',  'Curator',           'book',     'Record 30 different relics in the codex.',        80,  (G, p, d) => G.over && Object.keys(d.codex.relics).length >= 30);
+  feat('reson',    'loot',  'In Tune',           'gem',      'Complete a relic resonance.',                     40,  (G, p) => p.sets && p.sets.length >= 1);
   feat('gold5k',   'loot',  'Deep Pockets',      'coin',     'Earn 5,000 gold in one run.',                     40,  (G) => G.goldEarned >= 5000);
   feat('pact1',    'loot',  'Signed in Blood',   'blood',    'Strike a pact at a dark altar.',                  20,  (G) => G.pactsStruck >= 1);
   feat('pact3',    'loot',  'In Too Deep',       'mask',     'Strike three pacts in one run.',                  60,  (G) => G.pactsStruck >= 3);

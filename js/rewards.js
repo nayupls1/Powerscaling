@@ -168,7 +168,10 @@
         seen.add(r.id);
         const have = p.relics[r.id] || 0;
         cards.push({ type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: have ? `Relic, you own ${have}` : 'Relic', desc: r.desc,
-          lines: !have && !PS.G.bot && !PS.Save.data.codex.relics[r.id] ? ['New to your codex'] : [] });
+          lines: (!have && !PS.G.bot && !PS.Save.data.codex.relics[r.id] ? ['New to your codex'] : []).concat(have ? [] : (D.SETS_OF[r.id] || []).map((st) => {
+            const got = st.ids.filter((id) => p.relics[id] > 0).length;
+            return got === st.ids.length - 1 ? `Completes ${st.name}: ${st.text}` : `Part of ${st.name} (${got + 1} of ${st.ids.length})`;
+          })) });
       }
       if (!cards.length) cards.push(R.card(p, 'gold', null, 0));
       return cards;

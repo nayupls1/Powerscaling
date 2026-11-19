@@ -86,6 +86,9 @@
       for (const id of this.pacts) if (D.PACTS[id].stats) D.PACTS[id].stats(s);
       if (G && G.sigil && D.SIGILS[G.sigil].stats) D.SIGILS[G.sigil].stats(s);
       for (const id in this.relics) D.RELICS[id].apply(s, this.relics[id], this);
+      // resonances: every relic of a set in hand
+      this.sets = D.RELIC_SETS.filter((st) => st.ids.every((id) => this.relics[id] > 0));
+      for (const st of this.sets) st.apply(s);
       cls.branches.forEach((br, bi) => {
         for (let i = 0; i < this.talents[bi]; i++) br.nodes[i].apply(s, this);
       });
@@ -441,9 +444,13 @@
       return t;
     }
     addRelic(id) {
+      const before = this.sets ? this.sets.length : 0, had = this.sets || [];
       if (!this.relics[id]) { this.relics[id] = 0; this.relicOrder.push(id); }
       this.relics[id]++;
       this.recalc();
+      if (this.sets.length > before && PS.G && PS.G.player === this) {
+        for (const st of this.sets) if (!had.includes(st)) { PS.UI.toast(`Resonance: ${st.name}. ${st.text}`, 'gem'); PS.Audio.play('shrine', { vol: 0.6, pitch: 1.2 }); }
+      }
     }
     addBoon(id, tier) {
       const def = D.BOONS[id];

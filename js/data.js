@@ -229,6 +229,23 @@
     prismheart: { name: 'Prism Heart',     icon: 'prism',   tier: 4, max: 1, desc: 'Reactions hit 60% harder and each enemy can react again a second sooner.', apply: (s) => { s.f.rxBoost = 1; } },
     midas:      { name: 'Midas Sigil',     icon: 'trophy',  tier: 4, max: 1, desc: 'Double gold. Chests cost 30% less.', apply: (s) => { s.gold += 1; s.f.discount = 0.3; } },
   };
+  /* Resonances: hold every relic of a set and it gives a bonus of its own. Plain stats, so a set is one line here */
+  D.RELIC_SETS = [
+    { id: 'bloodline',  name: 'Bloodline',       ids: ['vampfang', 'bloodpact'],               text: '+2% lifesteal and +25 max health.',          apply: (s) => { s.lifesteal += 0.02; s.maxHp += 25; } },
+    { id: 'stormfront', name: 'Stormfront',      ids: ['stormcap', 'chainspark'],              text: '+25% Tempest damage.',                       apply: (s) => { s.el.storm += 0.25; } },
+    { id: 'hoardking',  name: 'Hoard King',      ids: ['greed', 'goldtooth'],                  text: '+30% gold found and +15 luck.',              apply: (s) => { s.gold += 0.3; s.luck += 15; } },
+    { id: 'glassedge',  name: 'Glass Edge',      ids: ['glasscannon', 'lens'],                 text: '+30% critical damage.',                      apply: (s) => { s.critMult += 0.3; } },
+    { id: 'timekeeper', name: 'Timekeeper',      ids: ['sandglass', 'timecrystal', 'stopwatch'], text: '+15% attack speed and +20% ability haste.', apply: (s) => { s.atkSpd += 0.15; s.abilityHaste += 0.2; } },
+    { id: 'juggernaut', name: 'Juggernaut',      ids: ['plate', 'ironheart', 'giantsbelt'],    text: '+10 armor and +12% max health.',             apply: (s) => { s.armor += 10; s.hpMult += 0.12; } },
+    { id: 'headhunter', name: 'Headhunter',      ids: ['slayer', 'executioner'],               text: '+25% damage to elites and bosses.',          apply: (s) => { s.bossDmg += 0.25; } },
+    { id: 'deepwinter', name: 'Deep Winter',     ids: ['rimecore', 'frostbite'],               text: '+25% Rime damage.',                          apply: (s) => { s.el.frost += 0.25; } },
+    { id: 'wildfire',   name: 'Ashfall',         ids: ['emberheart', 'volatile'],              text: '+25% Ember damage.',                         apply: (s) => { s.el.fire += 0.25; } },
+    { id: 'plague',     name: 'Rot and Ruin',    ids: ['blightgland', 'venomous'],             text: '+25% Blight damage.',                        apply: (s) => { s.el.venom += 0.25; } },
+    { id: 'windwalker', name: 'Windwalker',      ids: ['boots', 'feather', 'momentum'],        text: '+10% move speed, and dashes recharge 20% faster.', apply: (s) => { s.speed *= 1.1; s.dashCd *= 0.8; } },
+    { id: 'scholar',    name: 'Scholar\'s Pair', ids: ['scrap', 'souljar'],                    text: '+12% experience.',                           apply: (s) => { s.xp += 0.12; } },
+  ];
+  D.SETS_OF = {}; // relic id -> the sets it belongs to
+  for (const st of D.RELIC_SETS) for (const id of st.ids) { if (!D.RELICS[id]) throw new Error('unknown relic in set: ' + id); (D.SETS_OF[id] = D.SETS_OF[id] || []).push(st); }
   for (const id in D.RELICS) D.RELICS[id].id = id;
   for (const id in D.TOMES) D.TOMES[id].id = id;
   for (const id in D.BOONS) D.BOONS[id].id = id;
