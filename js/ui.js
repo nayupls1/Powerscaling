@@ -531,7 +531,7 @@
         const E = PS.Enemies.DEFS, B = PS.Bosses.DEFS;
         const row = (id, name, sub, note, color, art) => { const k = sh.has(id); return entry(k, color, k ? art : 'lock', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
         html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color, portrait(id, E[id].color, E[id].r, 52))).join('')}</ul>
-          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), (b.overtime ? '' : '') + (b.overtime ? 'Waits beyond the Rift Lord, two minutes into overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`), b.color, portrait(b.sprite, b.color, b.r, 52))).join('')}</ul>`;
+          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), (b.overtime ? '' : '') + (b.overtime ? 'Waits beyond the Rift Lord, in overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`), b.color, portrait(b.sprite, b.color, b.r, 52))).join('')}</ul>`;
       }
       $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
     },

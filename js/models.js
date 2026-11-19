@@ -674,10 +674,33 @@
       // embers held in orbit
       for (let i = 0; i < 4; i++) { const q = a / 4 + (i * TAU) / 4; glowDot(g, Math.cos(q) * 1.5, Math.sin(q) * 1.5, 0.09, pale, 2); }
     },
+    boss5(g, ph, col, lw, st) {
+      const a = ph * TAU, br = Math.sin(a), rage = st && st.rage, glass = rage ? '#ff8ad0' : col, pale = '#fff0fa', dk = '#2a1430';
+      // shards of herself hang about her, turning
+      for (let i = 0; i < 6; i++) {
+        const q = a / 6 + (i * TAU) / 6, d = 1.42 + (i % 2) * 0.16 + br * 0.04;
+        g.save(); g.translate(Math.cos(q) * d, Math.sin(q) * d); g.rotate(q + a / 3);
+        poly(g, [0, -0.2, 0.1, 0, 0, 0.2, -0.1, 0]); F(g, lite(glass, 0.35), lw * 0.7);
+        g.restore();
+      }
+      // a robe of long panes
+      g.beginPath(); g.moveTo(0.1, -0.84); g.lineTo(-0.7, -1.0); g.lineTo(-1.36, -0.5 + br * 0.05); g.lineTo(-1.0, 0); g.lineTo(-1.36, 0.5 - br * 0.05); g.lineTo(-0.7, 1.0); g.lineTo(0.1, 0.84); g.closePath();
+      F(g, vol(g, -0.5, 0, 1.2, dark(glass, 0.45)), lw);
+      g.beginPath(); g.moveTo(-0.1, -0.7); g.lineTo(-1.1, -0.44); g.moveTo(-0.2, 0); g.lineTo(-1.0, 0); g.moveTo(-0.1, 0.7); g.lineTo(-1.1, 0.44); S(g, lite(glass, 0.3), 0.04, 0.6);
+      // the mirror she wears for a body: a tall faceted pane
+      poly(g, [0.9, 0, 0.36, -0.86, -0.36, -0.6, -0.56, 0, -0.36, 0.6, 0.36, 0.86]); F(g, vol(g, 0, 0, 0.95, glass), lw);
+      poly(g, [0.62, 0, 0.26, -0.58, -0.2, -0.4, -0.34, 0, -0.2, 0.4, 0.26, 0.58]); F(g, dk, lw * 0.7);
+      g.beginPath(); g.moveTo(0.26, -0.58); g.lineTo(-0.34, 0); g.lineTo(0.26, 0.58); g.moveTo(0.62, 0); g.lineTo(-0.2, -0.4); g.moveTo(0.62, 0); g.lineTo(-0.2, 0.4);
+      glowLine(g, pale, 0.022 + (rage ? 0.014 : 0));
+      // two eyes that are your own, looking back
+      for (const s of [-1, 1]) { glowDot(g, 0.3, s * 0.2, 0.085, pale, 2.2); ell(g, 0.32, s * 0.2, 0.03, 0.07); F(g, INK); }
+      // hands held open
+      for (const s of [-1, 1]) { limb(g, [0.2, s * 0.8, 0.7, s * 1.06, 1.02 + br * 0.04, s * 0.82], 0.15, dark(glass, 0.3), lw); glowDot(g, 1.06 + br * 0.04, s * 0.8, 0.09, pale, 1.8); }
+    },
   };
   /** walk cycles per second */
   const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0, hoarder: 3.2,
-    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75, boss4: 0.6 };
+    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75, boss4: 0.6, boss5: 0.7 };
 
   /** a sword along +x from the hand at the origin */
   function sword(g, len, w, blade, guard, grip, lw) {

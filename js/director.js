@@ -166,8 +166,8 @@
         if (this.endlessBossT >= ENDLESS_BOSS_EVERY && !bossAlive) {
           this.endlessBossT = 0;
           const n = this.bossIdx - BOSS_TIMES.length;
-          // overtime opens with a boss the run has not shown yet, then brings the old ones back
-          PS.Bosses.spawn([4, 0, 1, 2, 3][n % 5], n + 1);
+          // overtime opens with the two bosses the run has not shown yet, then brings the old ones back
+          PS.Bosses.spawn([4, 5, 0, 1, 2, 3][n % 6], n + 1);
           this.bossIdx++;
         }
       }

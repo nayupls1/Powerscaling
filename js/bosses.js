@@ -270,6 +270,72 @@
         },
       },
     },
+    /* ---------------------------------------------------------------- 5: Veyra (overtime only) */
+    {
+      id: 'veyra', name: 'Veyra', title: 'the Mirror', r: 44, hp: 1700, spd: 78, dmg: 30, atk: 34, xp: 1500, color: '#ffb3e6', sprite: 'boss5',
+      cd: 1.4, keep: 240, pattern: ['echo', 'shards', 'cage', 'sweep', 'reflections'], overtime: true,
+      attacks: {
+        // every step you take is answered a moment later: keep walking and nothing lands; stop, or double back, and it does
+        echo(e, bs, dt, p) {
+          const k = Math.floor(bs.at / (bs.rage ? 0.22 : 0.3));
+          if (k !== bs.step && bs.at < 3.2) {
+            bs.step = k;
+            C.hazard({ kind: 'circle', x: p.x, y: p.y, r: 62, delay: 0.85, dmg: e.atk, color: '#ffb3e6', owner: e });
+            if (k % 3 === 0) PS.Audio.play('telegraph', { vol: 0.4 });
+          }
+          return bs.at >= 4.2;
+        },
+        // aimed volleys with a mirrored pair to either side
+        shards(e, bs, dt, p) {
+          const k = Math.floor(bs.at / 0.55);
+          if (k !== bs.step && k < 4) {
+            bs.step = k;
+            const a = Math.atan2(p.y - e.y, p.x - e.x);
+            for (const side of bs.rage ? [-0.9, -0.45, 0, 0.45, 0.9] : [-0.6, 0, 0.6]) {
+              for (let i = -1; i <= 1; i++) C.ebullet({ x: e.x, y: e.y, ang: a + side + i * 0.09, speed: 240, dmg: e.atk * 0.6, color: '#ffd0f0', r: 7, life: 5 });
+            }
+            PS.Audio.play('shoot', { vol: 0.4, pitch: 0.7 });
+          }
+          return bs.at >= 2.6;
+        },
+        // a ring of blasts closes around you, then the middle goes: stand inside the ring, and leave the moment it lands
+        cage(e, bs, dt, p) {
+          if (!bs.init) {
+            bs.init = true;
+            bs.gx = p.x; bs.gy = p.y;
+            const n = 10, off = U.rnd() * TAU;
+            for (let i = 0; i < n; i++) C.hazard({ kind: 'circle', x: bs.gx + Math.cos(off + (i * TAU) / n) * 215, y: bs.gy + Math.sin(off + (i * TAU) / n) * 215, r: 72, delay: 1.0, dmg: e.atk, color: '#ffb3e6', owner: e });
+            PS.Audio.play('telegraph');
+          }
+          if (bs.at >= 0.75 && !bs.fired) {
+            bs.fired = true;
+            C.hazard({ kind: 'circle', x: bs.gx, y: bs.gy, r: 150, delay: bs.rage ? 0.95 : 1.15, dmg: e.atk * 1.2, color: '#ffb3e6', owner: e });
+          }
+          return bs.at >= 2.4;
+        },
+        // two rays turn about her like the hands of a clock, one against the other
+        sweep(e, bs) {
+          if (!bs.init) {
+            bs.init = true;
+            const a0 = U.rnd() * TAU;
+            for (const dir of [1, -1]) {
+              for (let i = 0; i < (bs.rage ? 2 : 1); i++) C.hazard({ kind: 'beam', x: e.x, y: e.y, ang: a0 + (dir > 0 ? 0 : Math.PI * 0.5) + i * Math.PI, len: 900, w: 32, delay: 1.1, dur: 3.6, dmg: e.atk * 0.7, rot: 0.75 * dir, follow: e, owner: e, color: '#ffb3e6' });
+            }
+            PS.Audio.play('telegraph');
+          }
+          return bs.at >= 4.9;
+        },
+        // she steps out of herself: wraiths, quick and brittle
+        reflections(e, bs) {
+          if (!bs.init) {
+            bs.init = true;
+            summon(e, 'wraith', bs.rage ? 8 : 5, false);
+            PS.Audio.play('summon', { vol: 0.6 });
+          }
+          return bs.at >= 1.2;
+        },
+      },
+    },
   ];
   BOSSES.forEach((b, i) => { b.idx = i; b.boss = true; b.mass = 999; b.ai = 'boss'; });
 
