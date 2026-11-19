@@ -405,6 +405,7 @@
         const after = D.masteryRank(d.mastery[G.cls]);
         G.result.mastery = { gained: Math.round(score / 1000), rank: after, up: after > before };
       }
+      if (!G.bot) { PS.Feats.check(G); G.result.feats = G.feats.slice(); } // again, now that mastery has moved
       if (!G.bot) {
         d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
           seed: G.seed, daily: G.daily || '', rush: !!G.rush, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
