@@ -163,6 +163,9 @@
     goldtooth:  { name: 'Gilded Hand',     icon: 'hand',    tier: 1, max: 5, desc: '+25% gold found.',      apply: (s, n) => { s.gold += 0.25 * n; } },
     battery:    { name: 'Rift Battery',    icon: 'battery', tier: 1, max: 3, desc: '+20% ability haste.',   apply: (s, n) => { s.abilityHaste += 0.20 * n; } },
     plate:      { name: 'Scale Plate',     icon: 'armor',   tier: 1, max: 99, desc: '+6 armor.',            apply: (s, n) => { s.armor += 6 * n; } },
+    secondskin: { name: 'Second Skin',     icon: 'armor',   tier: 1, max: 2, desc: 'After you are hit, gain 25 armor for 5 seconds.', apply: (s, n, p) => { s.f.secondSkin = n; if (p.skinT > 0) s.armor += 25 * n; }, dynamic: true },
+    kindling:   { name: 'Kindling',        icon: 'nova',    tier: 1, max: 3, desc: 'Every level you gain sets off a blast around you.', apply: (s, n) => { s.f.kindling = (s.f.kindling || 0) + n; } },
+    gemeater:   { name: 'Gem Eater',       icon: 'gem',     tier: 1, max: 2, desc: 'Every 60 gems you collect restore 4% of your health.', apply: (s, n) => { s.f.gemEater = (s.f.gemEater || 0) + n; } },
     // rare
     chainspark: { name: 'Arc Coil',        icon: 'chain',   tier: 2, max: 4, desc: 'Hits have a 6% chance to chain lightning to nearby enemies.', apply: (s, n) => { s.f.chainProc = (s.f.chainProc || 0) + 0.06 * n; } },
     volatile:   { name: 'Volatile Ichor',  icon: 'bomb',    tier: 2, max: 4, desc: 'Slain enemies have a 12% chance to explode.', apply: (s, n) => { s.f.corpseBoom = (s.f.corpseBoom || 0) + 0.12 * n; } },
@@ -174,6 +177,9 @@
     venomous:   { name: 'Serpent Tooth',   icon: 'spores',  tier: 2, max: 3, desc: 'Hits have a 20% chance to poison.', apply: (s, n) => { s.f.poisonProc = (s.f.poisonProc || 0) + 0.20 * n; } },
     souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 1,000 enemies slain this run, up to +50%.', apply: (s, n, p) => { s.dmg += Math.min(0.5, Math.floor((p.kills || 0) / 1000) * 0.01) * n; }, dynamic: true },
     mirror:     { name: 'Mirror Shard',    icon: 'prism',   tier: 2, max: 1, desc: 'Ward is 25% larger and recharges 25% faster. Reflected bullets hit 60% harder.', apply: (s) => { s.f.mirror = 1; } },
+    executioner: { name: 'Headsman\'s Axe', icon: 'cleave',  tier: 2, max: 2, desc: 'Enemies below 25% health take 35% more damage.', apply: (s, n) => { s.f.execute = (s.f.execute || 0) + 0.35 * n; } },
+    stopwatch:  { name: 'Frozen Stopwatch', icon: 'timer',  tier: 2, max: 1, desc: 'Dashing chills every enemy around where you set off, and freezes the lesser ones for a moment.', apply: (s) => { s.f.dashChill = 1; } },
+    warbanner:  { name: 'War Banner',      icon: 'swords',  tier: 2, max: 1, desc: '+4% damage for every elite and boss you slay from now on, up to +60%.', apply: (s, n, p) => { s.dmg += Math.min(0.6, 0.04 * (p.trophies || 0)); }, dynamic: true },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },
@@ -182,12 +188,14 @@
     momentum:   { name: 'Stormstride',     icon: 'wings',   tier: 3, max: 1, desc: '+12% move speed. Bonus move speed also raises your damage.', apply: (s) => { s.speed *= 1.12; s.f.momentum = 1; } },
     twinsouls:  { name: 'Twin Souls',      icon: 'multishot', tier: 3, max: 2, desc: '+1 projectile on every skill that fires projectiles.', apply: (s, n) => { s.proj += n; } },
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
+    stillwater: { name: 'Still Water',     icon: 'wave',    tier: 3, max: 1, desc: '+6% damage for every 10 seconds since you were last hit, up to +48%. Being hit resets it.', apply: (s, n, p) => { s.dmg += Math.min(0.48, 0.06 * Math.floor((p.calmT || 0) / 10)); }, dynamic: true },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },
     infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+2% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.02 * (p.level || 1); }, dynamic: true },
     paradox:    { name: 'Paradox Engine',  icon: 'gear',    tier: 4, max: 1, desc: '+30% attack speed and +40% ability haste.', apply: (s) => { s.atkSpd += 0.3; s.abilityHaste += 0.4; } },
     colossus:   { name: 'Heart of the Colossus', icon: 'mountain', tier: 4, max: 1, desc: '+100 max health, +10 armor, +25% area of effect.', apply: (s) => { s.maxHp += 100; s.armor += 10; s.area += 0.25; } },
+    prismheart: { name: 'Prism Heart',     icon: 'prism',   tier: 4, max: 1, desc: 'Reactions hit 60% harder and each enemy can react again a second sooner.', apply: (s) => { s.f.rxBoost = 1; } },
     midas:      { name: 'Midas Sigil',     icon: 'trophy',  tier: 4, max: 1, desc: 'Double gold. Chests cost 30% less.', apply: (s) => { s.gold += 1; s.f.discount = 0.3; } },
   };
   for (const id in D.RELICS) D.RELICS[id].id = id;

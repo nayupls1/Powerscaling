@@ -480,6 +480,7 @@
         case 'xp':
           G.gemCount--;
           p.addXp(k.val);
+          if (p.stats.f.gemEater && ++p.gemsEaten >= 60) { p.gemsEaten = 0; p.heal(p.stats.maxHp * 0.04 * p.stats.f.gemEater * G.rules.heal); PS.FX.mend(p); }
           p.gemCombo = Math.min(24, p.gemCombo + 1);
           p.gemComboT = 0.6;
           PS.Audio.play('gem', { vol: 0.3, pitch: 1 + p.gemCombo * 0.03 });

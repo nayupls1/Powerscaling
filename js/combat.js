@@ -75,6 +75,7 @@
       if (e.markT > 0) m += 0.4;
       if (e.exposeT > 0) m += 0.2;
       if (e.big) m += s.bossDmg;
+      if (s.f.execute && e.hp < e.maxHp * 0.25) m += s.f.execute;
       dmg *= m * (e.taken || 1);
       if (e.wardT > G.time) dmg *= 1 - e.wardCut; // a Warder stands nearby
       if (dmg <= 0) return 0;
@@ -225,7 +226,7 @@
         if (G.time < e.rxAt || G.rxTokens < 1) return;
         const rx = D.reaction(e.tagEl, el);
         G.rxTokens -= 1;
-        e.rxAt = G.time + RX_COOLDOWN / G.rules.react;
+        e.rxAt = G.time + (RX_COOLDOWN - (G.player.stats.f.rxBoost ? 1 : 0)) / G.rules.react;
         e.tagEl = el; e.tagT = G.time + 4;
         C.react(e, rx);
         return;
@@ -235,7 +236,7 @@
     react(e, rx) {
       const G = PS.G, p = G.player, s = p.stats, area = s.area;
       const a = rx.els[0], b = rx.els[1], name = rx.name;
-      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react;
+      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react * (s.f.rxBoost ? 1.6 : 1);
       const x = e.x, y = e.y;
       const hit = (el, extra) => Object.assign({ el, src: name, noProc: true }, extra);
       G.reactions[name] = (G.reactions[name] || 0) + 1;
@@ -376,6 +377,7 @@
           PS.Audio.play('explode', { vol: 0.4 });
         }
       }
+      if (e.big) p.trophies++;
       p.onKill(e, o || EMPTY, canProc);
       if (e.def.onDeath) e.def.onDeath(e);
       if (e.affixes) PS.Enemies.affixDeath(e);

@@ -31,6 +31,7 @@
       this.relics = {}; this.relicOrder = [];
       this.boons = {};
       this.pacts = [];
+      this.trophies = 0; this.calmT = 0; this.skinT = 0; this.gemsEaten = 0; // relic counters
       this.talents = [0, 0, 0];
       this.talentsDue = 0;
       this.banned = new Set();
@@ -152,6 +153,8 @@
       // timers
       if (this.inv > 0) { this.inv -= dt; if (this.inv <= 0) this.hitInv = false; }
       if (this.hurtFlash > 0) this.hurtFlash -= dt;
+      this.calmT += dt;
+      if (this.skinT > 0) { this.skinT -= dt; if (this.skinT <= 0) this.recalc(); }
       if (this.swing > 0) this.swing = Math.max(0, this.swing - dt * 5);
       if (this.abilityCd > 0) this.abilityCd -= dt;
       if (this.dashCharges < s.dashCharges) {
@@ -202,6 +205,10 @@
         this.hitInv = false;
         PS.Audio.play('dash', { vol: 0.5 });
         PS.FX.dashBurst(this.x, this.y, this.dashAng, cls.color);
+        if (f.dashChill) {
+          PS.FX.ring(this.x, this.y, 170 * s.area, '#bdf0ff', 0.35);
+          G.grid.query(this.x, this.y, 170 * s.area, (e) => { C.chill(e, 3); if (!e.big) C.freeze(e, 1, 0.8); });
+        }
         if (cls.onDash) cls.onDash(this);
       }
 
@@ -350,6 +357,8 @@
         PS.FX.ring(this.x, this.y, 130 * s.area, '#d9dfef', 0.25);
         C.aoe(this.x, this.y, 130 * s.area, td, { el: 'steel', src: 'Thornmail', knock: 200, noProc: true });
       }
+      this.calmT = 0;
+      if (s.f.secondSkin) { const had = this.skinT > 0; this.skinT = 5; if (!had) this.recalc(); }
       if (cls.onHurt) cls.onHurt(this, d);
       if (this.hp <= 0) this.die();
       return 'hit';
@@ -390,6 +399,12 @@
     }
     /** one level, however it was earned (experience, or a pact that hands levels out) */
     gainLevel() {
+      const k = this.stats.f.kindling;
+      if (k) {
+        const r = 190 * this.stats.area;
+        PS.FX.explosion(this.x, this.y, r, '#ffd06b');
+        C.aoe(this.x, this.y, r, (40 + this.level * 6) * this.dm * k, { src: 'Kindling', knock: 220, noProc: true });
+      }
       this.level++;
       this.xpNext = xpFor(this.level);
       this.pendingLevels++;
