@@ -978,6 +978,8 @@
       const pct = (v) => '+' + Math.round((v - 1) * 100) + '%';
       return `${G.daily ? `<p class="muted">Daily rift for ${G.daily}. Everyone has the full skill tree.</p>` : G.depth ? `<p class="muted">Depth ${G.depth}: score ×${D.depthScore(G.depth).toFixed(2)}. In all, the horde has ${pct(G.rules.hp)} health and hits ${pct(G.rules.dmg)} harder.</p>` : ''}
         ${mods.length ? `<ul class="mods">${mods.map((m) => `<li>${ico(m.icon, 15)}<b>${esc(m.name)}</b><span>${esc(m.text)}</span></li>`).join('')}</ul>` : ''}
+        ${PS.Director.tide ? `<ul class="mods"><li style="color:${PS.Director.tide.color}">${ico(PS.Director.tide.icon, 15)}<b>${esc(PS.Director.tide.name)}, ${Math.ceil(PS.Director.tideLeft)}s left</b><span>${esc(PS.Director.tide.text)}</span></li></ul>` : ''}
+        ${G.rush ? `<p class="muted">Boss rush: stage ${Math.min(G.rush.stage + 1, PS.Director.rushStages)} of ${PS.Director.rushStages}.</p>` : ''}
         <p class="muted seed">Seed ${esc(G.seed)}</p>`;
     },
 
