@@ -589,7 +589,7 @@
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
           <p>Once you have slain the Rift Lord, the class screen offers a boss rush: all five bosses back to back, with a burst of levels to spend before each. It is scored on speed and kept off the leaderboard.</p>
-          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has a boss of its own.</p>
+          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has two bosses of its own.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
         <div class="help-col">
@@ -597,6 +597,10 @@
           <p>Each skill belongs to one of six elements. Owning 2, 4 and 6 skills of the same element unlocks set bonuses, so a focused build is far stronger than a scattered one.</p>
           <ul class="els">${D.ELEMENT_IDS.map((id) => `<li style="--c:${D.ELEMENTS[id].color}">${ico(D.ELEMENTS[id].icon, 16)}<b>${D.ELEMENTS[id].name}</b><span>${D.AFFINITY[id][1].text}</span></li>`).join('')}</ul>
           <p>A skill at level 6 evolves if you own its matching tome. An evolved skill counts twice toward its element, and can then be overcharged without limit.</p>
+          <p>Some relics belong to a named set. Hold every piece and the set resonates, with a bonus of its own; a relic card says which set it is part of and when it would complete one.</p>
+          <h3>Between runs</h3>
+          <p>Essence buys permanent upgrades in the skill tree. Feats are one-time goals that pay Essence, and some unlock a sigil: one perk to wear into a run, chosen on the class screen.</p>
+          <p>Every run earns the class you played mastery, and each rank is 1% more damage for that class. The codex records every relic, evolution, reaction, pact and enemy you have met.</p>
         </div>
         <div class="help-col">
           <h3>Reactions</h3>
