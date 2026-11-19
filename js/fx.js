@@ -439,7 +439,7 @@
           ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.93, 0, TAU); ctx.stroke();
         }
         // shock rings are the hero's own and harmless: kept light, so the solid red discs of the rift stand out against them
-        ctx.globalAlpha = (1 - t) * 0.62;
+        ctx.globalAlpha = (1 - t) * (PS.Save.data.settings.subtleFx ? 0.3 : 0.62);
         ctx.lineWidth = r.w * (1 - t) + 1;
         ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, TAU); ctx.stroke();
       }

@@ -617,6 +617,7 @@
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
+        ${tog('subtleFx', 'Subtle own effects', 'Draw your own ground effects and shock rings at half strength, so danger zones stand out more')}
         ${tog('flash', 'Screen flashes', 'Full-screen flashes on big hits, bombs and evolutions')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
         <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>

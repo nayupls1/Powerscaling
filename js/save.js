@@ -20,7 +20,7 @@
     tree: {},            // nodeId -> rank
     unlocked: { vanguard: true, pyromancer: true, ranger: true },
     lastClass: 'vanguard',
-    settings: { sfx: 0.7, music: 0.45, shake: true, flash: true, dmgNums: true, autoAim: false, autoFire: true, heroBars: true, quality: 'auto' },
+    settings: { sfx: 0.7, music: 0.45, shake: true, flash: true, subtleFx: false, dmgNums: true, autoAim: false, autoFire: true, heroBars: true, quality: 'auto' },
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,

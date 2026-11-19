@@ -382,11 +382,11 @@
     worldTf();
   }
   function drawZones(G) {
-    const t = G.time;
+    const t = G.time, own = PS.Save.data.settings.subtleFx ? 0.5 : 1; // "Subtle own effects" in Settings
     let riftGlows = 8, embers = 3;
     for (const z of G.zones) {
       if (!visible(z.x, z.y, z.r + 20)) continue;
-      const fade = Math.min(1, z.life / 0.4, z.age / 0.2);
+      const fade = Math.min(1, z.life / 0.4, z.age / 0.2) * own;
       const k = z.kind;
       if (k === 'poison' || k === 'pool') {
         drawZoneDisc('poison', z.x, z.y, z.r, fade);
@@ -454,7 +454,7 @@
     ctx.globalCompositeOperation = 'lighter';
     for (const z of G.zones) {
       if (z.kind !== 'ball' || !visible(z.x, z.y, z.r)) continue;
-      const fade = Math.min(1, z.life / 0.4);
+      const fade = Math.min(1, z.life / 0.4) * (PS.Save.data.settings.subtleFx ? 0.5 : 1);
       drawGlow(z.x, z.y, 46, '#ffe14d', 0.9 * fade, true);
       ctx.globalAlpha = 0.09 * fade; // the orb's reach, barely there: a screenful of these read as circles to be dodged
       ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1.5;
