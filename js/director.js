@@ -17,7 +17,7 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 11.7], [7.5, 16.2], [9, 22.2], [10.5, 31], [12, 43.5]];
+  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
   // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
   // still describes the game: with it, the bot's results match what they were before reactions existed.
@@ -67,7 +67,7 @@
       this.altarT = 165;   // dark altars: a pact with a price
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
-      this.hoarderT = 130; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
+      this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
       this.victory = false; this.victoryAt = 0;
@@ -182,7 +182,7 @@
         this.tremorX = p.x; this.tremorY = p.y;
         this.tremorT = Math.max(3, 8.5 - tm * 0.42) * (bossAlive ? 1.5 : 1) * Math.max(0.3, Math.pow(0.65, this.linger));
         PS.Combat.hazard({ kind: 'circle', x: p.x, y: p.y, r: 80, delay: 1.2, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
-        const extra = tm > 6 ? 2 : 1;
+        const extra = 1; // one stray beside the one under your feet: more than that is clutter, not pressure
         for (let i = 0; i < extra; i++) {
           const a = U.rnd() * TAU, d = U.rand(130, 280);
           PS.Combat.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, delay: 1.2 + i * 0.15, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
@@ -268,7 +268,7 @@
       }
       this.hoarderT -= dt;
       if (this.hoarderT <= 0 && !bossAlive) {
-        this.hoarderT = 110 + EV() * 50;
+        this.hoarderT = 150 + EV() * 60;
         const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
         const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
         const e = PS.Enemies.spawn('hoarder', x, y, { hpMult: 5 });

@@ -95,6 +95,9 @@
           if (pr.kind === 'shrine' || pr.kind === 'altar') consider(pr.x, pr.y, 200);
           if (pr.kind === 'breach' && !pr.active && p.hp > p.stats.maxHp * 0.6) consider(pr.x, pr.y, 150);
         }
+        // a Hoarder on the loose is worth running down
+        const hd = PS.Director.hoarder;
+        if (hd && !hd.dead) consider(hd.x, hd.y, 260);
       }
       if (goal) {
         const dx = goal.x - p.x, dy = goal.y - p.y, d = Math.hypot(dx, dy) || 1;
