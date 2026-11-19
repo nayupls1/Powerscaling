@@ -374,7 +374,7 @@
       // the first daily rift of the day pays double
       const firstDaily = !!G.daily && !G.bot && !(d.daily.date === G.daily && d.daily.attempts > 0);
       // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
-      const essence = Math.round((G.rush ? G.bossesKilled * 45 + (G.won ? 80 : 0) : G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
+      const essence = Math.round((G.rush ? G.bossesKilled * 20 + (G.won ? 40 : 0) : G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
         * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 : 1));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
