@@ -204,6 +204,7 @@
           <span class="class-name">${c.name}</span>
           <span class="class-title">${locked ? c.unlock.text : c.title}</span>
           ${clear >= 0 ? `<span class="class-clear">${ico('crown', 13)} ${clear > 0 ? 'Depth ' + clear + ' cleared' : 'Rift Lord slain'}</span>` : ''}
+          ${D.masteryRank(d.mastery[id] || 0) ? `<span class="class-clear">${ico('star', 13)} Mastery ${D.masteryRank(d.mastery[id])}</span>` : ''}
         </button>`;
       }).join('');
       grid.querySelectorAll('.class-card').forEach((b) => click(b, () => { selClass = b.dataset.cls; this.renderClasses(); }));
