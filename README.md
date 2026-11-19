@@ -64,7 +64,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Class mastery** — every run earns the class you played a point of mastery per 1,000 score. Ten ranks, each worth 1% damage for that class.
 - **Sigils** — ten perks, each unlocked by a feat. Wear one into a run: 80 gold in your purse, a spare dash, stronger reactions, or a dark altar waiting at your feet. The daily rift allows none.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery), and four bridge nodes in the corners between them (more damage when hurt, an extra relic to choose from, stronger healing, more shrines).
-- **Your runs** — the last 30 runs are kept with how they ended, their build and their seed, and any of them can be played again on the same seed: the same hordes, elites and loot rolls, a different fight.
+- **Your runs** — the last 30 runs are kept with how they ended, their build and their seed, and any of them can be played again on the same seed: the same hordes, elites and loot rolls, a different fight. A seed from someone else can be typed in too.
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 
 ## Progression
