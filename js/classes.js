@@ -26,7 +26,7 @@
       return;
     }
     const king = !!f.lichKing;
-    const dmg = (11 + p.level * 1.6) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
+    const dmg = (12 + p.level * 1.85) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
     C.minion({
       x, y, kind: king ? 'knight' : 'skeleton', r: king ? 15 : 11, dmg, life: (18 + (f.deadExplode ? 8 : 0)) * s.duration,
       speed: king ? 175 : 160, atkRate: 0.65, src: king ? 'Death Knights' : 'Skeletons', el: 'void', cleave: king ? 55 : 0, seat: alive.length,
