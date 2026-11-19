@@ -870,6 +870,38 @@
       g.beginPath(); g.arc(0.18, 0, 0.3, -1.0, 1.0); g.closePath(); F(g, '#0f2530');
       eyes(g, 0.36, 0.13, 0.055, col);
     },
+    plaguebearer(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.07, coat = '#2f3a2a', coatLt = '#46563c', leather = '#6a4a2c', bone = '#efe6cf';
+      // a long waxed coat, ragged at the hem
+      g.beginPath(); g.moveTo(-0.2, -0.72); g.quadraticCurveTo(-1.0, -0.9, -1.56, -0.56 + fl);
+      g.lineTo(-1.3, -0.26 + fl); g.lineTo(-1.74, -0.04 + fl * 2); g.lineTo(-1.34, 0.2 - fl); g.lineTo(-1.6, 0.52 - fl);
+      g.quadraticCurveTo(-1.0, 0.9, -0.2, 0.72); g.closePath();
+      F(g, dark(coat, 0.2), lw);
+      feet(g, wk, '#241c14', lw);
+      // a censer swung on a chain from the off hand, trailing rot
+      const cx = 0.5 + Math.sin(t * 3) * 0.16, cy = -1.16 + Math.cos(t * 3) * 0.08;
+      limb(g, [0, -0.7, 0.44, -0.86], 0.25, coat, lw);
+      g.beginPath(); g.moveTo(0.46, -0.86); g.lineTo(cx, cy); S(g, '#b9b2a0', 0.035);
+      o.glow(g, cx, cy, 0.7, acc, 0.7);
+      ell(g, cx, cy, 0.19, 0.19); F(g, vol(g, cx, cy, 0.19, col), lw);
+      ell(g, cx, cy, 0.08, 0.08); F(g, acc);
+      ell(g, 0.46, -0.86, 0.14, 0.14); F(g, leather, lw);
+      // the throwing arm, a dart between the fingers
+      const hx = 0.98 + sw * 0.32, hy = 0.56 - sw * 0.2;
+      limb(g, [0, 0.7, 0.5, 0.86, hx, hy], 0.25, coat, lw);
+      if (sw < 0.5) { limb(g, [hx, hy, hx + 0.5, hy - 0.04], 0.05, bone, lw * 0.5); poly(g, [hx + 0.66, hy - 0.05, hx + 0.46, hy - 0.13, hx + 0.46, hy + 0.04]); F(g, acc, lw * 0.5); }
+      ell(g, hx, hy, 0.15, 0.15); F(g, leather, lw);
+      // body, a bandolier of vials across it
+      ell(g, -0.05, 0, 0.6, 0.84); F(g, vol(g, -0.05, 0, 0.84, coatLt), lw);
+      g.beginPath(); g.moveTo(-0.4, -0.6); g.lineTo(0.2, 0.62); S(g, leather, 0.13);
+      for (const k of [0.2, 0.5, 0.8]) { const vx = -0.4 + 0.6 * k, vy = -0.6 + 1.22 * k; ell(g, vx, vy, 0.08, 0.08); F(g, k === 0.5 ? col : acc, lw * 0.5); }
+      // wide flat hat and a long bone beak
+      ell(g, 0.1, 0, 0.7, 0.68); F(g, vol(g, 0.1, 0, 0.7, '#1e241b'), lw);
+      ell(g, 0.1, 0, 0.36, 0.36); F(g, vol(g, 0.1, 0, 0.36, '#2f3a2a'), lw * 0.8);
+      g.beginPath(); g.arc(0.1, 0, 0.36, 0, TAU); S(g, col, 0.06);
+      poly(g, [0.4, -0.15, 1.22, 0.02, 0.4, 0.15]); F(g, bone, lw);
+      for (const s of [-1, 1]) { ell(g, 0.5, s * 0.2, 0.085, 0.085); F(g, '#1a1410', lw * 0.5); ell(g, 0.5, s * 0.2, 0.04, 0.04); F(g, acc); }
+    },
     reaper(g, o) {
       const { t, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.08, shroud = '#2e1a4a', pale = acc; // it floats: no stride
       // shroud in tatters, thinning to nothing

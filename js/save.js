@@ -8,7 +8,7 @@
   const KEY = 'powerscaling.save.v1';
   const ID_KEY = 'powerscaling.id.v1';  // kept apart from the save so reset() does not orphan the player id
   const MAX_BOARD = 100;
-  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden'];
+  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'];
   const READY_WAIT = 1500;              // Save.ready never holds the menu up longer than this
   const PUSH_DELAY = 800;
 
@@ -303,6 +303,7 @@
       for (const id of p.pacts) cx.pacts[id] = 1;
       for (const name in G.reactions) cx.rx[name] = 1;
       for (const id in G.slain) cx.foes[id] = (cx.foes[id] || 0) + G.slain[id];
+      if (!this.data.unlocked.plaguebearer && Object.keys(cx.pacts).length >= 3) { this.data.unlocked.plaguebearer = true; G.unlockedClass = G.unlockedClass || 'plaguebearer'; }
     },
     addRun(run) {
       const b = run.daily ? this.data.daily.runs : this.data.board;

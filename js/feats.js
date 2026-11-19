@@ -32,6 +32,7 @@
   feat('w_reaper',     'class', 'Harvest',       'scythe',   'Slay the Rift Lord as the Reaper.',               60,  wonAs('reaper'));
   feat('w_stormcaller', 'class', 'Eye of the Storm', 'thunder', 'Slay the Rift Lord as the Stormcaller.',      60,  wonAs('stormcaller'));
   feat('w_frostwarden', 'class', 'Dead of Winter', 'snow',   'Slay the Rift Lord as the Frostwarden.',          60,  wonAs('frostwarden'));
+  feat('w_plaguebearer', 'class', 'Patient Zero', 'flask',   'Slay the Rift Lord as the Plaguebearer.',         60,  wonAs('plaguebearer'));
   feat('capstone', 'class', 'Ascended',          'arrowup',  'Reach the final tier of a class path.',           40,  (G, p) => p.talents.some((r, i) => r >= p.cls.branches[i].nodes.length));
   feat('lvl40',    'class', 'Seasoned',          'star',     'Reach level 40.',                                 40,  (G, p) => p.level >= 40);
   feat('lvl60',    'class', 'Paragon',           'trophy',   'Reach level 60.',                                 100, (G, p) => p.level >= 60);

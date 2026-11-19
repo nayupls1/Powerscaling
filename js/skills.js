@@ -749,6 +749,21 @@
         if (inst.snd % 3 === 0) PS.Audio.play('frost', { vol: 0.16, pitch: 1.3 });
       },
     },
+    darts: {
+      name: 'Plague Darts', el: 'venom', icon: 'spores', primary: true, usesProj: true, unit: 'dart',
+      desc: 'A spread of darts that barely scratch, and leave two stacks of Poison in whatever they touch.',
+      base: { dmg: 6, cd: 0.52, count: 2, speed: 640, pierce: 1 },
+      up: [{ dmg: 2 }, { count: 1 }, { pierce: 1, dmg: 1 }, { cd: -0.05, dmg: 1 }, { count: 1 }],
+      fire(inst, s, p) {
+        const f = p.stats.f, stacks = 2 + (f.virulence ? 1 : 0);
+        fan(s.count, 0.15, (off) => {
+          C.proj({ x: p.x + Math.cos(p.aim) * 14, y: p.y + Math.sin(p.aim) * 14, ang: p.aim + off, speed: s.speed, dmg: s.dmg, el: 'venom', src: inst.name,
+            r: 6, life: 0.9, pierce: s.pierce, kind: 'spore', color: EL.venom.color, knock: 30, cut: true, opts: { poison: stacks } });
+        });
+        p.swing = 1;
+        PS.Audio.play('poison', { vol: 0.3, pitch: 1.3 });
+      },
+    },
     scythe: {
       name: 'Soul Scythe', el: 'void', icon: 'scythe', primary: true, usesProj: true, unit: 'scythe',
       desc: 'A spectral scythe that spins out where you aim and returns.',

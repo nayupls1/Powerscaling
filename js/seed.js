@@ -53,9 +53,9 @@
 
   /* ---------- the daily rift: one seed, one class and one mutator per UTC day, the same for everyone ---------- */
   const DAY = 86400000;
-  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden'];
+  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'];
   const MUTATORS = ['glass', 'restless', 'parade', 'quicksilver', 'flux', 'hoard', 'openguard', 'scholar', 'breached', 'pacted', 'goldrush', 'menagerie'];
-  /** every class once per six days and every mutator once per twelve, in an order that changes each cycle */
+  /** every class once per seven days and every mutator once per twelve, in an order that changes each cycle */
   function cycle(list, day, salt) {
     const n = list.length, block = Math.floor(day / n), rnd = make(salt + ':' + block);
     const order = list.slice();

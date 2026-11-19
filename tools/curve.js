@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
   const flags = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v === undefined ? true : v]; }));
   const pos = args.filter((a) => !a.startsWith('--'));
   const clsArg = pos[0] || 'all', minutes = +(pos[1] || 13), runs = +(pos[2] || 3);
-  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden'] : clsArg.split(',');
+  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'] : clsArg.split(',');
   const bucket = +(flags.bucket || 60), workers = +(flags.workers || 4);
   const jobs = [];
   for (const cls of classes) for (let r = 0; r < runs; r++) jobs.push({ cls, r });

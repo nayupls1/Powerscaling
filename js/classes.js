@@ -568,6 +568,73 @@
         },
       ],
     },
+    /* ============================================================ PLAGUEBEARER */
+    plaguebearer: {
+      name: 'Plaguebearer', title: 'Poison and detonation', difficulty: 'Demanding', color: '#d6c84a', accent: '#8fe04a', primary: 'darts',
+      blurb: 'Hits like a feather. Fills the horde with Poison, then sets all of it off at once.',
+      base: { maxHp: 110, speed: 215, dashCd: 2.1, regen: 0.4, statusDmg: 1.15 },
+      dashName: 'Miasma Step',
+      passive: 'You leave a cloud of rot where you set off. Your Poison, Burn and Bleed deal 15% more damage.',
+      unlock: { text: 'Strike three different pacts to unlock', check: (save) => Object.keys(save.codex.pacts).length >= 3 },
+      ability: {
+        name: 'Catalyst', icon: 'flask', cd: 12,
+        desc: 'Every poisoned enemy in sight takes four seconds of its Poison at once. The rest are poisoned, so it is never wasted.',
+        use(p) {
+          const G = PS.G, s = p.stats, f = s.f, r = 520 * (f.reagents ? 1.3 : 1), base = abil(p, 10, 'venom');
+          let pools = 0;
+          PS.FX.ring(p.x, p.y, r, '#b8f078', 0.5);
+          const hit = [];
+          G.grid.query(p.x, p.y, r, (e) => { hit.push(e); });
+          for (const e of hit) {
+            if (e.dead) continue;
+            if (e.poisStacks <= 0) { C.poison(e, C.power('venom') * 0.12, 3); continue; }
+            const dmg = base + e.poisStacks * e.poisDps * 4 * s.statusDmg, x = e.x, y = e.y;
+            PS.FX.puff(x, y, '#b8f078', 7);
+            // noStatus: its own hit must not set the Poison it will read next time, or every cast multiplies the last
+            C.damage(e, dmg, { el: 'venom', src: 'Catalyst', noCrit: true, noStatus: true });
+            if (f.chainCatalysis && e.dead) { PS.FX.ring(x, y, 90 * s.area, '#b8f078'); C.aoe(x, y, 90 * s.area, dmg * 0.5, { el: 'venom', src: 'Catalyst', noProc: true, noStatus: true }); }
+            if (f.acidBath && pools < 8) { pools++; C.zone({ x, y, r: 70 * s.area, life: 4 * s.duration, tick: 0.5, dmg: C.power('venom') * 0.7, el: 'venom', src: 'Acid Bath', kind: 'poison', color: '#8fe04a' }); }
+          }
+          PS.FX.flash('#8fe04a', 0.15);
+          PS.Audio.play('ability');
+          PS.Audio.play('poison', { vol: 0.7, pitch: 0.7 });
+        },
+      },
+      update() {},
+      onKill(p, e) {
+        if (p.stats.f.siphon && e.poisStacks > 0) p.leechPool += 0.8;
+      },
+      onDash(p) {
+        const s = p.stats, big = s.f.plagueWard ? 2 : 1;
+        C.zone({ x: p.x, y: p.y, r: 95 * s.area * big, life: 3.5 * s.duration, tick: 0.5, firstTick: 0.05, dmg: C.power('venom') * 0.5, el: 'venom', src: 'Miasma Step', kind: 'poison', color: '#8fe04a', opts: { poison: 2 } });
+      },
+      branches: [
+        {
+          name: 'Contagion', icon: 'spores', color: '#8fe04a',
+          nodes: [
+            { name: 'Virulence', icon: 'drop', desc: 'Plague Darts leave one more stack of Poison. +20% Blight damage.', apply: (s) => { s.f.virulence = 1; s.el.venom += 0.2; } },
+            { name: 'Outbreak', icon: 'ghost', desc: 'Poison stacks 5 higher and spreads when its host dies. Poisoned enemies deal 25% less damage.', apply: (s) => { s.f.pandemic = 1; } },
+            { name: 'Necrosis', icon: 'skull', desc: 'Enemies carrying 8 or more stacks of Poison take 25% more damage from everything.', apply: (s) => { s.f.necrosis = 1; } },
+          ],
+        },
+        {
+          name: 'Catalysis', icon: 'flask', color: '#d6c84a',
+          nodes: [
+            { name: 'Quick Reagents', icon: 'hourglass', desc: 'Catalyst reaches 30% further. +25% ability haste.', apply: (s) => { s.f.reagents = 1; s.abilityHaste += 0.25; } },
+            { name: 'Acid Bath', icon: 'wave', desc: 'Catalyst leaves a pool of acid under up to 8 of the enemies it bursts.', apply: (s) => { s.f.acidBath = 1; } },
+            { name: 'Chain Catalysis', icon: 'bomb', desc: 'Enemies slain by Catalyst burst again, hurting those around them.', apply: (s) => { s.f.chainCatalysis = 1; } },
+          ],
+        },
+        {
+          name: 'Leech', icon: 'blood', color: '#ff7a8a',
+          nodes: [
+            { name: 'Thick Blood', icon: 'heart', desc: '+25 max health and +0.8 regeneration.', apply: (s) => { s.maxHp += 25; s.regen += 0.8; } },
+            { name: 'Siphon', icon: 'fang', desc: 'Every poisoned enemy that dies restores a little of your health.', apply: (s) => { s.f.siphon = 1; } },
+            { name: 'Plague Ward', icon: 'shield', desc: '+1 dash charge, and the cloud Miasma Step leaves is twice as large. Poisoned enemies deal 20% less damage to you.', apply: (s) => { s.dashCharges += 1; s.f.plagueWard = 1; } },
+          ],
+        },
+      ],
+    },
   };
 
   for (const id in CLASSES) CLASSES[id].id = id;

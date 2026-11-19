@@ -345,6 +345,7 @@
       let d = raw ? dmg : dmg * (60 / (60 + Math.max(0, s.armor)));
       if (this.whirlT > 0) d *= 0.6;
       if (this.tempestT > 0 && s.f.eye) d *= 0.65;
+      if (s.f.plagueWard && src && typeof src === 'object' && src.poisStacks > 0) d *= 0.8;
       d = Math.max(1, d);
       this.hp -= d;
       G.dmgTaken += d;
