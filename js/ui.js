@@ -20,6 +20,23 @@
     el.addEventListener('click', (e) => { PS.Audio.play('uiClick', { vol: 0.5 }); fn(e); });
   }
   function elColor(el) { return el ? D.ELEMENTS[el].color : '#efe8d8'; }
+  /** which element a damage source belongs to (skills, their evolutions, statuses, affinity procs, reactions), or null */
+  let SRC_EL = null;
+  function srcEl(name) {
+    if (!SRC_EL) {
+      SRC_EL = { Burn: 'fire', Poison: 'venom', Bleed: 'steel', Tempest: 'storm', 'Ember burst': 'fire', Shatter: 'frost', Implosion: 'void' };
+      for (const id in PS.Skills.DEFS) { const k = PS.Skills.DEFS[id]; SRC_EL[k.name] = k.el; if (k.evo) SRC_EL[k.evo.name] = k.el; }
+      for (const key in D.REACTIONS) SRC_EL[D.REACTIONS[key].name] = D.REACTIONS[key].els[1];
+    }
+    return SRC_EL[name] || null;
+  }
+  /** a round axis maximum at or above v (1, 2, 2.5 or 5 times a power of ten) */
+  function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  const mmss = (sec) => Math.floor(sec / 60) + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
 
   const UI = {
     /* ================================================================ boot */
@@ -33,6 +50,7 @@
       }).join('');
 
       click($('navPlay'), () => this.showScreen('scrClass'));
+      click($('navDaily'), () => this.showScreen('scrDaily'));
       click($('navTree'), () => this.showScreen('scrTree'));
       click($('navBoard'), () => this.showScreen('scrBoard'));
       click($('navHelp'), () => this.showScreen('scrHelp'));
@@ -71,6 +89,7 @@
       window.addEventListener('ps:board', (e) => {
         if (PS.Game.state !== 'menu') return;
         if (lastScreen === 'scrBoard' && e.detail && e.detail.cls === boardTab) this.renderBoard(true);
+        if (lastScreen === 'scrDaily' && e.detail && e.detail.cls === 'daily') this.renderDaily(true);
         if (lastScreen === 'scrTitle' && e.detail && e.detail.cls === 'all') this.renderTitle();
       });
       window.addEventListener('ps:run', (e) => this.showWorldRank(e.detail));
@@ -94,6 +113,7 @@
       lastScreen = id;
       if (id === 'scrTitle') this.renderTitle();
       if (id === 'scrClass') this.renderClasses();
+      if (id === 'scrDaily') this.renderDaily();
       if (id === 'scrTree') this.renderTree();
       if (id === 'scrBoard') this.renderBoard();
       if (id === 'scrHelp') this.renderHelp();
@@ -106,7 +126,16 @@
       $('navTree').classList.toggle('has-news', affordable);
       const scope = PS.Save.boardScope ? PS.Save.boardScope('all') : 'device';
       const top = PS.Save.board().slice(0, 5);
+      const day = this.dailyInfo();
+      $('navDailyPill').textContent = day.cls.name;
+      $('navDaily').classList.toggle('has-news', !day.mine.attempts);
       $('titleSide').innerHTML = `
+        <div class="side-card">
+          <div class="board-head"><h3>Today's rift</h3><span class="scope">Resets in ${day.left}</span></div>
+          <p class="daily-line"><span class="swatch" style="--c:${day.cls.color}"></span><b>${day.cls.name}</b> with ${esc(day.mut.name)}</p>
+          <p class="muted">${esc(day.mut.text)}</p>
+          ${day.mine.attempts ? `<p class="hint">Your best today: ${U.fmtNum(day.mine.best)}</p>` : ''}
+        </div>
         <div class="side-card">
           <h3>Your record</h3>
           ${st.runs ? `
@@ -131,11 +160,12 @@
       const d = PS.Save.data;
       const grid = $('classGrid');
       grid.innerHTML = D.CLASS_IDS.map((id) => {
-        const c = D.CLASSES[id], locked = !d.unlocked[id];
+        const c = D.CLASSES[id], locked = !d.unlocked[id], clear = d.depth.clear[id];
         return `<button class="class-card${id === selClass ? ' sel' : ''}${locked ? ' locked' : ''}" data-cls="${id}" style="--c:${c.color}">
           <span class="class-ico">${ico(locked ? 'lock' : CLASS_ICON[id], 34)}</span>
           <span class="class-name">${c.name}</span>
           <span class="class-title">${locked ? c.unlock.text : c.title}</span>
+          ${clear >= 0 ? `<span class="class-clear">${ico('crown', 13)} ${clear > 0 ? 'Depth ' + clear + ' cleared' : 'Rift Lord slain'}</span>` : ''}
         </button>`;
       }).join('');
       grid.querySelectorAll('.class-card').forEach((b) => click(b, () => { selClass = b.dataset.cls; this.renderClasses(); }));
@@ -156,7 +186,8 @@
             <div class="kit"><span class="kit-ico" style="--c:${c.color}">${ico(c.ability.icon, 26)}</span><div><b>${c.ability.name}</b><small>Ability, ${c.ability.cd}s cooldown</small><p>${c.ability.desc}</p></div></div>
             <div class="kit"><span class="kit-ico" style="--c:#bcd0ff">${ico('dash', 26)}</span><div><b>${c.dashName}</b><small>Dash</small><p>A quick burst of movement. You cannot be hurt while dashing.${c.passive ? ' ' + c.passive : ''}</p></div></div>
           </div>
-          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : 'Begin run'}</button>
+          ${this.depthPicker()}
+          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
         </div>
         <div class="cd-tree">
           <h3>Ascension paths <small>one talent every 6 levels, and only one path can reach its final tier</small></h3>
@@ -169,6 +200,65 @@
         </div>`;
       const begin = $('btnBegin');
       if (!locked) click(begin, () => PS.Game.start(selClass));
+      const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
+      step('depthDown', -1); step('depthUp', 1);
+    },
+    /** Rift Depth stepper on the class screen: the modifiers stack, so the list shows everything in force */
+    depthPicker() {
+      const dp = PS.Save.data.depth;
+      if (!dp.max) return `<p class="depth-hint">${ico('lock', 14)} Slay the Rift Lord to open Rift Depth 1: a harder rift, for more score and Essence.</p>`;
+      const n = dp.sel, pct = (v) => '+' + Math.round((v - 1) * 100) + '%', r = D.rules(n);
+      return `<div class="depth">
+        <div class="depth-head">
+          <span><b>Rift Depth</b><small>${n ? `${pct(D.depthScore(n))} score, ${pct(D.depthEssence(n))} Essence` : 'The rift as you first met it'}</small></span>
+          <span class="stepper"><button class="btn btn-small" id="depthDown" aria-label="Shallower" ${n <= 0 ? 'disabled' : ''}>−</button><b class="depth-num" aria-live="polite">${n}</b><button class="btn btn-small" id="depthUp" aria-label="Deeper" ${n >= dp.max ? 'disabled' : ''}>+</button></span>
+        </div>
+        ${n ? `<ul class="mods">${D.DEPTHS.slice(0, n).map((m, i) => `<li>${ico(m.icon, 15)}<b>${i + 1}. ${m.name}</b><span>${m.text}</span></li>`).join('')}</ul>
+        <p class="depth-total">With the rift hardening at every depth, the horde has <b>${pct(r.hp)}</b> health and hits <b>${pct(r.dmg)}</b> harder in all.</p>` : ''}
+        <small class="muted">${n < dp.max ? `Depth ${dp.max} is your deepest so far.` : dp.max < D.DEPTH_MAX ? `Win at depth ${dp.max} to open depth ${dp.max + 1}: ${D.DEPTHS[dp.max].name}.` : 'This is the bottom of the rift.'}</small>
+      </div>`;
+    },
+
+    /* ---------------------------------------------------------------- daily rift */
+    dailyInfo() {
+      const d = PS.Save.data, date = PS.Save.today(), spec = PS.Daily.spec(date);
+      const ms = PS.Save.untilReset(), h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+      return {
+        date, spec, cls: D.CLASSES[spec.cls], mut: D.MUTATORS[spec.mutator],
+        mine: d.daily.date === date ? d.daily : { best: 0, attempts: 0, runs: [] },
+        left: h ? `${h}h ${m}m` : `${Math.max(1, m)}m`,
+      };
+    },
+    renderDaily(fromServer) {
+      const day = this.dailyInfo(), c = day.cls, mut = day.mut;
+      if (!fromServer && PS.Save.fetchBoard) PS.Save.fetchBoard('daily');
+      const global = PS.Save.boardScope('daily') === 'global', rows = PS.Save.board('daily').slice(0, 20);
+      $('dailyDate').textContent = new Date(day.date + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+      $('dailyBody').innerHTML = `
+        <div class="cd-main" style="--c:${c.color}">
+          <div class="daily-class"><span class="class-ico">${ico(CLASS_ICON[day.spec.cls], 40)}</span><div><small>Today's class</small><b>${c.name}</b><span>${c.title}</span></div></div>
+          <div class="kit"><span class="kit-ico" style="--c:#f0b94a">${ico(mut.icon, 26)}</span><div><b>${esc(mut.name)}</b><small>Today's mutator</small><p>${esc(mut.text)}</p></div></div>
+          <ul class="rules">
+            <li>Everyone plays the same seed: the same hordes and the same elites, in the same order.</li>
+            <li>Every hero gets the full skill tree, so the board compares play, not grind.</li>
+            <li>Play as often as you like. Your best run of the day counts.</li>
+            <li>Your first run each day pays double Essence.</li>
+          </ul>
+          <dl class="record three">
+            <div><dt>Your best today</dt><dd>${day.mine.attempts ? U.fmtNum(day.mine.best) : 'None yet'}</dd></div>
+            <div><dt>Runs today</dt><dd>${day.mine.attempts}</dd></div>
+            <div><dt>Resets in</dt><dd>${day.left}</dd></div>
+          </dl>
+          <button class="btn btn-primary btn-big" id="btnDaily">Enter today's rift</button>
+        </div>
+        <div class="cd-tree">
+          <div class="board-head"><h3>Today's board</h3><span class="scope ${global ? 'global' : ''}">${global ? 'Everyone, best run each' : 'This device'}</span></div>
+          ${rows.length ? `<table class="board-table compact"><thead><tr><th>#</th><th>Name</th><th class="num">Score</th><th class="num">Time</th><th class="num">Level</th></tr></thead>
+            <tbody>${rows.map((r, i) => `<tr class="${i < 3 ? 'top' + (i + 1) : ''}${r.mine ? ' mine' : ''}"><td>${i + 1}</td><td class="nm">${esc(r.name)}${r.won ? ` <span class="won" data-tip="Slew the Rift Lord">${ico('crown', 14)}</span>` : ''}</td>
+              <td class="num score">${Math.round(r.score).toLocaleString('en-US')}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td></tr>`).join('')}</tbody></table>`
+            : '<p class="muted">Nobody has entered today\'s rift yet. Set the mark.</p>'}
+        </div>`;
+      click($('btnDaily'), () => PS.Game.start(day.spec.cls, { daily: true }));
     },
 
     /* ---------------------------------------------------------------- meta tree */
@@ -253,27 +343,27 @@
 
     /* ---------------------------------------------------------------- leaderboard */
     renderBoard(fromServer) {
-      const tabs = ['all'].concat(D.CLASS_IDS);
-      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : D.CLASSES[t].name}</button>`).join('');
+      const tabs = ['all'].concat(D.CLASS_IDS, 'daily'), daily = boardTab === 'daily';
+      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : t === 'daily' ? 'Daily rift' : D.CLASSES[t].name}</button>`).join('');
       $('boardTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { boardTab = b.dataset.tab; this.renderBoard(); }));
       // show what we have now; the global rows re-render this when they arrive
       if (!fromServer && PS.Save.fetchBoard) PS.Save.fetchBoard(boardTab);
       const global = PS.Save.boardScope && PS.Save.boardScope(boardTab) === 'global';
-      $('boardScope').textContent = global ? 'Everyone, worldwide' : 'Saved on this device';
+      $('boardScope').textContent = daily ? (global ? 'Everyone today, best run each' : 'Your runs today') : global ? 'Everyone, worldwide' : 'Saved on this device';
       $('boardScope').classList.toggle('global', global);
       const rows = PS.Save.board(boardTab);
       if (!rows.length) {
-        $('boardBody').innerHTML = `<div class="empty"><p>No runs recorded${boardTab === 'all' ? '' : ' for this class'} yet.</p><button class="btn btn-primary" id="boardPlay">Enter the rift</button></div>`;
-        click($('boardPlay'), () => this.showScreen('scrClass'));
+        $('boardBody').innerHTML = `<div class="empty"><p>No runs recorded${boardTab === 'all' ? '' : daily ? ' in today\'s rift' : ' for this class'} yet.</p><button class="btn btn-primary" id="boardPlay">${daily ? 'See today\'s rift' : 'Enter the rift'}</button></div>`;
+        click($('boardPlay'), () => this.showScreen(daily ? 'scrDaily' : 'scrClass'));
         return;
       }
       $('boardBody').innerHTML = `<table class="board-table">
-        <thead><tr><th>#</th><th>Name</th><th>Class</th><th class="num">Score</th><th class="num">Time</th><th class="num">Level</th><th class="num">Kills</th><th class="num">Bosses</th><th>Top damage</th><th>Date</th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Class</th><th class="num">Depth</th><th class="num">Score</th><th class="num">Time</th><th class="num">Level</th><th class="num">Kills</th><th class="num">Bosses</th><th>Top damage</th><th>Date</th></tr></thead>
         <tbody>${rows.map((r, i) => {
           const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
           return `<tr class="${i < 3 ? 'top' + (i + 1) : ''}${r.mine ? ' mine' : ''}">
             <td>${i + 1}</td><td class="nm">${esc(r.name)}${r.won ? ` <span class="won" data-tip="Slew the Rift Lord">${ico('crown', 14)}</span>` : ''}</td>
-            <td style="color:${c.color}">${c.name}</td>
+            <td style="color:${c.color}">${c.name}</td><td class="num">${r.depth ? r.depth : '<span class="muted">0</span>'}</td>
             <td class="num score">${Math.round(r.score).toLocaleString('en-US')}</td><td class="num">${U.fmtTime(r.time)}</td><td class="num">${r.level}</td>
             <td class="num">${Math.round(r.kills).toLocaleString('en-US')}</td><td class="num">${r.bosses}</td>
             <td class="muted">${esc((r.build || []).slice(0, 2).join(', '))}</td>
@@ -305,12 +395,30 @@
           <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
+          <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
         <div class="help-col">
           <h3>Building power</h3>
           <p>Each skill belongs to one of six elements. Owning 2, 4 and 6 skills of the same element unlocks set bonuses, so a focused build is far stronger than a scattered one.</p>
           <ul class="els">${D.ELEMENT_IDS.map((id) => `<li style="--c:${D.ELEMENTS[id].color}">${ico(D.ELEMENTS[id].icon, 16)}<b>${D.ELEMENTS[id].name}</b><span>${D.AFFINITY[id][1].text}</span></li>`).join('')}</ul>
           <p>A skill at level 6 evolves if you own its matching tome. An evolved skill counts twice toward its element, and can then be overcharged without limit.</p>
+        </div>
+        <div class="help-col">
+          <h3>Reactions</h3>
+          <p>Mixing elements pays too. Hit one enemy with two different elements within 4 seconds and they react. Each enemy can react once every 3 seconds; your own skills set reactions off, relic and affinity procs do not.</p>
+          <ul class="rxs">${Object.keys(D.REACTIONS).map((k) => { const r = D.REACTIONS[k]; return `<li><span class="rx-els">${r.els.map((e) => `<i style="--c:${D.ELEMENTS[e].color}" title="${D.ELEMENTS[e].name}">${ico(D.ELEMENTS[e].icon, 13)}</i>`).join('')}</span><b>${r.name}</b><span>${r.text}</span></li>`; }).join('')}</ul>
+        </div>
+        <div class="help-col">
+          <h3>Elites and hordes</h3>
+          <p>An elite arrives about once a minute and drops a relic chest. Every elite carries an affix, and its name tells you which:</p>
+          <ul class="rxs">${D.AFFIX_IDS.map((id) => `<li><span class="rx-els"><i style="--c:${D.AFFIXES[id].color}"></i></span><b>${D.AFFIXES[id].name}</b><span>${D.AFFIXES[id].text}</span></li>`).join('')}</ul>
+          <p>Hordes break over you in four shapes: a closing ring, a stampede from one side, a pincer from two, and a wall that sweeps the whole screen with a single gap to slip through.</p>
+        </div>
+        <div class="help-col">
+          <h3>Going deeper</h3>
+          <p>Slay the Rift Lord and Rift Depth 1 opens. Each depth adds one modifier on top of the ones before it, hardens the horde a little more (${Math.round((D.DEPTH_HP - 1) * 100)}% health and ${Math.round((D.DEPTH_DMG - 1) * 100)}% damage a depth), and multiplies your score and Essence. Win at your deepest depth to open the next; there are ${D.DEPTH_MAX}.</p>
+          <ul class="rxs">${D.DEPTHS.map((m, i) => `<li><span class="rx-els"><i style="--c:#9b6bff">${i + 1}</i></span><b>${m.name}</b><span>${m.text}</span></li>`).join('')}</ul>
+          <p>The daily rift is one seed a day, the same for everyone: a set class, a mutator that bends the rules, and the full skill tree for every hero. Your best run of the day goes on the daily board.</p>
         </div>`;
     },
 
@@ -389,7 +497,12 @@
       $('banner').hidden = true;
       $('bossBar').hidden = true;
       loadoutSig = ''; affSig = ''; hudT = 0;
-      const p = PS.G.player, c = p.cls;
+      const G = PS.G, p = G.player, c = p.cls;
+      const mode = G.daily ? 'Daily rift: ' + D.MUTATORS[G.rules.mutator].name : G.depth ? 'Depth ' + G.depth : '';
+      $('hudMode').textContent = mode;
+      $('hudMode').hidden = !mode;
+      $('actWard').hidden = G.rules.noWard;
+      $('tWard').hidden = G.rules.noWard;
       const abil = ico(c.ability.icon, 26);
       $('actAbility').querySelector('i').innerHTML = abil;
       $('actAbility').style.setProperty('--c', c.color);
@@ -594,7 +707,11 @@
       const rows = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, limit || 10);
       if (!rows.length) return '<p class="muted">No damage dealt yet.</p>';
       const max = rows[0][1], total = G.dmgTotal || 1;
-      return `<ul class="dmg">${rows.map(([name, v]) => `<li><span class="dmg-name">${esc(name)}</span><span class="dmg-bar"><i style="width:${((v / max) * 100).toFixed(1)}%"></i></span><span class="dmg-val">${U.fmtNum(v)}</span><span class="dmg-pct">${Math.round((v / total) * 100)}%</span></li>`).join('')}</ul>`;
+      return `<ul class="dmg">${rows.map(([name, v]) => this.barRow(name, v, max, total, srcEl(name) ? D.ELEMENTS[srcEl(name)].color : '#a49bbd')).join('')}</ul>`;
+    },
+    /** one labelled bar: the name and numbers stay in text colours, the bar carries the element */
+    barRow(name, v, max, total, color) {
+      return `<li><span class="dmg-name">${esc(name)}</span><span class="dmg-bar"><i style="width:${Math.max(1, (v / max) * 100).toFixed(1)}%;background:${color}"></i></span><span class="dmg-val">${U.fmtNum(v)}</span><span class="dmg-pct">${Math.round((v / total) * 100)}%</span></li>`;
     },
     buildSheet(G) {
       const p = G.player, s = p.stats, c = p.cls;
@@ -616,6 +733,8 @@
           <div class="paths">${c.branches.map((br, bi) => `<div class="path" style="--c:${br.color}"><b>${br.name}</b><span>${br.nodes.map((n, i) => `<i class="${i < p.talents[bi] ? 'on' : ''}" data-tip="<b>${esc(n.name)}</b><br>${esc(n.desc)}">${ico(n.icon, 16)}</i>`).join('')}</span></div>`).join('')}</div>
           <h3>Affinities</h3>
           <div class="aff-list">${D.ELEMENT_IDS.filter((e) => p.aff[e] > 0).map((e) => `<div class="affrow" style="--c:${D.ELEMENTS[e].color}"><b>${ico(D.ELEMENTS[e].icon, 15)} ${D.ELEMENTS[e].name} ${p.aff[e]}</b>${D.AFFINITY[e].map((a) => `<span class="${p.aff[e] >= a.n ? 'on' : ''}">${a.n}: ${a.text}</span>`).join('')}</div>`).join('') || '<p class="muted">Collect skills of the same element to unlock set bonuses.</p>'}</div>
+          <h3>Reactions <small>two elements on one enemy within 4 seconds</small></h3>
+          ${this.reactionList(G)}
         </div>
         <div class="sheet-col">
           <h3>Tomes</h3>
@@ -625,7 +744,26 @@
           ${Object.keys(p.boons).length ? `<h3>Blessings</h3><div class="chips">${Object.keys(p.boons).map((id) => { const b = D.BOONS[id]; return `<span class="chip">${ico(b.icon, 15)} +${b.fmt(p.boons[id])} ${b.stat.toLowerCase()}</span>`; }).join('')}</div>` : ''}
           <h3>Stats</h3>
           <dl class="statlist">${stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
+          <h3>This rift</h3>
+          ${this.riftInfo(G)}
         </div>`;
+    },
+    /** the reactions this build can set off: one per pair of elements the hero has a skill in */
+    reactionList(G) {
+      const els = D.ELEMENT_IDS.filter((e) => G.player.skills.some((k) => k.def.el === e));
+      const rows = [];
+      for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) rows.push(D.reaction(els[i], els[j]));
+      if (!rows.length) return '<p class="muted">Take skills of two different elements and they will react on any enemy both of them hit.</p>';
+      return `<div class="rx-list">${rows.map((r) => `<div class="rx"><span class="rx-els">${r.els.map((e) => `<i style="--c:${D.ELEMENTS[e].color}">${ico(D.ELEMENTS[e].icon, 13)}</i>`).join('')}</span><div><b>${r.name}</b>${G.reactions[r.name] ? `<em>${U.fmtNum(G.reactions[r.name])}</em>` : ''}<span>${r.text}</span></div></div>`).join('')}</div>`;
+    },
+    /** depth modifiers or the day's mutator, and the seed */
+    riftInfo(G) {
+      const mut = G.rules.mutator && D.MUTATORS[G.rules.mutator];
+      const mods = mut ? [mut] : D.DEPTHS.slice(0, G.depth);
+      const pct = (v) => '+' + Math.round((v - 1) * 100) + '%';
+      return `${G.daily ? `<p class="muted">Daily rift for ${G.daily}. Everyone has the full skill tree.</p>` : G.depth ? `<p class="muted">Depth ${G.depth}: score ×${D.depthScore(G.depth).toFixed(2)}. In all, the horde has ${pct(G.rules.hp)} health and hits ${pct(G.rules.dmg)} harder.</p>` : ''}
+        ${mods.length ? `<ul class="mods">${mods.map((m) => `<li>${ico(m.icon, 15)}<b>${esc(m.name)}</b><span>${esc(m.text)}</span></li>`).join('')}</ul>` : ''}
+        <p class="muted seed">Seed ${esc(G.seed)}</p>`;
     },
 
     /* ================================================================ results */
@@ -634,7 +772,11 @@
       $('ovChoice').hidden = true; $('ovPause').hidden = true;
       $('hud').hidden = true; $('touch').hidden = true;
       const title = r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
-      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.` : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}.`;
+      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.`
+        : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}${G.lastHurt ? '. The last blow: ' + esc(G.lastHurt) : ''}.`;
+      const sources = Object.keys(G.dmgBy).length;
+      const hurt = Object.entries(G.hurtBy).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const rx = Object.entries(G.reactions).sort((a, b) => b[1] - a[1]);
       $('overBody').innerHTML = `
         <header class="over-head${r.won ? ' won' : ''}">
           <h2>${title}</h2>
@@ -643,10 +785,13 @@
         <div class="over-score">
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-tags">
-            ${res.best ? '<span class="tag gold">New best score</span>' : ''}
-            ${res.rank ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}
+            ${res.unlockedDepth ? `<span class="tag gold">${ico('key', 14)} Rift Depth ${res.unlockedDepth} unlocked</span>` : ''}
+            ${res.best ? `<span class="tag gold">${G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
+            ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}
+            ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}
+            ${res.rank && !G.daily ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}
             <span class="tag world" id="overWorld" hidden></span>
-            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence</span>
+            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' : ''}</span>
           </div>
         </div>
         <div class="over-grid">
@@ -658,7 +803,27 @@
             <div><dt>Bosses slain</dt><dd>${r.bosses}</dd></div>
             <div><dt>Damage dealt</dt><dd>${U.fmtNum(G.dmgTotal)}</dd></div>
           </dl>
-          <div class="over-dmg"><h3>Where your damage came from</h3>${this.dmgBars(G, 6)}</div>
+          <div class="over-dmg">
+            <h3>Where your damage came from</h3>
+            <div id="overDmg">${this.dmgBars(G, 6)}</div>
+            ${sources > 6 ? `<button class="btn btn-small btn-ghost" id="overDmgAll">Show all ${sources} sources</button>` : ''}
+          </div>
+        </div>
+        <section class="over-run">
+          <h3>How the run went <small>every 10 seconds</small></h3>
+          <div class="runchart" id="overChart"></div>
+        </section>
+        <div class="over-grid">
+          <div class="over-dmg">
+            <h3>What hurt you <small>${U.fmtNum(G.dmgTaken)} damage taken</small></h3>
+            ${hurt.length ? `<ul class="dmg">${hurt.map(([name, v]) => this.barRow(name, v, hurt[0][1], G.dmgTaken || 1, '#ff6a3d')).join('')}</ul>` : '<p class="muted">Nothing laid a finger on you.</p>'}
+          </div>
+          <div class="over-dmg">
+            <h3>Reactions set off</h3>
+            ${rx.length ? `<div class="chips">${rx.map(([name, n]) => `<span class="chip"><i class="dot" style="background:${elColor(srcEl(name))}"></i>${esc(name)} <em>${U.fmtNum(n)}</em></span>`).join('')}</div>`
+              : '<p class="muted">None. Skills of two different elements react when both hit the same enemy.</p>'}
+            <p class="muted seed">Seed ${esc(G.seed)}</p>
+          </div>
         </div>
         <div class="over-name">
           <label for="overName">Name for the leaderboard</label>
@@ -671,6 +836,9 @@
           <button class="btn btn-ghost" id="overMenu">Main menu</button>
         </div>`;
       $('ovOver').hidden = false;
+      this.runChart($('overChart'), G);
+      const all = $('overDmgAll');
+      if (all) click(all, () => { $('overDmg').innerHTML = this.dmgBars(G, 99); all.remove(); });
       // count the score up
       const el = $('scoreNum'), t0 = performance.now(), target = r.score;
       const tick = () => {
@@ -681,17 +849,126 @@
       tick();
       const nm = $('overName');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); r.name = d.name || 'Wanderer'; PS.Save.save(); });
-      click($('overAgain'), () => PS.Game.start(r.cls));
+      click($('overAgain'), () => PS.Game.again());
       click($('overTree'), () => { PS.Game.toMenu(); this.showScreen('scrTree'); });
-      click($('overBoard'), () => { PS.Game.toMenu(); this.showScreen('scrBoard'); });
+      click($('overBoard'), () => { PS.Game.toMenu(); boardTab = G.daily ? 'daily' : boardTab === 'daily' ? 'all' : boardTab; this.showScreen('scrBoard'); });
       click($('overMenu'), () => PS.Game.toMenu());
+    },
+
+    /**
+     * The run as two small charts on one time axis: damage per second above, damage taken below (two measures, so two
+     * charts rather than two scales on one). Boss kills and evolutions are marked; hover or arrow keys read out a slice.
+     */
+    runChart(box, G) {
+      const tl = G.timeline;
+      if (tl.length < 2) { box.innerHTML = '<p class="muted">The run was over too quickly to chart.</p>'; return; }
+      // cumulative rows -> one slice per row
+      const pts = tl.map((row, i) => {
+        const prev = i ? tl[i - 1] : { t: 0, dmg: 0, taken: 0, kills: 0 };
+        const span = Math.max(0.5, row.t - prev.t);
+        return { t0: prev.t, t1: row.t, dps: (row.dmg - prev.dmg) / span, taken: row.taken - prev.taken, kills: row.kills - prev.kills, lvl: row.lvl };
+      });
+      const W = Math.max(300, box.clientWidth || 760), L = 46, R = 12, T = 40, H1 = 150, GAP = 34, H2 = 56, B = 24;
+      const H = T + H1 + GAP + H2 + B, pw = W - L - R, end = tl[tl.length - 1].t;
+      const x = (t) => L + (t / end) * pw;
+      const yMax = niceMax(Math.max(...pts.map((p) => p.dps))), tMax = niceMax(Math.max(1, ...pts.map((p) => p.taken)));
+      const y1 = (v) => T + H1 - (v / yMax) * H1, base2 = T + H1 + GAP + H2, y2 = (v) => base2 - (v / tMax) * H2;
+      const num = (v) => (v >= 10000 ? U.fmtNum(v).replace('.0k', 'k').replace('.00M', 'M') : Math.round(v).toLocaleString('en-US'));
+      // time ticks: about six, on round minutes where the run is long enough
+      const stepT = [30, 60, 120, 180, 300, 600, 900, 1800].find((s) => end / s <= Math.min(7, Math.floor(pw / 60))) || 3600;
+      let grid = '', marks = '';
+      for (let t = 0; t <= end + 0.01; t += stepT) grid += `<text class="rc-tick" x="${x(t).toFixed(1)}" y="${H - 6}" text-anchor="${t === 0 ? 'start' : 'middle'}">${mmss(t)}</text>`;
+      for (const f of [0, 0.5, 1]) {
+        grid += `<line class="rc-grid" x1="${L}" x2="${W - R}" y1="${y1(yMax * f).toFixed(1)}" y2="${y1(yMax * f).toFixed(1)}"/><text class="rc-tick" x="${L - 7}" y="${(y1(yMax * f) + 4).toFixed(1)}" text-anchor="end">${num(yMax * f)}</text>`;
+      }
+      grid += `<line class="rc-grid" x1="${L}" x2="${W - R}" y1="${base2}" y2="${base2}"/><text class="rc-tick" x="${L - 7}" y="${base2 + 4}" text-anchor="end">0</text><text class="rc-tick" x="${L - 7}" y="${(y2(tMax) + 4).toFixed(1)}" text-anchor="end">${num(tMax)}</text>`;
+      // boss kills: a hairline through both charts, named where there is room
+      let lastLabel = -1e9;
+      for (const b of G.bossLog) {
+        const bx = x(Math.min(end, b.at + b.took));
+        marks += `<line class="rc-boss" x1="${bx.toFixed(1)}" x2="${bx.toFixed(1)}" y1="${T - 4}" y2="${base2}"/>`;
+        if (bx - lastLabel > 74) { marks += `<text class="rc-label" x="${(bx - 5).toFixed(1)}" y="${T - 8}" text-anchor="end">${esc(b.name)}</text>`; lastLabel = bx; }
+      }
+      // evolutions: a diamond on the baseline of the damage chart
+      for (const k of G.picks) {
+        if (k.type !== 'evolve') continue;
+        const ex = x(Math.min(end, k.t)), ey = T + H1;
+        marks += `<path class="rc-evo" d="M${ex.toFixed(1)} ${ey - 6}l5 6l-5 6l-5 -6z"><title>${esc(k.title)} at ${mmss(k.t)}</title></path>`;
+      }
+      const line = pts.map((p, i) => (i ? 'L' : 'M') + x(p.t1).toFixed(1) + ' ' + y1(p.dps).toFixed(1)).join('');
+      const area = `M${x(pts[0].t1).toFixed(1)} ${T + H1}` + pts.map((p) => 'L' + x(p.t1).toFixed(1) + ' ' + y1(p.dps).toFixed(1)).join('') + `L${x(end).toFixed(1)} ${T + H1}Z`;
+      const bw = Math.max(1.5, Math.min(24, pw / pts.length - 2));
+      const bars = pts.map((p) => {
+        if (p.taken <= 0) return '';
+        const h = Math.max(1.5, base2 - y2(p.taken)), cx = (x(p.t0) + x(p.t1)) / 2, rr = Math.min(3, bw / 2, h);
+        return `<path class="rc-bar" d="M${(cx - bw / 2).toFixed(1)} ${base2}v${(-(h - rr)).toFixed(1)}q0 ${-rr} ${rr} ${-rr}h${(bw - 2 * rr).toFixed(1)}q${rr} 0 ${rr} ${rr}v${(h - rr).toFixed(1)}z"/>`;
+      }).join('');
+      // one direct label: the peak
+      const peak = pts.reduce((a, p) => (p.dps > a.dps ? p : a), pts[0]);
+      const px = x(peak.t1), right = px > W - R - 120;
+      const evos = G.picks.some((k) => k.type === 'evolve');
+      // per-minute table: the same numbers without hovering
+      const mins = [];
+      for (const p of pts) { const m = Math.floor(p.t0 / 60); (mins[m] = mins[m] || { dmg: 0, span: 0, taken: 0, kills: 0, lvl: 0 }); mins[m].dmg += p.dps * (p.t1 - p.t0); mins[m].span += p.t1 - p.t0; mins[m].taken += p.taken; mins[m].kills += p.kills; mins[m].lvl = p.lvl; }
+      box.innerHTML = `
+        <svg class="rc" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" tabindex="0" role="img" aria-label="Damage per second and damage taken over the run. Use the left and right arrow keys to read each 10 second slice.">
+          <text class="rc-title" x="${L}" y="14">Damage per second</text>
+          <text class="rc-title" x="${L}" y="${T + H1 + GAP - 8}">Damage taken</text>
+          ${grid}${marks}
+          <path class="rc-area" d="${area}"/><path class="rc-line" d="${line}"/>
+          ${bars}
+          <circle class="rc-peak" cx="${px.toFixed(1)}" cy="${y1(peak.dps).toFixed(1)}" r="4"/>
+          <text class="rc-label strong" x="${(px + (right ? -9 : 9)).toFixed(1)}" y="${Math.max(T + 10, y1(peak.dps) + 4).toFixed(1)}" text-anchor="${right ? 'end' : 'start'}">Peak ${num(peak.dps)}</text>
+          <g class="rc-hover" hidden><line class="rc-cross" y1="${T - 4}" y2="${base2}"/><circle class="rc-dot" r="4.5"/></g>
+          <rect class="rc-hit" x="${L}" y="0" width="${pw}" height="${H}" fill="transparent"/>
+        </svg>
+        <div class="rc-tip" hidden></div>
+        <p class="rc-key"><span><i class="k-line"></i>Damage per second</span><span><i class="k-bar"></i>Damage taken</span>${G.bossLog.length ? '<span><i class="k-boss"></i>Boss slain</span>' : ''}${evos ? '<span><i class="k-evo"></i>Skill evolved</span>' : ''}</p>
+        <details class="rc-table"><summary>Show the numbers, minute by minute</summary>
+          <table class="board-table compact"><thead><tr><th>Minute</th><th class="num">Damage per second</th><th class="num">Damage taken</th><th class="num">Kills</th><th class="num">Level</th></tr></thead>
+          <tbody>${mins.map((m, i) => `<tr><td>${i}:00</td><td class="num">${num(m.dmg / Math.max(1, m.span))}</td><td class="num">${num(m.taken)}</td><td class="num">${num(m.kills)}</td><td class="num">${m.lvl}</td></tr>`).join('')}</tbody></table>
+        </details>`;
+      // hover layer: a crosshair that snaps to the nearest slice, one readout for both charts
+      const svg = box.querySelector('svg'), hov = box.querySelector('.rc-hover'), tip = box.querySelector('.rc-tip');
+      const cross = hov.querySelector('line'), dot = hov.querySelector('circle');
+      let cur = -1;
+      const show = (i) => {
+        cur = U.clamp(i, 0, pts.length - 1);
+        const p = pts[cur], cx = x(p.t1), k = (svg.getBoundingClientRect().width || W) / W;
+        hov.removeAttribute('hidden');
+        cross.setAttribute('x1', cx); cross.setAttribute('x2', cx);
+        dot.setAttribute('cx', cx); dot.setAttribute('cy', y1(p.dps));
+        tip.textContent = '';
+        const add = (cls, text) => { const el = document.createElement('span'); el.className = cls; el.textContent = text; tip.appendChild(el); };
+        add('rc-when', mmss(p.t0) + ' to ' + mmss(p.t1));
+        add('rc-val', num(p.dps)); add('rc-what', 'damage per second');
+        add('rc-val', num(p.taken)); add('rc-what', 'damage taken');
+        add('rc-val', num(p.kills)); add('rc-what', 'kills, at level ' + p.lvl);
+        tip.hidden = false;
+        const tw = tip.offsetWidth, left = cx * k + 14 + tw > box.clientWidth ? cx * k - 14 - tw : cx * k + 14;
+        tip.style.left = Math.max(0, left) + 'px';
+      };
+      const hide = () => { hov.setAttribute('hidden', ''); tip.hidden = true; cur = -1; };
+      const at = (e) => {
+        const b = svg.getBoundingClientRect(), t = ((e.clientX - b.left) / b.width * W - L) / pw * end;
+        let best = 0;
+        for (let i = 1; i < pts.length; i++) if (Math.abs(pts[i].t1 - t) < Math.abs(pts[best].t1 - t)) best = i;
+        show(best);
+      };
+      svg.addEventListener('pointermove', at);
+      svg.addEventListener('pointerdown', at);
+      svg.addEventListener('pointerleave', hide);
+      svg.addEventListener('blur', hide);
+      svg.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); show(cur < 0 ? (e.key === 'ArrowRight' ? 0 : pts.length - 1) : cur + (e.key === 'ArrowRight' ? 1 : -1)); }
+      });
     },
 
     /** the server answered a posted run: show where it landed among everyone's */
     showWorldRank(d) {
       const el = $('overWorld');
       if (!el || $('ovOver').hidden || !d || !d.rank) return;
-      el.innerHTML = `${ico('crown', 14)} #${d.rank.toLocaleString('en-US')} of ${d.total.toLocaleString('en-US')} worldwide`;
+      el.innerHTML = `${ico('crown', 14)} #${d.rank.toLocaleString('en-US')} of ${d.total.toLocaleString('en-US')} ${d.run && d.run.daily ? 'in today\'s rift' : 'worldwide'}`;
       el.hidden = false;
     },
 
@@ -708,7 +985,7 @@
       } else if (st === 'paused') {
         if (btn === 'b' || btn === 'a') PS.Game.resume();
       } else if (st === 'over') {
-        if (btn === 'a') PS.Game.start(PS.G.cls);
+        if (btn === 'a') PS.Game.again();
         else if (btn === 'b') PS.Game.toMenu();
       } else if (st === 'menu') {
         if (lastScreen === 'scrTitle') { if (btn === 'a') this.showScreen('scrClass'); else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard'); }
@@ -743,7 +1020,7 @@
         else if (code === 'KeyR' && curSpec.kind === 'level') this.rerollCards();
         else if (code === 'KeyB' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'over' && code === 'Enter' && (!document.activeElement || document.activeElement === document.body)) {
-        PS.Game.start(PS.G.cls);
+        PS.Game.again();
       }
     },
   };

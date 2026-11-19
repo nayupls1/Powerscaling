@@ -262,7 +262,7 @@
         if (p.galeT > 0) p.galeT -= dt;
       },
       onKill(p, e, canProc) {
-        if (p.stats.f.mark && e.poisStacks > 0 && canProc && Math.random() < 0.3) {
+        if (p.stats.f.mark && e.poisStacks > 0 && canProc && U.rnd() < 0.3) {
           C.zone({ x: e.x, y: e.y, r: 62 * p.stats.area, life: 2 * p.stats.duration, tick: 0.4, dmg: C.power('venom') * 0.7, el: 'venom', src: 'Toxic Cloud', kind: 'poison', color: '#8fe04a' });
         }
       },
@@ -340,7 +340,7 @@
           raiseSkeleton(p, e.x, e.y);
         }
         if (f.siphon) p.leech(0.4);
-        if (f.corpseEx && canProc && Math.random() < 0.22) {
+        if (f.corpseEx && canProc && U.rnd() < 0.22) {
           PS.FX.explosion(e.x, e.y, 88 * p.stats.area, '#8fe04a');
           C.aoe(e.x, e.y, 88 * p.stats.area, C.power('venom') * 1.6, { el: 'venom', src: 'Corpse Explosion', noProc: true, poison: 2 });
           PS.Audio.play('poison', { vol: 0.35 });

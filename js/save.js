@@ -24,6 +24,8 @@
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
+    depth: { max: 0, sel: 0, clear: {} },                 // Rift Depths: deepest unlocked, the one selected, deepest cleared per class
+    daily: { date: '', best: 0, attempts: 0, runs: [] },  // this player's daily rift for `date` (UTC); starts over each day
     updatedAt: 0,        // ms, bumped on every save(); decides which copy wins when syncing with the server
   });
 
@@ -42,6 +44,14 @@
     if (!num(out.essenceTotal)) out.essenceTotal = 0;
     if (typeof out.name !== 'string') out.name = '';
     out.tree = obj(d.tree);
+    const dp = obj(d.depth), cap = PS.Data ? PS.Data.DEPTH_MAX : 10;
+    const max = num(dp.max) ? Math.max(0, Math.min(cap, Math.floor(dp.max))) : 0;
+    out.depth = { max, sel: num(dp.sel) ? Math.max(0, Math.min(max, Math.floor(dp.sel))) : 0, clear: obj(dp.clear) };
+    const dl = obj(d.daily);
+    out.daily = {
+      date: typeof dl.date === 'string' ? dl.date : '', best: num(dl.best) ? dl.best : 0, attempts: num(dl.attempts) ? dl.attempts : 0,
+      runs: (Array.isArray(dl.runs) ? dl.runs : []).filter((r) => r && typeof r === 'object' && num(r.score)),
+    };
     if (!num(out.updatedAt)) out.updatedAt = 0;
     return out;
   }
@@ -64,6 +74,7 @@
     timer: 0,
     holdUntil: 0,    // after a 429, wait before pushing again
     posted: null,    // last run sent to the server: {run, id, name} so a rename on the results screen follows it
+    offset: 0,       // server clock minus this device's, so everyone agrees when the daily rift turns over
   };
 
   function randomId() {
@@ -139,6 +150,7 @@
       try {
         const h = await api('GET', 'health', undefined, { timeout: READY_WAIT });
         if (!h.body || h.body.ok !== true) return offline();
+        if (num(h.body.now)) net.offset = h.body.now - Date.now();
         // a new id skips the GET: its 404 would only add a red line to the console on every first visit
         let r = who() && net.fresh ? { status: 404 } : await api('GET', 'profile/' + encodeURIComponent(who().id), undefined, { auth: true });
         if (r.status === 403) { newWho(); r = { status: 404 }; } // id taken by someone else's token: start fresh
@@ -193,7 +205,7 @@
     const name = p.name = p.run.name;
     try {
       const r = await api('PATCH', 'runs/' + p.id, { name }, { auth: true });
-      if (r.status === 200) { Save.fetchBoard('all'); Save.fetchBoard(p.run.cls); }
+      if (r.status === 200) { if (p.run.daily) Save.fetchBoard('daily'); else { Save.fetchBoard('all'); Save.fetchBoard(p.run.cls); } }
     } catch (e) { /* the old name stays on the global board */ }
   }
 
@@ -207,7 +219,8 @@
   }
 
   async function postRun(run) {
-    const body = { name: run.name, cls: run.cls, score: run.score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: !!run.won, build: run.build || [] };
+    const body = { name: run.name, cls: run.cls, score: run.score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: !!run.won, build: run.build || [], depth: run.depth || 0 };
+    if (run.daily) body.daily = run.daily;
     try {
       const r = await api('POST', 'runs', body, { auth: true });
       if (r.status !== 201 || !r.body) { if (r.status >= 500) offline(); return; }
@@ -216,6 +229,7 @@
       run.globalRank = r.body.rank;
       persist();
       emit('ps:run', { run, rank: r.body.rank, total: r.body.total, classRank: r.body.classRank, classTotal: r.body.classTotal });
+      if (run.daily) { Save.fetchBoard('daily'); return; }
       Save.fetchBoard('all');
       Save.fetchBoard(run.cls);
     } catch (e) {
@@ -263,37 +277,46 @@
       this.data.settings = keep;
       this.save();
     },
+    /** the current UTC day ('YYYY-MM-DD') by the server's clock when there is one */
+    today() { return PS.Daily.dateOf(Date.now() + net.offset); },
+    /** milliseconds until the daily rift turns over */
+    untilReset() { return PS.Daily.untilReset(Date.now() + net.offset); },
     /** add a finished run; returns its 1-based rank on the local board (or 0 if it fell off).
-        The global rank arrives later as run.globalRank plus a 'ps:run' event. */
+        The global rank arrives later as run.globalRank plus a 'ps:run' event.
+        Daily rift runs go on the day's own list (the game keeps data.daily current), never on the main board. */
     addRun(run) {
-      const b = this.data.board;
+      const b = run.daily ? this.data.daily.runs : this.data.board;
       b.push(run);
       b.sort((x, y) => y.score - x.score);
-      if (b.length > MAX_BOARD) b.length = MAX_BOARD;
+      if (b.length > (run.daily ? 20 : MAX_BOARD)) b.length = run.daily ? 20 : MAX_BOARD;
       const rank = b.indexOf(run) + 1;
       this.save();
       if (net.enabled) postRun(run);
       return rank;
     },
-    /** the global board when it is loaded and the server is up, otherwise this device's runs */
+    /** the global board when it is loaded and the server is up, otherwise this device's runs.
+        filterCls: 'all', a class id, or 'daily' for today's daily rift (everyone's best run of the day). */
     board(filterCls) {
-      const key = filterCls || 'all', rows = this.online && this.remote.board[key];
+      const key = filterCls || 'all', rows = this.online && this.remote.board[key === 'daily' ? 'daily:' + this.today() : key];
       if (rows) return rows.slice();
+      if (key === 'daily') return this.data.daily.date === this.today() ? this.data.daily.runs.slice() : [];
       const b = this.data.board;
       return key !== 'all' ? b.filter((r) => r.cls === key) : b.slice();
     },
     boardScope(filterCls) {
-      return this.online && this.remote.board[filterCls || 'all'] ? 'global' : 'device';
+      const key = filterCls || 'all';
+      return this.online && this.remote.board[key === 'daily' ? 'daily:' + this.today() : key] ? 'global' : 'device';
     },
     /** refresh the global board cache; resolves with rows (local ones when offline) and fires 'ps:board' */
     async fetchBoard(filterCls) {
-      const cls = CLASSES.includes(filterCls) ? filterCls : 'all';
+      const cls = filterCls === 'daily' || CLASSES.includes(filterCls) ? filterCls : 'all';
       if (!net.enabled) return this.board(cls);
       try {
-        const r = await api('GET', 'leaderboard?cls=' + cls + '&limit=' + MAX_BOARD, undefined, { me: true });
+        const day = this.today();
+        const r = await api('GET', 'leaderboard?' + (cls === 'daily' ? 'daily=' + day : 'cls=' + cls) + '&limit=' + MAX_BOARD, undefined, { me: true });
         if (r.status === 200 && r.body && Array.isArray(r.body.rows)) {
           this.online = true;
-          this.remote.board[cls] = r.body.rows;
+          this.remote.board[cls === 'daily' ? 'daily:' + day : cls] = r.body.rows;
           emit('ps:board', { cls });
         }
       } catch (e) {

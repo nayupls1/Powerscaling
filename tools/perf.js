@@ -28,7 +28,7 @@ const { chromium } = require('playwright');
     const S = PS.Save.data;
     S.unlocked.reaper = true;
     if (flags.tree === 'full') for (const n of PS.Data.META) S.tree[n.id] = n.max; else S.tree = {};
-    PS.Game.start(cls, { bot: {} });
+    PS.Game.start(cls, { bot: {}, seed: 'perf' + (flags.seed || 1) });
     PS.Game.state = 'sim';
     const G = PS.G, dt = 1 / 60, out = [];
     for (const cp of checkpoints) {

@@ -71,11 +71,11 @@
         f: {}, m: {},
       };
       Object.assign(s, cls.base);
-      // permanent meta tree
-      const tree = PS.Save.data.tree;
-      for (const id in tree) {
-        const n = D.META_BY_ID[id];
-        if (n && tree[id] > 0) n.apply(s, tree[id]);
+      // permanent meta tree. The daily rift lends every hero the whole tree, so the day's board compares play, not grind
+      const G = PS.G, rules = G && G.rules, tree = PS.Save.data.tree;
+      for (const n of D.META) {
+        const rank = G && G.daily ? n.max : tree[n.id] || 0;
+        if (rank > 0) n.apply(s, rank);
       }
       for (const t of this.tomes) t.def.apply(s, t.val);
       for (const id in this.boons) D.BOONS[id].apply(s, this.boons[id]);
@@ -94,6 +94,10 @@
       if (aff.void >= 2) s.area += 0.18;
       if (aff.void >= 6) s.atkSpd += 0.2;
 
+      // what the depth or the day's mutator does to the hero
+      if (rules) {
+        s.dmgMore *= rules.pDmg; s.hpMult *= rules.pHp; s.speed *= rules.pSpeed; s.dashCd *= rules.dashCd; s.xp *= rules.xp;
+      }
       s.maxHp = Math.max(10, Math.round(s.maxHp * Math.max(0.2, s.hpMult)));
       s.dodge = Math.min(0.6, s.dodge);
       s.dashCd = Math.max(0.5, s.dashCd);
@@ -220,7 +224,7 @@
 
       // Ward: a brief shield pulse that reflects bullets and staggers whatever is touching you
       if (this.wardCd > 0) this.wardCd -= dt;
-      if (ctrl.ward && this.wardCd <= 0 && this.wardT <= 0) this.raiseWard();
+      if (ctrl.ward && this.wardCd <= 0 && this.wardT <= 0 && !G.rules.noWard) this.raiseWard();
       if (this.wardT > 0) {
         this.wardT -= dt;
         const got = C.deflect(this.x, this.y, this.wardR, true, 0, undefined, 'Ward', true);
@@ -309,7 +313,7 @@
       const G = PS.G, s = this.stats, cls = this.cls;
       // the grace period after a contact hit does not shelter you from the ground giving way; dash, Ward and revive still do
       if (this.dashT > 0 || G.over || (this.inv > 0 && !(raw && this.hitInv))) return 'iframe';
-      if (s.dodge > 0 && Math.random() < s.dodge) {
+      if (s.dodge > 0 && U.rnd() < s.dodge) {
         this.inv = 0.3;
         PS.FX.text(this.x, this.y - 30, 'Dodge', '#bfe6ff');
         return 'dodge';
@@ -328,6 +332,7 @@
       d = Math.max(1, d);
       this.hp -= d;
       G.dmgTaken += d;
+      PS.Game.tookDamage(src, d);
       this.inv = 0.55 + (s.m.iframes || 0);
       this.hitInv = true;
       this.hurtFlash = 0.35;

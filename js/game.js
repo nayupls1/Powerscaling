@@ -2,9 +2,11 @@
 (function () {
   'use strict';
   const PS = (window.PS = window.PS || {});
-  const U = PS.U;
+  const U = PS.U, D = PS.Data;
 
   const LEVEL_HEAL = 0.03; // share of max health every level-up restores (Second Wind adds to it)
+  const TL_STEP = 10;      // seconds between rows of the run history shown on the results screen
+  const HURT_NAMES = { bullet: 'Bullets', tremor: 'Rift tremors', hazard: 'Blasts', beam: 'Beams', ring: 'Shockwaves' };
 
   const Game = {
     state: 'menu', // menu | play | choice | paused | over
@@ -28,11 +30,29 @@
     },
 
     /* ------------------------------------------------------------ run lifecycle */
+    /**
+     * opts: { bot, seed, depth, daily }
+     *   daily  true for today's daily rift (or a 'YYYY-MM-DD' date): fixed seed, class and mutator, full skill tree, depth 0
+     *   depth  Rift Depth to play at; defaults to the one picked on the class screen, capped at what is unlocked
+     *   seed   string or number; a random one is drawn when absent
+     */
     start(clsId, opts) {
       opts = opts || {};
+      const save = PS.Save.data;
+      const daily = opts.daily ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
+      if (daily) clsId = daily.cls;
+      // tools and the bot may ask for any depth; a player only gets what they have unlocked
+      const depth = daily ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
+        : U.clamp(opts.depth !== undefined ? opts.depth | 0 : save.depth.sel, 0, save.depth.max);
+      const seed = daily ? daily.seed : opts.seed !== undefined ? String(opts.seed) : PS.RNG.fresh();
+      PS.RNG.seed(seed);
+      PS.Enemies.reset();
+      PS.Bot.reset();
       const vs = PS.Render.viewSize();
       const G = {
         time: 0, frame: 0, rdt: 0.016, cls: clsId,
+        seed, depth, daily: daily ? daily.date : null, rules: D.rules(depth, daily ? daily.mutator : opts.mutator),
+        timeline: [], hurtBy: {}, lastHurt: '', reactions: {}, rxTokens: 4, rxSeen: {},
         enemies: [], projs: [], eprojs: [], zones: [], strikes: [], hazards: [], minions: [], pickups: [], props: [], orbits: [],
         grid: new U.Grid(72),
         kills: 0, score: 0, bossesKilled: 0, dmgBy: {}, dmgTotal: 0, dmgTaken: 0, goldEarned: 0, gemCount: 0, procN: 0, deflected: 0,
@@ -46,7 +66,7 @@
       PS.Director.reset();
       G.player = new PS.Player(clsId);
       const p = G.player, m = p.stats.m;
-      if (m.startRelic) {
+      for (let i = (m.startRelic ? 1 : 0) + G.rules.startRelics; i > 0; i--) {
         const r = PS.Rewards.rollRelic(p, 0);
         if (r) p.addRelic(r.id);
       }
@@ -54,12 +74,18 @@
         for (let i = 0; i < m.startLevels; i++) { p.level++; p.pendingLevels++; }
         p.xpNext = PS.xpFor(p.level);
       }
-      PS.Save.data.lastClass = clsId;
+      if (!daily) save.lastClass = clsId;
       PS.Save.save();
       this.state = 'play';
       PS.UI.startRun();
       PS.Audio.music('run');
       PS.Audio.setIntensity(0);
+    },
+    /** another run in the same mode as the one that just ended (the daily rift follows the calendar) */
+    again() {
+      const G = PS.G;
+      if (!G) return;
+      this.start(G.cls, G.daily ? { daily: true } : { depth: G.depth });
     },
 
     pause() {
@@ -140,6 +166,8 @@
       PS.Director.update(dt);
       PS.FX.update(dt);
       if (G.over) return;
+      if (G.time >= (G.timeline.length + 1) * TL_STEP) this.snapshot();
+      PS.Combat.refillReactions(dt);
 
       // ---- rewards waiting to be chosen
       if (p.pendingLevels > 0 && !G.levelFx) {
@@ -154,6 +182,23 @@
         this.nextChoice();
       }
       PS.Audio.setIntensity(Math.min(1, G.time / 600 + (G.boss ? 0.15 : 0)));
+    },
+
+    /** one cumulative row of the run history; the results screen turns the differences into a chart */
+    snapshot(last) {
+      const G = PS.G, tl = G.timeline;
+      const row = { t: G.time, dmg: G.dmgTotal, taken: G.dmgTaken, kills: G.kills, lvl: G.player.level };
+      // the closing row of a run: a sliver of a slice would chart as a cliff, so fold it into the row before
+      if (last && tl.length && G.time - tl[tl.length - 1].t < TL_STEP * 0.4) tl[tl.length - 1] = row;
+      else tl.push(row);
+    },
+    /** record what hurt the hero: src is the enemy that touched them, or one of the hazard kinds */
+    tookDamage(src, d) {
+      const G = PS.G;
+      const name = !src ? 'Other' : typeof src === 'string' ? HURT_NAMES[src] || 'Other'
+        : src.boss ? src.def.name : src.elite ? 'Elite ' + src.def.name : src.def.name;
+      G.hurtBy[name] = (G.hurtBy[name] || 0) + d;
+      G.lastHurt = name;
     },
 
     /* ------------------------------------------------------------ choices */
@@ -185,7 +230,7 @@
         if (!spec) {
           p.pendingLevels--;
           // once per level, however the levels were batched: a breather that matters most in the opening, while levels come fast
-          p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)), true);
+          p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)) * G.rules.heal, true);
           const lv = p.claimedLevel;
           if (lv > 1 && PS.SLOT_LEVELS.skill.includes(lv)) { PS.UI.toast('A new skill slot opens', 'lock'); PS.Audio.play('shrine', { vol: 0.5 }); }
           else if (PS.SLOT_LEVELS.tome.includes(lv)) PS.UI.toast('A new tome slot opens', 'book');
@@ -260,17 +305,28 @@
       PS.Save.save();
     },
     victory() {
-      const G = PS.G;
+      const G = PS.G, d = PS.Save.data;
       G.won = true;
       G.endless = true;
       G.score += 15000;
-      PS.Save.data.stats.wins++;
+      d.stats.wins++;
+      let sub = 'You win. The rift does not close — see how far beyond it you can go.';
+      if (!G.daily && !G.bot) {
+        d.depth.clear[G.cls] = Math.max(d.depth.clear[G.cls] === undefined ? -1 : d.depth.clear[G.cls], G.depth);
+        // winning at your deepest depth opens the next one
+        if (G.depth === d.depth.max && d.depth.max < D.DEPTH_MAX) {
+          d.depth.max++;
+          G.unlockedDepth = d.depth.max;
+          sub = `Depth ${d.depth.max} is open: ${D.DEPTHS[d.depth.max - 1].name}. Keep going for score.`;
+        }
+      }
       PS.Save.save();
-      PS.UI.banner('The Rift Lord is slain', 'You win. The rift does not close — see how far beyond it you can go.', 6);
+      PS.UI.banner('The Rift Lord is slain', sub, 6);
       PS.Audio.play('evolve');
     },
+    /** mirrored in server.ts (scoreBounds): deeper rifts multiply the whole score */
     finalScore(G) {
-      return Math.round(G.score + Math.floor(G.time) * 60 + (G.player.level - 1) * 100);
+      return Math.round((G.score + Math.floor(G.time) * 60 + (G.player.level - 1) * 100) * G.rules.score);
     },
     playerDied() {
       this.endRun(false);
@@ -280,22 +336,33 @@
       if (!G || G.over) return;
       G.over = true;
       const p = G.player, d = PS.Save.data;
+      this.snapshot(true);
       const score = this.finalScore(G);
+      // the first daily rift of the day pays double
+      const firstDaily = !!G.daily && !G.bot && !(d.daily.date === G.daily && d.daily.attempts > 0);
       // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
-      const essence = Math.round((G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0)) * (1 + (p.stats.m.essence || 0)));
+      const essence = Math.round((G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
+        * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 : 1));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
         name: d.name || 'Wanderer', cls: G.cls, score, time: Math.floor(G.time), level: p.level, kills: G.kills, bosses: G.bossesKilled,
-        won: G.won, date: Date.now(), build: top,
+        won: G.won, date: Date.now(), build: top, depth: G.depth, seed: G.seed,
       };
+      if (G.daily) { run.daily = G.daily; run.mutator = G.rules.mutator; }
       d.essence += essence;
       d.essenceTotal += essence;
       d.stats.runs++;
       d.stats.kills += G.kills;
       d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
-      const best = score > d.stats.bestScore;
-      d.stats.bestScore = Math.max(d.stats.bestScore, score);
-      G.result = { run, essence, best, retired, rank: 0 };
+      // the daily rift lends everyone the full tree, so it keeps its own best score
+      const best = G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
+      if (!G.daily) d.stats.bestScore = Math.max(d.stats.bestScore, score);
+      G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0 };
+      if (G.daily && !G.bot) {
+        if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
+        d.daily.attempts++;
+        d.daily.best = Math.max(d.daily.best, score);
+      }
       if (!G.bot) G.result.rank = PS.Save.addRun(run);
       else PS.Save.save();
       this.state = 'over';

@@ -9,8 +9,9 @@
   }
   function summon(e, type, n, elite) {
     for (let i = 0; i < n; i++) {
-      const a = (i * TAU) / n + Math.random();
-      const m = PS.Enemies.spawn(type, e.x + Math.cos(a) * (e.r + 40), e.y + Math.sin(a) * (e.r + 40), elite ? { elite: true } : null);
+      const a = (i * TAU) / n + U.rnd();
+      // a boss's own guard comes without affixes: the fight is the boss
+      const m = PS.Enemies.spawn(type, e.x + Math.cos(a) * (e.r + 40), e.y + Math.sin(a) * (e.r + 40), elite ? { elite: true, noAffix: true } : null);
       if (m) PS.FX.puff(m.x, m.y, '#ff4d6d', 5);
     }
   }
@@ -29,7 +30,7 @@
       e.x += bs.dx * speed * dt;
       e.y += bs.dy * speed * dt;
       e.ang = Math.atan2(bs.dy, bs.dx);
-      if (Math.random() < 0.6) PS.FX.spark(e.x + U.rand(-e.r, e.r), e.y + U.rand(-e.r, e.r), e.def.color);
+      if (U.rnd() < 0.6) PS.FX.spark(e.x + U.rand(-e.r, e.r), e.y + U.rand(-e.r, e.r), e.def.color);
     }
     return false;
   }
@@ -83,7 +84,7 @@
             const n = bs.rage ? 8 : 5;
             C.hazard({ kind: 'circle', x: p.x, y: p.y, r: 88, delay: 1.0, dmg: e.atk, color: '#8fe04a', owner: e });
             for (let i = 1; i < n; i++) {
-              const a = Math.random() * TAU, d = U.rand(90, 250);
+              const a = U.rnd() * TAU, d = U.rand(90, 250);
               C.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 88, delay: 1.0 + i * 0.08, dmg: e.atk, color: '#8fe04a', owner: e });
             }
             PS.Audio.play('telegraph');
@@ -114,13 +115,13 @@
           if (!bs.init) {
             bs.init = true;
             PS.FX.puff(e.x, e.y, '#6fd8ff', 16);
-            const a = Math.random() * TAU;
+            const a = U.rnd() * TAU;
             e.x = p.x + Math.cos(a) * 190; e.y = p.y + Math.sin(a) * 190;
             PS.FX.puff(e.x, e.y, '#6fd8ff', 16);
             C.hazard({ kind: 'circle', x: e.x, y: e.y, r: 235, delay: 1.0, dmg: e.atk, color: '#6fd8ff', owner: e });
             PS.Audio.play('void', { vol: 0.6 });
           }
-          if (bs.rage && bs.at >= 1.0 && !bs.fired) { bs.fired = true; ringBullets(e, 14, 210, e.atk * 0.6, Math.random(), '#9fe6ff'); }
+          if (bs.rage && bs.at >= 1.0 && !bs.fired) { bs.fired = true; ringBullets(e, 14, 210, e.atk * 0.6, U.rnd(), '#9fe6ff'); }
           return bs.at >= 1.4;
         },
         beams(e, bs, dt, p) {
@@ -149,7 +150,7 @@
           if (k !== bs.step && k < 3) {
             bs.step = k;
             for (let i = 0; i < (bs.rage ? 9 : 6); i++) {
-              const a = Math.random() * TAU, d = i === 0 ? 0 : U.rand(60, 280);
+              const a = U.rnd() * TAU, d = i === 0 ? 0 : U.rand(60, 280);
               C.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 76, delay: 0.85, dmg: e.atk, color: '#ffe14d', owner: e });
             }
             PS.Audio.play('telegraph');
@@ -166,7 +167,7 @@
         cross(e, bs) {
           if (!bs.init) {
             bs.init = true;
-            const n = bs.rage ? 6 : 4, dir = Math.random() < 0.5 ? 1 : -1, a0 = Math.random() * TAU;
+            const n = bs.rage ? 6 : 4, dir = U.rnd() < 0.5 ? 1 : -1, a0 = U.rnd() * TAU;
             for (let i = 0; i < n; i++) C.hazard({ kind: 'beam', x: e.x, y: e.y, ang: a0 + (i * TAU) / n, len: 950, w: 34, delay: 1.2, dur: 4, dmg: e.atk * 0.7, rot: 0.5 * dir, follow: e, owner: e, color: '#c06bff' });
             PS.Audio.play('telegraph');
           }
@@ -190,7 +191,7 @@
           const k = Math.floor(bs.at / 0.17);
           if (k !== bs.step && k < (bs.rage ? 18 : 13)) {
             bs.step = k;
-            const a = Math.random() * TAU, d = k % 3 === 0 ? 0 : U.rand(40, 240);
+            const a = U.rnd() * TAU, d = k % 3 === 0 ? 0 : U.rand(40, 240);
             C.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 92, delay: 0.9, dmg: e.atk, color: '#c06bff', owner: e });
             if (k % 3 === 0) PS.Audio.play('telegraph', { vol: 0.5 });
           }
@@ -209,7 +210,7 @@
       const G = PS.G, def = BOSSES[idx];
       const pos = PS.Director.ringPos(-30);
       // boss health is a multiple of the horde's current toughness, so fights stay a similar length all run
-      const hpMult = PS.Director.hpMult() * (endlessK ? (BOSSES[3].hp / def.hp) * 1.15 : 1);
+      const hpMult = PS.Director.hpMult() * G.rules.bossHp * (endlessK ? (BOSSES[3].hp / def.hp) * 1.15 : 1);
       const e = PS.Enemies.spawn(def, pos.x, pos.y, { hpMult });
       const dm = PS.Director.dmgMult();
       e.atk = def.atk * dm * (endlessK ? 1.15 : 1);
@@ -241,7 +242,7 @@
       }
 
       // enrage / phase change
-      if (!bs.rage && e.hp < e.maxHp * 0.4) {
+      if (!bs.rage && e.hp < e.maxHp * G.rules.bossRage) {
         bs.rage = true;
         e.flash = 0.4;
         PS.FX.ring(e.x, e.y, 260, def.color, 0.5);

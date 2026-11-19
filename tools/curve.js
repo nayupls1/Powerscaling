@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /* Power-curve report: plays many headless runs with the bot and averages, per time bucket, how strong the hero is relative to the rift.
    Usage: node tools/curve.js [class|all] [minutes] [runs per class] [--sloppy] [--tree=full|half|arm:might|m1,m2|-a5] [--bucket=60] [--workers=4] [--json=out.json]
+     [--seed=abc] [--depth=3] [--mutator=flux] [--noreact]
+   With --seed every run gets its own seed derived from it (seed:class:run), so the whole report is reproducible.
 
    Columns (averaged over the runs still alive at that time):
      alive  share of runs still going          lvl   hero level         sk/evo  skills held / evolved     tl  tome levels   rel  relics
@@ -34,7 +36,7 @@ const { chromium } = require('playwright');
     await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
     while (jobs.length) {
       const job = jobs.shift();
-      const res = await page.evaluate(runOne, { cls: job.cls, minutes, flags, bucket });
+      const res = await page.evaluate(runOne, { cls: job.cls, minutes, flags, bucket, r: job.r });
       results.push(res);
       process.stderr.write('.');
     }
@@ -59,7 +61,8 @@ const { chromium } = require('playwright');
     const deaths = rs.filter((r) => r.dead).map((r) => r.time).sort((a, b) => a - b);
     const bossT = [0, 1, 2, 3].map((i) => { const v = rs.map((r) => r.bossTook[i]).filter((x) => x !== undefined); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) + 's(' + v.length + ')' : '-'; });
     report[cls] = { rows, deaths, bossT, won: rs.filter((r) => r.won).length, n: rs.length, lvl: Math.round(rs.reduce((a, r) => a + r.level, 0) / rs.length) };
-    console.log(`\n=== ${cls}  runs ${rs.length}  won ${report[cls].won}  deaths at [${deaths.map(fmt).join(' ')}]  boss fights ${bossT.join(' ')}  final lvl ${report[cls].lvl}`);
+    const rxS = Math.round((100 * rs.reduce((a, r) => a + r.rxShare, 0)) / rs.length), rxN = Math.round(rs.reduce((a, r) => a + r.rxN, 0) / rs.length);
+    console.log(`\n=== ${cls}  runs ${rs.length}  won ${report[cls].won}  deaths at [${deaths.map(fmt).join(' ')}]  boss fights ${bossT.join(' ')}  final lvl ${report[cls].lvl}  reactions ${rxN} (${rxS}% of damage)`);
     if (!flags.quiet) console.table(rows);
   }
   if (flags.json) fs.writeFileSync(flags.json, JSON.stringify({ flags, minutes, runs, report, results }, null, 1));
@@ -69,7 +72,7 @@ const { chromium } = require('playwright');
 })();
 
 /* runs inside the page */
-async function runOne({ cls, minutes, flags, bucket }) {
+async function runOne({ cls, minutes, flags, bucket, r }) {
   const S = PS.Save.data;
   S.unlocked.reaper = true;
   S.tree = {};
@@ -83,9 +86,11 @@ async function runOne({ cls, minutes, flags, bucket }) {
     else if (tree) S.tree[n.id] = tree.split(',').includes(n.id) ? n.max : 0;
   }
   const bot = { sloppy: !!flags.sloppy, random: !!flags.random, element: flags.el || null };
-  PS.Game.start(cls, { bot });
+  PS.Game.start(cls, { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, seed: flags.seed !== undefined ? flags.seed + ':' + cls + ':' + r : undefined });
   PS.Game.state = 'sim';
   const G = PS.G, C = PS.Combat, dt = 1 / 60;
+  const origTag = C.tag;
+  if (flags.noreact) C.tag = () => {}; // A/B: the same runs with reactions switched off
   // instrument: first wound and hit count per enemy, time to kill
   const origDamage = C.damage, origKill = C.kill;
   let acc = null;
@@ -130,9 +135,11 @@ async function runOne({ cls, minutes, flags, bucket }) {
       }
       if (frames % 3000 === 0) await new Promise((r) => setTimeout(r, 0));
     }
-  } finally { C.damage = origDamage; C.kill = origKill; }
+  } finally { C.damage = origDamage; C.kill = origKill; C.tag = origTag; }
   const p = G.player;
+  const rxDmg = Object.values(PS.Data.REACTIONS).reduce((a, x) => a + (G.dmgBy[x.name] || 0), 0);
   const out = { cls, time: Math.round(G.time), dead: !!G.over, won: G.won, level: p.level, buckets, bossTook: G.bossLog.map((b) => b.took),
+    rxShare: G.dmgTotal ? rxDmg / G.dmgTotal : 0, rxN: Object.values(G.reactions).reduce((a, b) => a + b, 0),
     skills: p.skills.map((s) => s.name + ' L' + s.level), relics: p.relicOrder.length, talents: p.talents.join('/') };
   if (!G.over) PS.Game.endRun(true);
   PS.Game.state = 'menu'; PS.G = null;

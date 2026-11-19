@@ -5,12 +5,13 @@
   const U = PS.U, D = PS.Data;
   const OVER_BONUS = [0, 0.05, 0.10, 0.18, 0.30];
   const RELIC_W = [52, 30, 13, 4.2, 0.8];
+  const LOOT = () => PS.RNG.loot(); // reward rolls have their own seeded stream (see seed.js)
 
   function sample(cands, n) {
     const out = [];
     const pool = cands.slice();
     while (out.length < n && pool.length) {
-      const c = U.weighted(pool);
+      const c = U.weighted(pool, LOOT);
       out.push(c);
       pool.splice(pool.indexOf(c), 1);
     }
@@ -57,7 +58,7 @@
       const opened = PS.SLOT_LEVELS.skill.includes(p.claimedLevel);
       if (p.skills.length < p.skillSlots && (p.skills.length < 3 || opened) && !picks.some((c) => c.type === 'skill')) {
         const sk = cands.filter((c) => c.type === 'skill');
-        if (sk.length && picks.length) picks[picks.length - 1] = U.weighted(sk);
+        if (sk.length && picks.length) picks[picks.length - 1] = U.weighted(sk, LOOT);
       }
       const cards = picks.map((c) => R.card(p, c.type, c.id, luck));
       const fill = ['heal', 'gold', 'heal'];
@@ -76,6 +77,12 @@
         const n = p.aff[def.el] + 1;
         const th = D.AFFINITY[def.el].find((a) => a.n === n);
         if (th) card.lines.push(`Unlocks ${D.ELEMENTS[def.el].name} ${n}: ${th.text}`);
+        // a new element reacts with every element already in the build
+        const own = D.ELEMENT_IDS.filter((e) => p.skills.some((k) => k.def.el === e));
+        if (!own.includes(def.el)) {
+          const rx = D.reactionsWith(def.el, own);
+          if (rx.length) card.lines.push('Reacts: ' + rx.slice(0, 2).map((r) => `${r.name} with ${D.ELEMENTS[r.els[0] === def.el ? r.els[1] : r.els[0]].name}`).join(', ') + (rx.length > 2 ? `, and ${rx.length - 2} more` : ''));
+        }
       } else if (type === 'skillup') {
         const inst = p.hasSkill(id), def = inst.def;
         card.tier = D.rollRarity(luck);
@@ -110,7 +117,7 @@
           if (inst.def.evo && inst.def.evo.tome === id && !inst.evolved) card.lines.push(`Evolves ${inst.def.name} into ${inst.def.evo.name}.`);
         }
       } else if (type === 'heal') {
-        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = 'Restore 40% of your health.';
+        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = `Restore ${Math.round(40 * PS.G.rules.heal)}% of your health.`;
       } else if (type === 'gold') {
         card.icon = 'coin'; card.title = 'Coin Purse'; card.tag = 'Supplies'; card.val = 30 + p.level * 2; card.desc = `Gain ${card.val} gold.`;
       }
@@ -148,10 +155,10 @@
       }
       const ws = RELIC_W.map((w, i) => ({ w: i >= (minTier || 0) && byTier[i].length ? w * Math.pow(f, i) : 0, i }));
       if (!ws.some((x) => x.w > 0)) {
-        for (let i = 0; i < 5; i++) if (byTier[i].length) return U.pick(byTier[i]);
+        for (let i = 0; i < 5; i++) if (byTier[i].length) return U.pick(byTier[i], LOOT);
         return null;
       }
-      return U.pick(byTier[U.weighted(ws).i]);
+      return U.pick(byTier[U.weighted(ws, LOOT).i], LOOT);
     },
     relicChoices(p, n, minTier) {
       const cards = [], seen = new Set();
@@ -168,7 +175,7 @@
 
     /* ------------------------------------------------------------ shrine boons */
     boonChoices(p) {
-      const ids = U.shuffle(Object.keys(D.BOONS)).slice(0, 3);
+      const ids = U.shuffle(Object.keys(D.BOONS), LOOT).slice(0, 3);
       return ids.map((id) => {
         const def = D.BOONS[id], tier = D.rollRarity(p.stats.luck + 25);
         return { type: 'boon', id, tier, icon: def.icon, title: def.name, tag: 'Shrine blessing', desc: `+${def.fmt(D.incFor(def, tier))} ${def.stat.toLowerCase()}, permanently.`, lines: [] };
@@ -212,7 +219,7 @@
           break;
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;
-        case 'heal': p.heal(p.stats.maxHp * 0.4); PS.Audio.play('heal'); break;
+        case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
       }
       PS.G.picks.push({ t: Math.floor(PS.G.time), type: card.type, title: card.title });

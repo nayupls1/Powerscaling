@@ -38,11 +38,17 @@ Touch screens get a floating movement stick with auto-aim, and gamepads are supp
 - **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
 - **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
 - **Slots you grow into** — a run starts with only the class attack. Skill slots open at levels 2, 5, 9, 14 and 20, tome slots at 2, 4, 7, 11, 16 and 22, and the HUD shows each locked slot with the level that opens it.
+- **Reactions** — hit one enemy with two different elements within 4 seconds and the pair reacts: fifteen reactions, one for every pair (Ember and Blight *Combust* the poison stacks, Rime and Tempest *Superconduct* into a stun, Iron and Abyss *Sunder* the crowd). A split build is a real build, not a failed mono-element one. The pause screen lists the reactions your current skills can set off, and a new-skill card says what it would react with.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
 - **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
+- **Elites with affixes** — every elite carries one of seven affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding or Frenzied. Deeper rifts and overtime stack more than one.
+- **Four horde shapes** — the closing ring and the stampede, then a pincer from two sides and a wall that sweeps the whole screen with a single gap in it.
 - **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.
+- **Rift Depths** — beating the Rift Lord opens Depth 1, and winning at your deepest depth opens the next, up to 10. Each depth adds one named modifier on top of all the ones before it (sturdier hordes, elites in pairs, bosses that enrage early), hardens the horde by a further 6% health and 3% damage, and adds 15% to score and 10% to Essence. Depth 10 is meant for a full skill tree and clean play.
+- **Daily rift** — one seed a day, the same for everyone: a set class, one of eight mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence.
+- **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 
@@ -56,6 +62,18 @@ A run is paced in four acts of three minutes, each closed by a boss. The hero st
 
 Every level-up restores 3% of max health, a breather that matters most in the opening, when levels come fast and the kit is small.
 
+### Reactions
+
+Every direct hit from a skill, an ability or a minion marks the enemy with its element for 4 seconds. A hit of a different element while the mark lasts sets off that pair's reaction (`REACTIONS` in `js/data.js`, effects in `Combat.react`). Damage from relic and affinity procs neither marks nor triggers, so reactions come from the skills you picked and can never chain into each other. Two limits keep them a build payoff rather than a second damage engine: an enemy reacts at most once every 3 seconds, and all reactions share a budget that refills at 1.5 a second, so a reaction is a rare, heavy event. `tools/curve.js` prints how many reactions a run set off and their share of the damage, and `--noreact` replays the same seeds with reactions switched off. Measured that way they are worth about 5% of horde toughness to any build that mixes elements, which the horde gets back (`REACTION_OFFSET` in `js/director.js`).
+
+### Depths and mutators
+
+A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, damage and speed, elite and horde timing, affix count, chest cost, healing, and a few hero-side knobs. Rift Depths and daily mutators are just functions that turn those knobs, so adding one is a line in `DEPTHS` or `MUTATORS`. With the full tree, the bot's careless player model (`--sloppy`) wins about four runs in five at depth 0, three in five at depth 6 and none at depth 10; the careful one still wins most of its runs there. Nothing in the rules moves the boss schedule, which the server's run validation relies on.
+
+### Seeds
+
+Every run has a seed, shown on the pause and results screens. It feeds three independent streams (`js/seed.js`): `sim` for moment-to-moment simulation, `event` for the run's script (which horde comes next, which elite, which affixes) and `loot` for reward cards and relic rolls. Two players on the same seed meet the same hordes and elites in the same order even though their fights differ; with the bot at a fixed time step, the same seed replays the same run exactly. Particles, shake and sound use `Math.random` and cannot disturb a seeded run.
+
 Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), interpolated geometrically, so each act can be tuned on its own. Overtime starts when the Rift Lord falls and ramps until it ends the run. The permanent skill tree roughly doubles a hero's strength when fully bought: enough that a weaker player can grind their way to a win, not so much that a strong one is never threatened.
 
 ## Project layout
@@ -64,16 +82,17 @@ Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), int
 server.ts         optional Bun server: static files, SQLite saves, global leaderboard
 index.html        page shell, HUD and menu markup
 css/style.css     interface styles
+js/seed.js        seeded random streams, the daily rift's definition (also imported by server.ts)
 js/util.js        math helpers, spatial hash
 js/save.js        local storage plus server sync: progress, settings, leaderboard
 js/audio.js       synthesized sound effects and music
 js/icons.js       vector glyph library used by the UI and canvas
-js/data.js        elements, rarities, affinities, tomes, relics, meta tree
+js/data.js        elements, rarities, affinities, tomes, relics, meta tree, reactions, elite affixes, depths, mutators
 js/skills.js      skill definitions and behaviour
 js/classes.js     classes, abilities, talent paths
 js/player.js      stats, movement, dash, damage intake, levelling
-js/combat.js      damage pipeline, statuses, projectiles, zones, hazards
-js/enemies.js     enemy roster and AI
+js/combat.js      damage pipeline, statuses, reactions, projectiles, zones, hazards
+js/enemies.js     enemy roster, AI and elite affixes
 js/bosses.js      boss fights
 js/director.js    difficulty curves, spawning, drops, chests, shrines
 js/rewards.js     reward card generation
@@ -117,12 +136,15 @@ The server applies last write wins, but refuses a write older than the copy it h
 
 | Endpoint | Auth | |
 | --- | --- | --- |
-| `GET /api/health` | | `{ok: true}` |
+| `GET /api/health` | | `{ok: true, now}`. `now` is the server clock in ms; clients use it to agree on when the daily rift turns over |
 | `GET /api/profile/:id` | Bearer | `{data, updatedAt}`, or `404` if none |
 | `PUT /api/profile/:id` | Bearer | body `{updatedAt, data}`; `data` must be an object, at most 64 KB. The local `board` is dropped (runs have their own table). `409 {updatedAt}` if older than the stored copy |
-| `POST /api/runs` | Bearer + `X-Player-Id` | body `{name, cls, score, time, level, kills, bosses, won, build}`, validated strictly, with a generous check that the score matches time, level, kills and bosses. Returns `201 {id, rank, total, classRank, classTotal}` |
+| `POST /api/runs` | Bearer + `X-Player-Id` | body `{name, cls, score, time, level, kills, bosses, won, build, depth?, daily?}`, validated strictly, with a generous check that the score matches time, level, kills, bosses and depth (0 to 10, default 0). `daily` is a `YYYY-MM-DD` date: it must be today or yesterday by the server's clock (a run can start before midnight UTC and end after it), the class must be that day's, and the depth 0. Returns `201 {id, rank, total, classRank, classTotal}`; for a daily run the rank is the player's standing on that day's board |
 | `PATCH /api/runs/:id` | Bearer + `X-Player-Id` | `{name}`. Renames your own run (the results screen allows renaming after the run is recorded) |
-| `GET /api/leaderboard?cls=all\|<class>&limit=100` | optional `X-Player-Id` | `{cls, total, rows}`. Each row is `{name, cls, score, time, level, kills, bosses, won, date, build}`, plus `mine` when the id header is sent. Other players' ids are never returned |
+| `GET /api/leaderboard?cls=all\|<class>&limit=100` | optional `X-Player-Id` | `{cls, total, rows}`. Each row is `{name, cls, score, time, level, kills, bosses, won, date, build, depth}`, plus `mine` when the id header is sent. Other players' ids are never returned. Daily rift runs are never on this board |
+| `GET /api/leaderboard?daily=<YYYY-MM-DD\|today>&limit=100` | optional `X-Player-Id` | `{daily, cls, mutator, total, rows}`: that day's rift, one row per player (their best run), and `total` players |
+
+A database created before Rift Depths and the daily rift gains the `depth` and `daily` columns the first time the server starts on it; its runs count as depth 0.
 
 Unknown `/api` routes return JSON `404`. Writes over the per-IP limit return `429` with `Retry-After`.
 
@@ -138,7 +160,7 @@ tools/batch.sh "--sloppy" 14               # two runs per class in parallel
 tools/afk.sh "300 600"                   # idle test: play to T seconds, then let go of the controls
 ```
 
-Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--quiet`.
+Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--seed=<text>` (reproducible: the same seed, class and flags replay the same run), `--depth=<0-10>`, `--mutator=<id>`, `--daily[=YYYY-MM-DD]` (that day's rift: its seed, class and mutator, full tree), `--quiet`.
 
 `tools/curve.js` is the balance report. It plays many runs in parallel and averages, per time bucket, the hero's level and loadout against how hard the rift is pushing back: seconds to kill a normal enemy and an elite, how full the screen is relative to the director's target, clearing headroom (raw damage against the toughness of what spawns), damage taken and lowest health. It also lists death times and the average length of each boss fight:
 
@@ -147,9 +169,12 @@ node tools/curve.js all 13 10 --quiet                 # 10 runs per class, summa
 node tools/curve.js ranger 13 8 --bucket=30           # finer timeline for one class
 node tools/curve.js all 13 6 --sloppy --tree=full     # careless player with every permanent upgrade
 node tools/curve.js all 13 6 --tree=arm:might         # one arm of the tree; also half, m1,m2 or -a5 (full minus a node)
+node tools/curve.js all 13 6 --seed=a --depth=5       # a reproducible report at Rift Depth 5
 ```
 
-`tools/stress.js` runs every class with all talents, every relic and every evolved skill at once, drawing frames as it goes, and fails on any page error or invalid number:
+With `--seed`, each run gets its own seed derived from it, so two reports with the same seed and flags are identical and a change in the numbers is a change in the game. `--depth` and `--mutator` play under those rules.
+
+`tools/stress.js` runs every class with all talents, every relic and every evolved skill at once, sets off every reaction, spawns every elite affix and horde shape, and plays each pass under a different mutator (every second one at depth 10), drawing frames as it goes. It fails on any page error or invalid number:
 
 ```sh
 node tools/stress.js 3
@@ -162,7 +187,7 @@ node tools/perf.js pyromancer 300,540,780   # checkpoints in seconds: after the 
 node tools/perf.js reaper 780 --json --frames=120
 ```
 
-The numbers come from headless Chromium's software rasterizer, so compare runs with each other rather than with a real GPU. Keep the same checkpoints between runs: frames drawn at earlier checkpoints change the dice later on.
+The numbers come from headless Chromium's software rasterizer, so compare runs with each other rather than with a real GPU. The run is seeded (`--seed=1` by default), so two profiles of the same class and checkpoints see the same fight.
 
 `tools/models.js` draws every character model with the real renderer, one per labelled cell, and writes a PNG. Run it before and after an art change to compare:
 

@@ -4,6 +4,12 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
+import './js/seed.js'; // the daily rift's definition, shared with the game: sets globalThis.PS.Daily
+
+const Daily = (globalThis as any).PS.Daily as {
+  dateOf(ms: number): string; valid(date: unknown): boolean; spec(date: string): { date: string; seed: string; cls: string; mutator: string };
+};
+export const DEPTH_MAX = 10;
 
 export const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper'];
 const MAX_BODY = 64 * 1024;
@@ -31,16 +37,19 @@ const isCount = (v: unknown, max: number): v is number => Number.isSafeInteger(v
 // Mirrors js/game.js finalScore: score = G.score + floor(time)*60 + (level-1)*100, where G.score is the sum of
 // enemy scores (xp, x12 for elites, +10%/min in overtime), boss scores (2500*(idx+1), x(1+k) for overtime repeats)
 // and +15000 for the win. The cap pretends every kill was an elite, so it is very loose but stops absurd numbers.
-export function scoreBounds(r: { time: number; level: number; kills: number; bosses: number; won: boolean }) {
+// A Rift Depth multiplies the whole score by 1 + 0.15 per depth (js/data.js depthScore).
+export function scoreBounds(r: { time: number; level: number; kills: number; bosses: number; won: boolean; depth?: number }) {
   const base = r.time * 60 + (r.level - 1) * 100 + (r.won ? 15000 : 0);
   const perKill = Math.ceil(96 * (1 + 0.1 * Math.max(0, r.time - 720) / 60));
   const extra = Math.max(0, r.bosses - 4); // overtime bosses n=0.. are worth at most 10000*(n+2)
-  return { min: base, max: base + r.kills * perKill + 25000 + 5000 * extra * (extra + 3) };
+  const mult = 1 + 0.15 * (r.depth || 0);
+  return { min: Math.floor(base * mult) - 1, max: Math.ceil((base + r.kills * perKill + 25000 + 5000 * extra * (extra + 3)) * mult) + 1 };
 }
 // bosses arrive at 3:00, 6:00, 9:00, 12:00, then every 2:00 of overtime; none can die the moment it spawns
 const maxBosses = (time: number) => (time < 720 ? Math.floor(time / 180) : 4 + Math.floor((time - 720) / 120));
 
-export function validateRun(b: unknown) {
+/** now: the server's clock, used to check that a daily rift run is for today (or the day that just ended) */
+export function validateRun(b: unknown, now = Date.now()) {
   if (!isObj(b)) fail(400, 'run must be an object');
   const r = b as Record<string, unknown>;
   const name = typeof r.name === 'string' ? r.name.replace(/[\u0000-\u001f\u007f]/g, '').trim() : fail(400, 'name must be a string');
@@ -51,10 +60,20 @@ export function validateRun(b: unknown) {
   for (const k of Object.keys(caps) as (keyof typeof caps)[]) if (!isCount(r[k], caps[k])) fail(400, `${k} must be a non-negative integer`);
   const build = Array.isArray(r.build) ? r.build : fail(400, 'build must be an array');
   if (build.length > 8 || !build.every((s) => typeof s === 'string' && s.length > 0 && s.length <= 32)) fail(400, 'build must be up to 8 short strings');
+  // older clients send neither field: depth 0, not a daily run
+  const depth = r.depth === undefined ? 0 : isCount(r.depth, DEPTH_MAX) ? r.depth : fail(400, `depth must be an integer from 0 to ${DEPTH_MAX}`);
+  const daily = r.daily === undefined || r.daily === null || r.daily === '' ? '' : Daily.valid(r.daily) ? (r.daily as string) : fail(400, 'daily must be a date');
   const run = {
     name: name || 'Wanderer', cls: r.cls as string, won: r.won as boolean, build: build as string[],
     score: r.score as number, time: r.time as number, level: r.level as number, kills: r.kills as number, bosses: r.bosses as number,
+    depth: depth as number, daily: daily as string,
   };
+  if (run.daily) {
+    // a run that started before midnight UTC may finish after it, so yesterday's rift is still accepted
+    if (run.daily !== Daily.dateOf(now) && run.daily !== Daily.dateOf(now - 86400000)) fail(400, 'that daily rift is closed');
+    if (run.cls !== Daily.spec(run.daily).cls) fail(400, 'wrong class for that daily rift');
+    if (run.depth !== 0) fail(400, 'the daily rift has no depth');
+  }
   if (run.level < 1) fail(400, 'level must be at least 1');
   if (run.bosses > maxBosses(run.time) || run.bosses > run.kills) fail(400, 'too many bosses for that time');
   if (run.won && (run.bosses < 4 || run.time < 720)) fail(400, 'a win needs the Rift Lord');
@@ -82,25 +101,38 @@ export function createServer(opts: Options = {}) {
       won INTEGER NOT NULL, build TEXT NOT NULL, date INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS runs_by_score ON runs(score DESC, id);
     CREATE INDEX IF NOT EXISTS runs_by_cls ON runs(cls, score DESC, id);`);
+  // databases from before Rift Depths and the daily rift gain the two columns; their runs are depth 0, not daily
+  const have = new Set((db.query('PRAGMA table_info(runs)').all() as { name: string }[]).map((c) => c.name));
+  if (!have.has('depth')) db.exec('ALTER TABLE runs ADD COLUMN depth INTEGER NOT NULL DEFAULT 0');
+  if (!have.has('daily')) db.exec("ALTER TABLE runs ADD COLUMN daily TEXT NOT NULL DEFAULT ''");
+  db.exec('CREATE INDEX IF NOT EXISTS runs_by_daily ON runs(daily, score DESC, id)');
 
   type Player = { id: string; token_hash: string; data: string | null; updated_at: number };
-  type RunRow = { id: number; player: string; name: string; cls: string; score: number; time: number; level: number; kills: number; bosses: number; won: number; build: string; date: number };
-  const cols = 'id, player, name, cls, score, time, level, kills, bosses, won, build, date';
+  type RunRow = { id: number; player: string; name: string; cls: string; score: number; time: number; level: number; kills: number; bosses: number; won: number; build: string; date: number; depth: number; daily: string };
+  const cols = 'id, player, name, cls, score, time, level, kills, bosses, won, build, date, depth, daily';
+  // The main board holds every ordinary run. Daily rift runs (daily <> '') live on that day's board only, one row per
+  // player: their best of the day. "Best" is the highest score, the earlier run on a tie.
+  const bestOfDay = `id = (SELECT b.id FROM runs b WHERE b.daily = r.daily AND b.player = r.player ORDER BY b.score DESC, b.id LIMIT 1)`;
   const q = {
     player: db.prepare<Player, [string]>('SELECT id, token_hash, data, updated_at FROM players WHERE id = ?'),
     claim: db.prepare('INSERT OR IGNORE INTO players (id, token_hash, created_at) VALUES (?, ?, ?)'),
     putProfile: db.prepare('UPDATE players SET data = ?, updated_at = ? WHERE id = ?'),
-    addRun: db.prepare<{ id: number }, any[]>(`INSERT INTO runs (player, name, cls, score, time, level, kills, bosses, won, build, date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
+    addRun: db.prepare<{ id: number }, any[]>(`INSERT INTO runs (player, name, cls, score, time, level, kills, bosses, won, build, date, depth, daily)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`),
     getRun: db.prepare<RunRow, [number]>(`SELECT ${cols} FROM runs WHERE id = ?`),
     rename: db.prepare('UPDATE runs SET name = ? WHERE id = ?'),
     // ties go to the earlier run, matching the leaderboard order
-    rankAll: db.prepare<{ n: number }, [number, number]>('SELECT COUNT(*) AS n FROM runs WHERE score > ?1 OR (score = ?1 AND id < ?2)'),
-    rankCls: db.prepare<{ n: number }, [string, number, number]>('SELECT COUNT(*) AS n FROM runs WHERE cls = ?1 AND (score > ?2 OR (score = ?2 AND id < ?3))'),
-    countAll: db.prepare<{ n: number }, []>('SELECT COUNT(*) AS n FROM runs'),
-    countCls: db.prepare<{ n: number }, [string]>('SELECT COUNT(*) AS n FROM runs WHERE cls = ?'),
-    topAll: db.prepare<RunRow, [number]>(`SELECT ${cols} FROM runs ORDER BY score DESC, id LIMIT ?`),
-    topCls: db.prepare<RunRow, [string, number]>(`SELECT ${cols} FROM runs WHERE cls = ? ORDER BY score DESC, id LIMIT ?`),
+    rankAll: db.prepare<{ n: number }, [number, number]>("SELECT COUNT(*) AS n FROM runs WHERE daily = '' AND (score > ?1 OR (score = ?1 AND id < ?2))"),
+    rankCls: db.prepare<{ n: number }, [string, number, number]>("SELECT COUNT(*) AS n FROM runs WHERE daily = '' AND cls = ?1 AND (score > ?2 OR (score = ?2 AND id < ?3))"),
+    countAll: db.prepare<{ n: number }, []>("SELECT COUNT(*) AS n FROM runs WHERE daily = ''"),
+    countCls: db.prepare<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM runs WHERE daily = '' AND cls = ?"),
+    topAll: db.prepare<RunRow, [number]>(`SELECT ${cols} FROM runs WHERE daily = '' ORDER BY score DESC, id LIMIT ?`),
+    topCls: db.prepare<RunRow, [string, number]>(`SELECT ${cols} FROM runs WHERE daily = '' AND cls = ? ORDER BY score DESC, id LIMIT ?`),
+    topDaily: db.prepare<RunRow, [string, number]>(`SELECT ${cols} FROM runs r WHERE r.daily = ? AND r.${bestOfDay} ORDER BY score DESC, id LIMIT ?`),
+    countDaily: db.prepare<{ n: number }, [string]>('SELECT COUNT(DISTINCT player) AS n FROM runs WHERE daily = ?'),
+    // a player's standing on a day's board: their best run against everyone else's best
+    bestDaily: db.prepare<RunRow, [string, string]>(`SELECT ${cols} FROM runs WHERE daily = ? AND player = ? ORDER BY score DESC, id LIMIT 1`),
+    rankDaily: db.prepare<{ n: number }, [string, number, number]>(`SELECT COUNT(*) AS n FROM runs r WHERE r.daily = ?1 AND r.${bestOfDay} AND (score > ?2 OR (score = ?2 AND id < ?3))`),
   };
 
   // fixed one-minute window per IP for writes; plenty for debounced saves, stops a script from flooding the board
@@ -137,15 +169,24 @@ export function createServer(opts: Options = {}) {
   const rowOut = (r: RunRow, me: string | null) => {
     const o: Record<string, unknown> = {
       name: r.name, cls: r.cls, score: r.score, time: r.time, level: r.level, kills: r.kills, bosses: r.bosses,
-      won: !!r.won, date: r.date, build: JSON.parse(r.build),
+      won: !!r.won, date: r.date, build: JSON.parse(r.build), depth: r.depth,
     };
+    if (r.daily) o.daily = r.daily;
     if (me) o.mine = r.player === me; // never expose other players' ids
     return o;
   };
-  const rankOf = (r: RunRow) => ({
-    rank: q.rankAll.get(r.score, r.id)!.n + 1, total: q.countAll.get()!.n,
-    classRank: q.rankCls.get(r.cls, r.score, r.id)!.n + 1, classTotal: q.countCls.get(r.cls)!.n,
-  });
+  const rankOf = (r: RunRow) => {
+    if (r.daily) {
+      // everyone plays the same class in a daily rift, so the class rank is the rank
+      const best = q.bestDaily.get(r.daily, r.player)!;
+      const rank = q.rankDaily.get(r.daily, best.score, best.id)!.n + 1, total = q.countDaily.get(r.daily)!.n;
+      return { rank, total, classRank: rank, classTotal: total };
+    }
+    return {
+      rank: q.rankAll.get(r.score, r.id)!.n + 1, total: q.countAll.get()!.n,
+      classRank: q.rankCls.get(r.cls, r.score, r.id)!.n + 1, classTotal: q.countCls.get(r.cls)!.n,
+    };
+  };
 
   async function api(req: Request, url: URL, ip: string) {
     const path = url.pathname, method = req.method;
@@ -154,13 +195,22 @@ export function createServer(opts: Options = {}) {
       const wait = allowWrite(ip);
       if (wait) return json({ error: 'too many writes, slow down' }, 429, { 'Retry-After': String(wait) });
     }
-    if (path === '/api/health' && method === 'GET') return json({ ok: true });
+    // `now` lets every client agree on when the daily rift turns over, whatever its own clock says
+    if (path === '/api/health' && method === 'GET') return json({ ok: true, now: Date.now() });
 
     if (path === '/api/leaderboard' && method === 'GET') {
       const cls = url.searchParams.get('cls') || 'all';
       if (cls !== 'all' && !CLASSES.includes(cls)) fail(400, 'unknown class');
       const limit = Math.max(1, Math.min(100, Math.floor(Number(url.searchParams.get('limit')) || 100)));
       const me = req.headers.get('x-player-id');
+      const daily = url.searchParams.get('daily');
+      if (daily !== null) {
+        // ?daily=YYYY-MM-DD (or "today"): that day's rift, each player's best run
+        const date = daily === 'today' ? Daily.dateOf(Date.now()) : Daily.valid(daily) ? daily : fail(400, 'daily must be a date');
+        const spec = Daily.spec(date);
+        return json({ daily: date, cls: spec.cls, mutator: spec.mutator, total: q.countDaily.get(date)!.n,
+          rows: q.topDaily.all(date, limit).map((r) => rowOut(r, me && ID_RE.test(me) ? me : null)) });
+      }
       const rows = cls === 'all' ? q.topAll.all(limit) : q.topCls.all(cls, limit);
       const total = (cls === 'all' ? q.countAll.get() : q.countCls.get(cls))!.n;
       return json({ cls, total, rows: rows.map((r) => rowOut(r, me && ID_RE.test(me) ? me : null)) });
@@ -193,7 +243,7 @@ export function createServer(opts: Options = {}) {
       const id = req.headers.get('x-player-id');
       auth(req, id, true);
       const { id: rid } = q.addRun.get(id, run.name, run.cls, run.score, run.time, run.level, run.kills, run.bosses,
-        run.won ? 1 : 0, JSON.stringify(run.build), Date.now())!;
+        run.won ? 1 : 0, JSON.stringify(run.build), Date.now(), run.depth, run.daily)!;
       return json({ id: rid, ...rankOf(q.getRun.get(rid)!) }, 201);
     }
 
@@ -204,7 +254,8 @@ export function createServer(opts: Options = {}) {
       const r = q.getRun.get(Number(m[1]));
       const p = auth(req, id, false);
       if (!r || !p || r.player !== p.id) return json({ error: 'no such run' }, 404);
-      const { name } = validateRun({ ...rowOut(r, null), name: isObj(body) ? body.name : null });
+      // only the name is being checked here; the run itself was validated when it was posted (its daily rift may have closed since)
+      const { name } = validateRun({ ...rowOut(r, null), daily: undefined, depth: r.daily ? 0 : r.depth, name: isObj(body) ? body.name : null });
       q.rename.run(name, r.id);
       return json({ ok: true, name });
     }

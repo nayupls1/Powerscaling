@@ -3,7 +3,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Database } from 'bun:sqlite';
 import { createServer, validateRun } from '../server.ts';
+
+const Daily = (globalThis as any).PS.Daily; // set by server.ts importing js/seed.js
+const RNG = (globalThis as any).PS.RNG;
 
 const dir = mkdtempSync(join(tmpdir(), 'ps-test-'));
 let app: ReturnType<typeof createServer>;
@@ -29,7 +33,9 @@ describe('api basics', () => {
   test('health', async () => {
     const r = await req('GET', '/api/health');
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true });
+    const body = await r.json();
+    expect(body.ok).toBe(true);
+    expect(Math.abs(body.now - Date.now())).toBeLessThan(5000); // clients take the daily rift's date from this clock
   });
   test('unknown api route is JSON 404', async () => {
     const r = await req('GET', '/api/nope');
@@ -143,6 +149,123 @@ describe('runs and leaderboard', () => {
   });
 });
 
+describe('rift depths', () => {
+  test('depth multiplies the score bounds and is listed', async () => {
+    const me = who();
+    const base = run({ cls: 'reaper', kills: 4000 });
+    // the same run at depth 4 scores 1.6 times as much
+    const deep = { ...base, depth: 4, score: Math.round(base.score * 1.6) };
+    expect((await req('POST', '/api/runs', deep, me)).status).toBe(201);
+    // the lowest score that run could have at depth 0 is too low for depth 4
+    const floor = base.time * 60 + (base.level - 1) * 100;
+    expect((await req('POST', '/api/runs', { ...base, score: floor }, me)).status).toBe(201);
+    expect((await req('POST', '/api/runs', { ...base, score: floor, depth: 4 }, me)).status).toBe(400);
+    for (const depth of [-1, 11, 1.5, '3']) expect((await req('POST', '/api/runs', { ...base, depth }, me)).status).toBe(400);
+    const lb = await (await req('GET', '/api/leaderboard?cls=reaper')).json();
+    expect(lb.rows.find((r: any) => r.score === deep.score).depth).toBe(4);
+    expect(validateRun(base).depth).toBe(0); // clients from before depths send no depth
+  });
+});
+
+describe('daily rift', () => {
+  const today = Daily.dateOf(Date.now());
+  const spec = Daily.spec(today);
+  const daily = (o: Record<string, unknown> = {}) => run({ cls: spec.cls, daily: today, ...o });
+
+  test('the definition is stable, and varied', () => {
+    expect(Daily.spec('2026-01-01')).toEqual(Daily.spec('2026-01-01'));
+    expect(Daily.valid('2026-02-30')).toBe(false);
+    expect(Daily.valid('2026-2-3')).toBe(false);
+    // every class appears once in each block of four days, every mutator once in each block of eight
+    const day0 = Math.ceil(Date.parse('2026-01-01T00:00:00Z') / 86400000 / 8) * 8;
+    const specs = Array.from({ length: 8 }, (_, i) => Daily.spec(Daily.dateOf((day0 + i) * 86400000)));
+    expect(new Set(specs.slice(0, 4).map((x) => x.cls)).size).toBe(4);
+    expect(new Set(specs.slice(4).map((x) => x.cls)).size).toBe(4);
+    expect(new Set(specs.map((x) => x.mutator)).size).toBe(8);
+  });
+  test('seeded streams repeat, and differ from each other', () => {
+    RNG.seed('abc');
+    const a = [RNG.sim(), RNG.sim(), RNG.event(), RNG.loot()];
+    RNG.seed('abc');
+    expect([RNG.sim(), RNG.sim(), RNG.event(), RNG.loot()]).toEqual(a);
+    expect(new Set(a).size).toBe(4);
+    RNG.seed('abd');
+    expect(RNG.sim()).not.toBe(a[0]);
+  });
+  test('validation: right day, right class, no depth', () => {
+    const now = Date.parse(today + 'T12:00:00Z');
+    expect(validateRun(daily(), now).daily).toBe(today);
+    const yesterday = Daily.dateOf(now - 86400000), old = Daily.dateOf(now - 3 * 86400000), tomorrow = Daily.dateOf(now + 86400000);
+    expect(validateRun(run({ cls: Daily.spec(yesterday).cls, daily: yesterday }), now).daily).toBe(yesterday); // finished just after midnight
+    expect(() => validateRun(run({ cls: Daily.spec(old).cls, daily: old }), now)).toThrow();
+    expect(() => validateRun(run({ cls: Daily.spec(tomorrow).cls, daily: tomorrow }), now)).toThrow();
+    const other = ['vanguard', 'pyromancer', 'ranger', 'reaper'].find((c) => c !== spec.cls);
+    expect(() => validateRun(daily({ cls: other }), now)).toThrow();
+    expect(() => validateRun(daily({ depth: 2, score: undefined }), now)).toThrow();
+    expect(() => validateRun(daily({ daily: 'soon' }), now)).toThrow();
+  });
+  test('its own board: one row per player, their best, and nothing leaks onto the main board', async () => {
+    const a = who(), b = who(), c = who();
+    const post = async (w: Who, kills: number) => (await req('POST', '/api/runs', daily({ kills, name: 'D' + kills }), w)).json();
+    const before = (await (await req('GET', '/api/leaderboard?cls=all')).json()).total;
+    const a1 = await post(a, 1000);
+    expect(a1.rank).toBe(1);
+    const b1 = await post(b, 3000);
+    expect(b1.rank).toBe(1);
+    expect(b1.total).toBe(2);
+    const a2 = await post(a, 2000);          // better than a's first, still behind b
+    expect(a2.rank).toBe(2);
+    const a3 = await post(a, 500);           // worse: a's standing is still their best run
+    expect(a3.rank).toBe(2);
+    const c1 = await post(c, 9000);
+    expect(c1.rank).toBe(1);
+    expect(c1.total).toBe(3);
+
+    const lb = await (await req('GET', `/api/leaderboard?daily=${today}`, undefined, undefined, { 'X-Player-Id': a.id })).json();
+    expect(lb.daily).toBe(today);
+    expect(lb.cls).toBe(spec.cls);
+    expect(lb.mutator).toBe(spec.mutator);
+    expect(lb.total).toBe(3);
+    expect(lb.rows.map((r: any) => r.kills)).toEqual([9000, 3000, 2000]);
+    expect(lb.rows.map((r: any) => r.mine)).toEqual([false, false, true]);
+    expect(lb.rows.every((r: any) => r.daily === today)).toBe(true);
+    expect((await (await req('GET', '/api/leaderboard?daily=today')).json()).rows.length).toBe(3);
+    expect((await req('GET', '/api/leaderboard?daily=nope')).status).toBe(400);
+    expect((await (await req('GET', '/api/leaderboard?daily=2020-01-01')).json()).rows).toEqual([]);
+
+    const after = await (await req('GET', '/api/leaderboard?cls=all')).json();
+    expect(after.total).toBe(before);
+    expect(after.rows.some((r: any) => r.daily)).toBe(false);
+    // a daily run can still be renamed after the fact
+    const { id } = await (await req('POST', '/api/runs', daily({ kills: 700 }), b)).json();
+    expect((await req('PATCH', `/api/runs/${id}`, { name: 'Renamed' }, b)).status).toBe(200);
+  });
+});
+
+test('a database from before depths and the daily rift is upgraded in place', async () => {
+  const path = join(dir, 'old.db');
+  const old = new Database(path, { create: true });
+  old.exec(`CREATE TABLE players (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, data TEXT, updated_at INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
+    CREATE TABLE runs (id INTEGER PRIMARY KEY, player TEXT NOT NULL REFERENCES players(id), name TEXT NOT NULL, cls TEXT NOT NULL,
+      score INTEGER NOT NULL, time INTEGER NOT NULL, level INTEGER NOT NULL, kills INTEGER NOT NULL, bosses INTEGER NOT NULL,
+      won INTEGER NOT NULL, build TEXT NOT NULL, date INTEGER NOT NULL);
+    INSERT INTO players VALUES ('old-player-1', 'x', NULL, 0, 0);
+    INSERT INTO runs VALUES (1, 'old-player-1', 'Elder', 'ranger', 40000, 400, 30, 2000, 2, 0, '["Longbow"]', 1700000000000);`);
+  old.close();
+  for (let pass = 0; pass < 2; pass++) { // the second start must find nothing left to do
+    const up = createServer({ port: 0, dbPath: path });
+    try {
+      const lb = await (await fetch(`${up.url}/api/leaderboard`)).json();
+      expect(lb.rows.length).toBe(1);
+      expect(lb.rows[0].name).toBe('Elder');
+      expect(lb.rows[0].depth).toBe(0);
+      expect('daily' in lb.rows[0]).toBe(false);
+    } finally {
+      up.stop();
+    }
+  }
+});
+
 describe('static files', () => {
   test('serves the game with content types', async () => {
     let r = await req('GET', '/');
@@ -152,6 +275,7 @@ describe('static files', () => {
     expect(await r.text()).toContain('js/save.js');
     r = await req('GET', '/js/save.js');
     expect(r.headers.get('content-type')).toContain('javascript');
+    expect((await req('GET', '/js/seed.js')).status).toBe(200);
     expect((await req('GET', '/css/style.css')).headers.get('content-type')).toContain('text/css');
     const etag = r.headers.get('etag')!;
     expect((await req('GET', '/js/save.js', undefined, undefined, { 'If-None-Match': etag })).status).toBe(304);

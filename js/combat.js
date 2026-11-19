@@ -2,10 +2,17 @@
 (function () {
   'use strict';
   const PS = (window.PS = window.PS || {});
-  const U = PS.U;
+  const U = PS.U, D = PS.Data;
   const TAU = U.TAU;
 
   const MAX_PROJ = 700;
+  // Reactions are rare and heavy on purpose: about one a second at most, each one an event you can see.
+  // Measured with `tools/curve.js --noreact` on the same seeds, they are worth roughly 5% of horde toughness to a build
+  // that mixes elements (and nearly every build does), which Director.hpMult gives back (REACTION_OFFSET).
+  const RX_COOLDOWN = 3;   // seconds before the same enemy can react again
+  const RX_RATE = 1.5;     // reactions per second the whole build may set off (a budget of up to RX_BURST)
+  const RX_BURST = 3;
+  const RX_POWER = 1.5;    // scales every reaction's damage
   const BASE_POISON_CAP = 6;
 
   const C = {
@@ -27,7 +34,7 @@
       if (!list.length) return null;
       const r2 = r * r;
       for (let tries = 0; tries < 8; tries++) {
-        const e = list[(Math.random() * list.length) | 0];
+        const e = list[(U.rnd() * list.length) | 0];
         if (!e.dead && U.dist2(e.x, e.y, p.x, p.y) < r2) return e;
       }
       return C.nearest(p.x, p.y, r);
@@ -56,7 +63,7 @@
       o = o || EMPTY;
       let crit = false;
       if (!o.dot) {
-        if (o.crit === true || (!o.noCrit && Math.random() < s.crit + (o.critBonus || 0))) {
+        if (o.crit === true || (!o.noCrit && U.rnd() < s.crit + (o.critBonus || 0))) {
           crit = true;
           dmg *= s.critMult;
         }
@@ -66,13 +73,23 @@
       if (e.shockT > 0) m += aff.storm >= 2 ? 0.30 : 0.15;
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
       if (e.markT > 0) m += 0.4;
+      if (e.exposeT > 0) m += 0.2;
       if (e.big) m += s.bossDmg;
       dmg *= m * (e.taken || 1);
       if (dmg <= 0) return 0;
 
-      // stats and lifesteal count only the health actually removed, not overkill
-      const eff = dmg < e.hp ? dmg : Math.max(0, e.hp);
-      e.hp -= dmg;
+      // a Shielded elite's barrier is spent before its health
+      let soak = 0;
+      if (e.shield > 0) {
+        soak = Math.min(e.shield, dmg);
+        e.shield -= soak;
+        e.shieldAt = G.time;
+        if (e.shield <= 0) { PS.FX.shatter(e.x, e.y, '#7fc8ff'); PS.Audio.play('frost', { vol: 0.5, pitch: 1.2 }); }
+      } else if (e.shieldMax > 0) e.shieldAt = G.time;
+      const toHp = dmg - soak;
+      // stats and lifesteal count only the health (and barrier) actually removed, not overkill
+      const eff = soak + (toHp < e.hp ? toHp : Math.max(0, e.hp));
+      e.hp -= toHp;
       if (!o.dot && G.time >= e.flashAt) { e.flash = 0.07; e.flashAt = G.time + (e.big ? 0.28 : 0.16); }
       const src = o.src || 'Other';
       G.dmgBy[src] = (G.dmgBy[src] || 0) + eff;
@@ -95,7 +112,10 @@
       } else {
         PS.FX.dmgNum(e.x, e.y - e.r, dmg, crit, o.el);
         if (!o.noStatus) C.applyElement(e, o.el, dmg, o, crit);
-        if (!o.noProc) C.procs(e, dmg, o, crit);
+        if (!o.noProc) {
+          C.procs(e, dmg, o, crit);
+          if (o.el && e.hp > 0) C.tag(e, o.el);
+        }
         if (crit) PS.Audio.play('crit', { vol: 0.5 });
         else PS.Audio.play('hit', { vol: 0.35 });
         if (s.lifesteal > 0) p.leech(eff * s.lifesteal);
@@ -115,7 +135,7 @@
         if (o.freeze) C.freeze(e, o.freeze, o.freezeDur || 1.2);
       }
       if (el === 'storm') {
-        if (Math.random() < (o.shock !== undefined ? o.shock : 0.5)) e.shockT = 4 * s.duration;
+        if (U.rnd() < (o.shock !== undefined ? o.shock : 0.5)) e.shockT = 4 * s.duration;
       }
       if (el === 'venom' || o.poison) C.poison(e, dmg * 0.12, o.poison || 1);
       if (crit && aff.steel >= 4) {
@@ -126,8 +146,8 @@
         e.bleedT = 3;
         e.bleedDps = Math.max(e.bleedDps, (dmg * o.bleed) / 3);
       }
-      if (f.freezeProc && Math.random() < f.freezeProc) C.freeze(e, 1, 1);
-      if (f.poisonProc && el !== 'venom' && Math.random() < f.poisonProc) C.poison(e, dmg * 0.12, 1);
+      if (f.freezeProc && U.rnd() < f.freezeProc) C.freeze(e, 1, 1);
+      if (f.poisonProc && el !== 'venom' && U.rnd() < f.poisonProc) C.poison(e, dmg * 0.12, 1);
     },
     burn(e, dps) {
       const s = PS.G.player.stats;
@@ -142,7 +162,7 @@
     freeze(e, chance, dur) {
       const p = PS.G.player;
       if (p.aff.frost >= 6) chance *= 2;
-      if (Math.random() >= chance) return false;
+      if (U.rnd() >= chance) return false;
       if (e.boss || e.freezeImm > 0) { C.chill(e); return false; }
       e.freezeT = dur * (e.elite ? 0.5 : 1) * p.stats.duration;
       e.freezeImm = e.freezeT + 2.5;
@@ -179,9 +199,129 @@
           C.damage(n, dmg * 0.4, { el: 'storm', src: 'Tempest', noProc: true });
         }
       }
-      if (f.chainProc && Math.random() < f.chainProc) {
+      if (f.chainProc && U.rnd() < f.chainProc) {
         G.procN++;
         C.chain(e.x, e.y, e, dmg * 0.5, 3, 170, { src: 'Arc Coil', noProc: true, skipFirst: true });
+      }
+    },
+
+    /* ------------------------------------------------------------------ reactions */
+    /**
+     * Every direct elemental hit leaves its element on the enemy for 4 seconds. A hit of a different element while the
+     * mark lasts sets off that pair's reaction (Data.REACTIONS). Proc damage (noProc) neither marks nor triggers, so
+     * reactions come from the skills you chose, and a reaction can never set off another.
+     * Two limits keep it a build payoff rather than a second damage engine: each enemy reacts at most once every
+     * RX_COOLDOWN seconds, and all reactions draw on one small budget that refills at RX_RATE a second (C.refillReactions).
+     */
+    refillReactions(dt) {
+      const G = PS.G;
+      if (G.rxTokens < RX_BURST) G.rxTokens = Math.min(RX_BURST, G.rxTokens + RX_RATE * G.rules.react * dt);
+    },
+    tag(e, el) {
+      const G = PS.G;
+      if (e.tagEl && e.tagEl !== el && G.time < e.tagT) {
+        // on cooldown or out of budget: keep the old mark, so the pair still reacts when it can
+        if (G.time < e.rxAt || G.rxTokens < 1) return;
+        const rx = D.reaction(e.tagEl, el);
+        G.rxTokens -= 1;
+        e.rxAt = G.time + RX_COOLDOWN / G.rules.react;
+        e.tagEl = el; e.tagT = G.time + 4;
+        C.react(e, rx);
+        return;
+      }
+      e.tagEl = el; e.tagT = G.time + 4;
+    },
+    react(e, rx) {
+      const G = PS.G, p = G.player, s = p.stats, area = s.area;
+      const a = rx.els[0], b = rx.els[1], name = rx.name;
+      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react;
+      const x = e.x, y = e.y;
+      const hit = (el, extra) => Object.assign({ el, src: name, noProc: true }, extra);
+      G.reactions[name] = (G.reactions[name] || 0) + 1;
+      // name the reaction over the enemy, but not on every one of a burst
+      if (G.time >= (G.rxSeen[rx.id] || 0)) {
+        G.rxSeen[rx.id] = G.time + 0.9;
+        PS.FX.text(x, y - e.r - 14, name, D.ELEMENTS[b].glow);
+      }
+      PS.UI.tip('react', 'Two elements on one enemy react. Pause to see the reactions your build can set off', 'spark');
+      switch (rx.id) {
+        case 'thermal':
+          PS.FX.explosion(x, y, 80 * area, '#ffd3b0');
+          C.aoe(x, y, 80 * area, pw * 2.2, hit('fire'));
+          break;
+        case 'sear':
+          C.damage(e, pw * 1.0, hit('steel', { bleed: 3 }));
+          PS.FX.hitSpark(x, y, '#ff7a3d');
+          break;
+        case 'plasma':
+          C.chain(x, y, e, pw * 1.1, 3, 200, hit('fire', { skipFirst: true, color: '#ffb061' }));
+          break;
+        case 'combust': {
+          const r = 90 * area, st = Math.min(10, e.poisStacks);
+          PS.FX.explosion(x, y, r, '#c8ff8a');
+          C.aoe(x, y, r, pw * (1.3 + 0.3 * st), hit('fire'));
+          break;
+        }
+        case 'backdraft':
+          C.zone({
+            x, y, r: 120 * area, life: 0.55, tick: 99, dmg: 0, el: 'void', src: name, kind: 'implode', pull: 420,
+            onEnd(z) { PS.FX.explosion(z.x, z.y, z.r * 0.75, '#ff7a3d'); C.aoe(z.x, z.y, z.r * 0.75, pw * 1.8, hit('fire')); },
+          });
+          break;
+        case 'icebreak':
+          PS.FX.shatter(x, y, '#bdf0ff');
+          C.damage(e, pw * 2.6 * (e.freezeT > 0 ? 2 : 1), hit('frost', { execute: 0.2, knock: 120 }));
+          break;
+        case 'supercon':
+          PS.FX.ring(x, y, 95 * area, '#bdf0ff', 0.3);
+          G.grid.query(x, y, 95 * area, (o) => { C.freeze(o, 1, 0.6); });
+          C.aoe(x, y, 95 * area, pw * 0.9, hit('storm'));
+          break;
+        case 'creep':
+          PS.FX.ring(x, y, 115 * area, '#8fe04a', 0.3);
+          C.aoe(x, y, 115 * area, pw * 0.6, hit('frost', { poison: 2 }));
+          break;
+        case 'entropy':
+          e.exposeT = 4;
+          C.damage(e, pw * 1.2, hit('void'));
+          PS.FX.ring(x, y, e.r + 18, '#c06bff', 0.3);
+          break;
+        case 'rod':
+          PS.FX.bolt(x + U.frand(-30, 30), y - 320, x, y, '#fff3a8', 3);
+          C.aoe(x, y, 55 * area, pw * 1.7, hit('storm', { crit: true, shock: 1 }));
+          PS.Audio.play('thunder', { vol: 0.3 });
+          break;
+        case 'fester':
+          C.damage(e, pw * 0.8, hit('venom', { poison: 3, bleed: 1.5 }));
+          PS.FX.puff(x, y, '#8fe04a', 6);
+          break;
+        case 'sunder':
+          PS.FX.explosion(x, y, 105 * area, '#e3b8ff');
+          C.aoe(x, y, 105 * area, pw * 1.8, hit('void', { knock: 300 }));
+          break;
+        case 'caustic': {
+          const st = Math.max(2, e.poisStacks), dps = Math.max(e.poisDps, pw * 0.12);
+          const seen = [e];
+          for (let i = 0; i < 3; i++) {
+            const n = C.nearest(x, y, 200, (o) => !seen.includes(o));
+            if (!n) break;
+            seen.push(n);
+            PS.FX.bolt(x, y, n.x, n.y, '#c8ff8a');
+            C.poison(n, dps, st);
+            C.damage(n, pw * 0.8, hit('storm'));
+          }
+          break;
+        }
+        case 'ion':
+          C.zone({
+            x, y, r: 140 * area, life: 0.5, tick: 99, dmg: 0, el: 'void', src: name, kind: 'implode', pull: 460,
+            onEnd(z) { PS.FX.ring(z.x, z.y, z.r * 0.6, '#ffe14d', 0.3); C.aoe(z.x, z.y, z.r * 0.6, pw * 1.0, hit('storm', { shock: 1 })); },
+          });
+          break;
+        case 'wither':
+          C.damage(e, Math.max(pw * 1.2, e.maxHp * (e.boss ? 0.004 : e.elite ? 0.02 : 0.05)), hit('venom', { noCrit: true }));
+          PS.FX.puff(x, y, '#c06bff', 6);
+          break;
       }
     },
 
@@ -221,11 +361,11 @@
           });
           PS.FX.puff(e.x, e.y, '#8fe04a', 8);
         }
-        if (aff.void >= 4 && (Math.random() < 0.16 || (aff.void >= 6 && e.elite))) {
+        if (aff.void >= 4 && (U.rnd() < 0.16 || (aff.void >= 6 && e.elite))) {
           G.procN++;
           C.implode(e.x, e.y, aff.void >= 6 ? 190 : 135, C.power('void') * 1.8);
         }
-        if (f.corpseBoom && Math.random() < f.corpseBoom) {
+        if (f.corpseBoom && U.rnd() < f.corpseBoom) {
           G.procN++;
           PS.FX.explosion(e.x, e.y, 85 * area, '#ffb061');
           C.aoe(e.x, e.y, 85 * area, C.power('fire') * 1.6, { el: 'fire', src: 'Volatile Ichor', noProc: true });
@@ -234,6 +374,7 @@
       }
       p.onKill(e, o || EMPTY, canProc);
       if (e.def.onDeath) e.def.onDeath(e);
+      if (e.affixes) PS.Enemies.affixDeath(e);
       if (e.boss) PS.Bosses.died(e);
     },
 
@@ -376,7 +517,7 @@
         pr.y += pr.vy * dt;
         if (pr.spin) pr.rot += pr.spin * dt; else pr.rot = Math.atan2(pr.vy, pr.vx);
         if (pr.growth) pr.r += pr.growth * dt;
-        if (pr.trail && Math.random() < 0.5) PS.FX.spark(pr.x, pr.y, pr.trail);
+        if (pr.trail && U.rnd() < 0.5) PS.FX.spark(pr.x, pr.y, pr.trail);
         if (pr.noHit) continue;
 
         // class attacks cut enemy bullets out of the air
@@ -541,7 +682,7 @@
       const m = {
         x: o.x, y: o.y, r: o.r || 11, kind: o.kind || 'skeleton', dmg: o.dmg, life: o.life || 20, maxLife: o.life || 20,
         speed: o.speed || 150, atkCd: 0, atkRate: o.atkRate || 0.7, src: o.src || 'Minions', el: o.el || 'void',
-        target: null, dead: false, ang: 0, cleave: o.cleave || 0, onEnd: o.onEnd || null, bob: Math.random() * TAU,
+        target: null, dead: false, ang: 0, cleave: o.cleave || 0, onEnd: o.onEnd || null, bob: U.rnd() * TAU,
         range: o.range || 0, shot: o.shot || null, seat: o.seat || 0, opts: o.opts || null, retarget: 0, swing: 0,
       };
       G.minions.push(m);
@@ -658,7 +799,7 @@
     /* ------------------------------------------------------------------ enemy bullets */
     ebullet(o) {
       const G = PS.G;
-      PS.UI.tip('ward', PS.Input.touch ? 'Bullets incoming: your attacks cut them down, and the shield button reflects them' : 'Bullets incoming: your attacks cut them down, and Shift raises a Ward that reflects them', 'shield');
+      if (!G.rules.noWard) PS.UI.tip('ward', PS.Input.touch ? 'Bullets incoming: your attacks cut them down, and the shield button reflects them' : 'Bullets incoming: your attacks cut them down, and Shift raises a Ward that reflects them', 'shield');
       if (G.eprojs.length > 420) return;
       G.eprojs.push({
         x: o.x, y: o.y, vx: Math.cos(o.ang) * o.speed, vy: Math.sin(o.ang) * o.speed, r: o.r || 7, dmg: o.dmg,
