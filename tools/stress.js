@@ -38,7 +38,7 @@ const { chromium } = require('playwright');
         G.time = 170; // jump straight to the first boss
         let n = 0, bad = null, rxN = 0;
         const limit = G.time + minutes * 60;
-        const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall'], rx = Object.values(PS.Data.REACTIONS);
+        const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall', 'coil', 'spearhead'], rx = Object.values(PS.Data.REACTIONS);
         const spawnAt = [200, 240, 280, 320, 360];
         while (G.time < limit && !G.over) {
           PS.Bot.drive(G); PS.Game.step(1 / 60);

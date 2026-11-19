@@ -417,7 +417,7 @@
      */
     horde(n, force) {
       const G = PS.G, p = G.player, t = this.minutes();
-      const kinds = ['ring', 'stampede', 'pincer', 'wall'];
+      const kinds = ['ring', 'stampede', 'pincer', 'wall', 'coil', 'spearhead'];
       const kind = force || (n < 2 ? kinds[n] : U.pick(kinds.filter((k) => k !== this.lastHorde), EV));
       this.lastHorde = kind;
       if (kind === 'ring') {
@@ -432,6 +432,32 @@
       } else if (kind === 'stampede') {
         this.stampede(EV() * TAU, Math.min(50, Math.round(16 + t * 3.5)), t > 3.5 ? 'hound' : 'imp', 1.2);
         PS.UI.toast('A stampede approaches', 'paw');
+      } else if (kind === 'coil') {
+        // three arcs at three distances, each a third of the way round: the swarm arrives from one side after another
+        const per = Math.min(20, Math.round(8 + t * 1.4)), a0 = EV() * TAU, type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
+        const rad = Math.max(G.viewW, G.viewH) * 0.5 + 60;
+        for (let arm = 0; arm < 3; arm++) {
+          for (let i = 0; i < per; i++) {
+            const a = a0 + arm * (TAU / 3) + (i / per) * (TAU / 3) * 0.9;
+            PS.Enemies.spawn(type, p.x + Math.cos(a) * (rad + arm * 190), p.y + Math.sin(a) * (rad + arm * 190), { hpMult: 1.3 });
+          }
+        }
+        PS.UI.toast('The swarm coils in, one side after another', 'ghost');
+      } else if (kind === 'spearhead') {
+        // a wedge with a heavy at its point: step out of its line, or break the point and the rest scatters into you piecemeal
+        const a = EV() * TAU, rows = Math.min(6, Math.round(3 + t * 0.3)), type = t > 3.5 ? 'hound' : 'imp', lead = t > 4.5 ? 'brute' : type;
+        const rad = Math.max(G.viewW, G.viewH) * 0.5 + 90, ca = Math.cos(a), sa = Math.sin(a);
+        const cx = p.x + ca * rad, cy = p.y + sa * rad;
+        PS.Enemies.spawn(lead, cx, cy, { hpMult: 3 });
+        for (let r = 1; r <= rows; r++) {
+          for (const side of [-1, 1]) {
+            for (let k = 0; k < 2; k++) {
+              const back = r * 34 + k * 26, off = side * (r * 30 + k * 8);
+              PS.Enemies.spawn(type, cx + ca * back - sa * off, cy + sa * back + ca * off, { hpMult: 1.2 });
+            }
+          }
+        }
+        PS.UI.toast('A spearhead drives at you', 'swords');
       } else if (kind === 'pincer') {
         // two smaller stampedes from opposite sides: whichever way you run, you run into one
         const a = EV() * TAU, count = Math.min(32, Math.round(11 + t * 2.3)), type = t > 3.5 ? 'hound' : 'imp';

@@ -576,7 +576,7 @@
           <ul class="rxs">${D.AFFIX_IDS.map((id) => `<li><span class="rx-els"><i style="--c:${D.AFFIXES[id].color}"></i></span><b>${D.AFFIXES[id].name}</b><span>${D.AFFIXES[id].text}</span></li>`).join('')}</ul>
           <p>Two enemies change how you fight: a Rift Toad crouches and leaps onto the spot it marked, and a Warder shields every enemy inside its pale dotted ring, so kill it first.</p>
           <p>Every few minutes a rift tide bends the rules for a short spell: ${Object.values(D.TIDES).map((t) => `<b style="color:${t.color}">${t.name}</b>`).join(', ')}. Its name and seconds show under the clock.</p>
-          <p>Hordes break over you in four shapes: a closing ring, a stampede from one side, a pincer from two, and a wall that sweeps the whole screen with a single gap to slip through.</p>
+          <p>Hordes break over you in six shapes: a closing ring, a stampede from one side, a pincer from two, a wall that sweeps the whole screen with a single gap to slip through, a coil that closes from one side after another, and a spearhead with a heavy at its point.</p>
         </div>
         <div class="help-col">
           <h3>Going deeper</h3>
