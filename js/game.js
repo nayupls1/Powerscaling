@@ -240,7 +240,7 @@
         if (!spec) {
           p.pendingLevels--;
           // once per level, however the levels were batched: a breather that matters most in the opening, while levels come fast
-          p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)) * G.rules.heal, true);
+          if (!G.rules.noLevelHeal) p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)) * G.rules.heal, true);
           const lv = p.claimedLevel;
           if (lv > 1 && PS.SLOT_LEVELS.skill.includes(lv)) { PS.UI.toast('A new skill slot opens', 'lock'); PS.Audio.play('shrine', { vol: 0.5 }); }
           else if (PS.SLOT_LEVELS.tome.includes(lv)) PS.UI.toast('A new tome slot opens', 'book');

@@ -131,6 +131,16 @@
     swarm:    { name: 'Pact of the Swarm', icon: 'ghost',    gift: 'Two skill levels, now.',                price: 'Hordes arrive 35% more often.',
       rules: (r) => { r.hordeEvery *= 0.74; }, now: (G, p) => { p.gainLevel(); p.gainLevel(); } },
   };
+  Object.assign(D.PACTS, {
+    fury:     { name: 'Pact of Fury',     icon: 'spark',    gift: '+45% ability haste.',                   price: '12% less attack speed.',
+      stats: (s) => { s.abilityHaste += 0.45; s.atkSpd -= 0.12; } },
+    famine:   { name: 'Pact of Famine',   icon: 'dice',     gift: 'Two rerolls and two banishes, now.',    price: 'Level-ups no longer restore health.',
+      rules: (r) => { r.noLevelHeal = true; }, now: (G, p) => { p.rerolls += 2; p.banishes += 2; } },
+    stone:    { name: 'Pact of Stone',    icon: 'armor',    gift: '+15 armor and +30 max health.',         price: 'You no longer regenerate health.',
+      stats: (s) => { s.armor += 15; s.maxHp += 30; s.noRegen = true; } },
+    tempo:    { name: 'Pact of the Gale', icon: 'wings',    gift: '+18% move speed.',                      price: 'The ground gives way half again as often.',
+      stats: (s) => { s.speed *= 1.18; }, rules: (r) => { r.tremorEvery = (r.tremorEvery || 1) * 0.67; } },
+  });
   for (const id in D.PACTS) D.PACTS[id].id = id;
 
   /* ---------- Sigils: one perk worn into a run, each unlocked by a feat (PS.Feats). The daily rift allows none ---------- */

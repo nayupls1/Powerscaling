@@ -104,6 +104,7 @@
       }
       s.maxHp = Math.max(10, Math.round(s.maxHp * Math.max(0.2, s.hpMult)));
       s.dodge = Math.min(0.6, s.dodge);
+      if (s.noRegen) s.regen = Math.min(0, s.regen);
       s.dashCd = Math.max(0.5, s.dashCd);
       s.baseSpeed = cls.base.speed || 210;
 
