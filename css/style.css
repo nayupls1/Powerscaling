@@ -253,7 +253,8 @@ i[data-icon], .count i { display: inline-flex; }
 .sigil { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: rgba(239, 232, 216, 0.06); border: 2px solid var(--line); color: var(--bone); cursor: pointer; }
 .sigil:hover:not(:disabled) { border-color: var(--gilt); }
 .sigil.sel { background: var(--gilt); border-color: var(--gilt); color: #2a1c05; }
-.sigil.locked { color: #6d6690; cursor: default; opacity: 0.7; }
+.sigil.locked { color: #6d6690; opacity: 0.75; }
+.sigil.peek { border-color: #cdb8ff; opacity: 1; }
 .depth-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .depth-head > span:first-child { display: grid; }
 .depth-head small { color: var(--muted); font-size: 0.86rem; }

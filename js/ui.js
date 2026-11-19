@@ -9,7 +9,7 @@
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
-  let codexTab = 'relics';
+  let codexTab = 'relics', sigilPeek = '';
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -213,8 +213,11 @@
       const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
       step('depthDown', -1); step('depthUp', 1);
       document.querySelectorAll('#classDetail .sigil').forEach((b) => click(b, () => {
-        if (b.disabled) return;
-        d.sigil = d.sigil === b.dataset.sigil ? '' : b.dataset.sigil;
+        const id = b.dataset.sigil;
+        // a locked sigil cannot be worn, but tapping it says what unlocks it (touch screens have no tooltip)
+        if (!d.feats[D.SIGILS[id].feat]) { sigilPeek = sigilPeek === id ? '' : id; this.renderClasses(); return; }
+        sigilPeek = '';
+        d.sigil = d.sigil === id ? '' : id;
         PS.Save.save(); this.renderClasses();
       }));
     },
@@ -222,13 +225,14 @@
     sigilPicker() {
       const d = PS.Save.data, ids = Object.keys(D.SIGILS), open = ids.filter((id) => d.feats[D.SIGILS[id].feat]);
       if (d.sigil && !open.includes(d.sigil)) d.sigil = '';
-      const cur = D.SIGILS[d.sigil];
+      const cur = D.SIGILS[d.sigil], peek = D.SIGILS[sigilPeek];
+      const peekText = peek ? `${esc(peek.name)}: ${esc(peek.text)} Locked. Feat: ${esc(PS.Feats.BY_ID[peek.feat].name)} (${esc(PS.Feats.BY_ID[peek.feat].text)})` : '';
       return `<div class="depth sigils">
-        <div class="depth-head"><span><b>Sigil</b><small>${cur ? esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run.'}</small></span><small>${open.length} / ${ids.length}</small></div>
+        <div class="depth-head"><span><b>Sigil</b><small>${peekText || (cur ? esc(cur.name) + ': ' + esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run. Tap one to see its feat.')}</small></span><small>${open.length} / ${ids.length}</small></div>
         <div class="sigil-row">${ids.map((id) => {
           const s = D.SIGILS[id], ok = open.includes(id), f = PS.Feats.BY_ID[s.feat];
           const tip = `<b>${esc(s.name)}</b><br>${esc(s.text)}` + (ok ? '' : `<br><span class='off'>Locked. Feat: ${esc(f.name)} (${esc(f.text)})</span>`);
-          return `<button class="sigil${id === d.sigil ? ' sel' : ''}${ok ? '' : ' locked'}" data-sigil="${id}" data-tip="${tip}" aria-label="${esc(s.name)}" ${ok ? '' : 'disabled'}>${ico(ok ? s.icon : 'lock', 20)}</button>`;
+          return `<button class="sigil${id === d.sigil ? ' sel' : ''}${ok ? '' : ' locked'}${id === sigilPeek ? ' peek' : ''}" data-sigil="${id}" data-tip="${tip}" aria-label="${esc(s.name)}${ok ? '' : ', locked'}">${ico(ok ? s.icon : 'lock', 20)}</button>`;
         }).join('')}</div>
       </div>`;
     },
