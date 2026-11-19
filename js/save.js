@@ -25,6 +25,7 @@
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
     codex: { relics: {}, evos: {}, rx: {}, pacts: {}, foes: {} }, // what has been found (1) and how many of each foe have fallen
+    history: [],         // the last 30 runs, newest first, with their seeds: see the Leaderboard's 'Your runs' tab
     sigil: '',           // the sigil worn into the next run ('' for none)
     feats: {},           // featId -> when it was earned (ms)
     depth: { max: 0, sel: 0, clear: {} },                 // Rift Depths: deepest unlocked, the one selected, deepest cleared per class
@@ -49,6 +50,7 @@
     if (typeof out.name !== 'string') out.name = '';
     out.tree = obj(d.tree);
     out.feats = obj(d.feats);
+    out.history = (Array.isArray(d.history) ? d.history : []).filter((r) => r && typeof r === 'object' && num(r.score)).slice(0, 30);
     if (typeof out.sigil !== 'string') out.sigil = '';
     const cx = obj(d.codex);
     out.codex = { relics: obj(cx.relics), evos: obj(cx.evos), rx: obj(cx.rx), pacts: obj(cx.pacts), foes: obj(cx.foes) };

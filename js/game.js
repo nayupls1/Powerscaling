@@ -381,6 +381,11 @@
       if (!G.bot) PS.Save.record(G);
       PS.Feats.check(G); // the run is over: the last look, with G.over set
       G.result.feats = G.feats.slice();
+      if (!G.bot) {
+        d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
+          seed: G.seed, daily: G.daily || '', build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
+        if (d.history.length > 30) d.history.length = 30;
+      }
       if (!G.bot) G.result.rank = PS.Save.addRun(run);
       else PS.Save.save();
       this.state = 'over';

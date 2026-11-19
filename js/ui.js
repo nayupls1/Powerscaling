@@ -392,9 +392,10 @@
 
     /* ---------------------------------------------------------------- leaderboard */
     renderBoard(fromServer) {
-      const tabs = ['all'].concat(D.CLASS_IDS, 'daily'), daily = boardTab === 'daily';
-      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : t === 'daily' ? 'Daily rift' : D.CLASSES[t].name}</button>`).join('');
+      const tabs = ['all'].concat(D.CLASS_IDS, 'daily', 'history'), daily = boardTab === 'daily';
+      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : t === 'daily' ? 'Daily rift' : t === 'history' ? 'Your runs' : D.CLASSES[t].name}</button>`).join('');
       $('boardTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { boardTab = b.dataset.tab; this.renderBoard(); }));
+      if (boardTab === 'history') { this.renderHistory(); return; }
       // show what we have now; the global rows re-render this when they arrive
       if (!fromServer && PS.Save.fetchBoard) PS.Save.fetchBoard(boardTab);
       const global = PS.Save.boardScope && PS.Save.boardScope(boardTab) === 'global';
@@ -418,6 +419,34 @@
             <td class="muted">${esc((r.build || []).slice(0, 2).join(', '))}</td>
             <td class="muted">${new Date(r.date).toLocaleDateString()}</td></tr>`;
         }).join('')}</tbody></table>`;
+    },
+
+    /** the last runs on this device, newest first, each with its seed and a way to play that seed again */
+    renderHistory() {
+      const d = PS.Save.data, rows = d.history;
+      $('boardScope').textContent = 'Your last ' + (rows.length || '') + ' runs on this device';
+      $('boardScope').classList.remove('global');
+      if (!rows.length) { $('boardBody').innerHTML = '<div class="empty"><p>No runs yet. Every run you finish is kept here with its seed.</p></div>'; return; }
+      const per = {};
+      for (const r of rows) { const c = per[r.cls] || (per[r.cls] = { n: 0, won: 0, best: 0 }); c.n++; if (r.won) c.won++; c.best = Math.max(c.best, r.score); }
+      $('boardBody').innerHTML = `
+        <div class="hist-sum">${D.CLASS_IDS.filter((id) => per[id]).map((id) => `<span class="chip" style="--rc:${D.CLASSES[id].color}"><b style="color:${D.CLASSES[id].color}">${D.CLASSES[id].name}</b> ${per[id].n} run${per[id].n > 1 ? 's' : ''}, ${per[id].won} won, best <em>${U.fmtNum(per[id].best)}</em></span>`).join('')}</div>
+        <ul class="hist">${rows.map((r, i) => {
+          const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
+          const how = r.won ? 'Slew the Rift Lord' : r.retired ? 'Walked away' : r.by ? 'Fell to ' + esc(r.by) : 'Fell';
+          const extras = [r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
+          return `<li class="hist-row${r.won ? ' won' : ''}" style="--c:${c.color}">
+            <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
+            <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
+            <span class="hist-build muted">${esc((r.build || []).join(', '))}</span>
+            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · seed ${esc(String(r.seed).slice(0, 12))}</small>
+              ${r.daily ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
+          </li>`;
+        }).join('')}</ul>`;
+      $('boardBody').querySelectorAll('[data-replay]').forEach((b) => click(b, () => {
+        const r = rows[+b.dataset.replay];
+        PS.Game.start(r.cls, { seed: r.seed, depth: Math.min(r.depth || 0, d.depth.max) });
+      }));
     },
 
     /** the codex's five shelves: what each holds, and how much of it has been found */
