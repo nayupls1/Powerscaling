@@ -617,13 +617,18 @@
         ctx.lineTo(pr.x - w, pr.y + h * 0.3); ctx.lineTo(pr.x - w * 0.4, pr.y - h * 0.05); ctx.lineTo(pr.x - w * 1.1, pr.y - h * 0.45);
         ctx.closePath(); ctx.fill();
         ctx.strokeStyle = '#e3b8ff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
-        const label = act ? pr.got + ' / ' + pr.need : 'Breach';
+        const label = !act ? 'Breach' : pr.mode === 'champion' ? 'Slay the champion' : pr.mode === 'hold' ? 'Hold ' + Math.ceil(pr.need - pr.got) + 's' : pr.got + ' / ' + pr.need;
         ctx.font = `800 ${act ? 20 : 14}px ${PS.FONT_NUM}`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,8,28,0.9)';
         ctx.strokeText(label, pr.x, pr.y - h - 16);
         ctx.fillStyle = act && pr.left < 7 ? '#ff8a9a' : '#e3b8ff';
         ctx.fillText(label, pr.x, pr.y - h - 16);
+        if (act && pr.mode === 'hold') {
+          // how much of the stand is done, as a wash that fills the ring
+          ctx.globalAlpha = 0.14; ctx.fillStyle = '#c06bff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r * Math.sqrt(pr.got / pr.need), 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+        }
         if (act) {
           const tl = Math.ceil(pr.left) + 's';
           ctx.font = `700 13px ${PS.FONT_NUM}`;

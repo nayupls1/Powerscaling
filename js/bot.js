@@ -93,7 +93,7 @@
           if (pr.dead) continue;
           if (pr.kind === 'chest' && (pr.cursed ? p.hp > p.stats.maxHp * 0.6 : p.gold >= PS.Director.chestPrice())) consider(pr.x, pr.y, 300);
           if (pr.kind === 'shrine' || pr.kind === 'altar') consider(pr.x, pr.y, 200);
-          if (pr.kind === 'breach' && !pr.active && p.hp > p.stats.maxHp * 0.6) consider(pr.x, pr.y, 150);
+          if (pr.kind === 'breach' && (pr.active ? pr.mode === 'hold' : p.hp > p.stats.maxHp * 0.6)) consider(pr.x, pr.y, pr.active ? 400 : 150);
         }
         // a Hoarder on the loose is worth running down
         const hd = PS.Director.hoarder;

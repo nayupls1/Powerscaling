@@ -67,6 +67,7 @@
       this.altarT = 165;   // dark altars: a pact with a price
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
+      this.breachN = 0;    // breaches woken so far: the first is always a swarm
       this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
@@ -288,7 +289,7 @@
     /** called by Combat.kill for anything a breach spat out */
     breachKill(e) {
       const b = this.breach;
-      if (!b || e.breach !== b) return;
+      if (!b || e.breach !== b || (b.mode === 'champion' && e !== b.champ)) return;
       b.got++;
       if (b.got >= b.need) this.breachEnd(true);
     },
@@ -300,7 +301,7 @@
       this.breachT = Math.max(this.breachT, (PS.G.sigilBreach ? 35 : 70) * PS.G.rules.breachEvery);
       if (won) {
         G.breaches++;
-        G.score += 400 + 40 * b.need;
+        G.score += 400 + 40 * (b.mode === 'swarm' ? b.need : 30);
         PS.FX.flash('#c06bff', 0.3);
         PS.FX.ring(b.x, b.y, 260, '#e3b8ff', 0.6);
         PS.FX.surge(b.x, b.y, '#c06bff', true);
@@ -316,33 +317,58 @@
         PS.UI.toast('The breach sealed itself. Its spoils are lost', 'rift');
       }
     },
+    /**
+     * Three trials, drawn from the run's script so everyone on a seed meets the same ones (b.mode):
+     *   swarm     slay enough of what pours out
+     *   champion  one elite climbs out with a small guard: kill it
+     *   hold      stand your ground inside the ring until it gives up; stepping out stalls the count
+     */
     updateBreach(b, dt, inside) {
       const G = PS.G;
       if (!b.active) {
         if (!inside) return;
         const t = this.minutes();
         b.active = true;
-        b.need = Math.min(80, Math.round(14 + t * 5.5));
-        b.left = b.total = 24;
+        b.mode = b.mode || (this.breachN < 1 ? 'swarm' : U.pick(['swarm', 'champion', 'hold'], EV));
+        this.breachN++;
         b.out = 0; b.got = 0; b.acc = 3; // a first clutch at once
         this.breach = b;
+        if (b.mode === 'champion') {
+          b.need = 1; b.left = b.total = 30;
+          const pool = ['hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => t >= TABLE.find((r) => r.id === id).from);
+          const e = PS.Enemies.spawn(U.pick(pool.length ? pool : ['imp'], EV), b.x, b.y, { elite: true });
+          e.breach = b; e.spawnT = 0.9; e.label = 'Breach ' + e.label; e.noChest = true;
+          b.champ = e;
+          PS.UI.toast(`The breach wakes. Slay its champion: ${e.label}`, 'rift');
+        } else if (b.mode === 'hold') {
+          b.need = 12; b.left = b.total = 30;
+          PS.UI.toast('The breach wakes. Hold your ground inside the ring', 'rift');
+        } else {
+          b.need = Math.min(80, Math.round(14 + t * 5.5)); b.left = b.total = 24;
+          PS.UI.toast(`The breach wakes. Slay ${b.need} of its spawn`, 'rift');
+        }
         PS.FX.ring(b.x, b.y, b.r, '#c06bff', 0.5);
         PS.FX.shake(5);
         PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
-        PS.UI.toast(`The breach wakes. Slay ${b.need} of its spawn`, 'rift');
         return;
       }
       b.left -= dt;
       if (b.left <= 0) { this.breachEnd(false); return; }
-      // everything it will ever spit out is out within the first 60% of the timer, a few more than are needed
-      const all = Math.ceil(b.need * 1.15);
-      if (b.out < all) {
-        b.acc += (all / (b.total * 0.6)) * dt;
+      if (b.mode === 'hold') {
+        if (inside) { b.got = Math.min(b.need, b.got + dt); if (b.got >= b.need) { this.breachEnd(true); return; } }
+      }
+      // what it spits out: for a swarm, a few more than are needed, all out within the first 60% of the timer;
+      // a champion comes with a thin guard, and a held breach never stops
+      const t = this.minutes();
+      const all = b.mode === 'swarm' ? Math.ceil(b.need * 1.15) : b.mode === 'champion' ? Math.round(6 + t) : 1e9;
+      const rate = b.mode === 'swarm' ? all / (b.total * 0.6) : b.mode === 'champion' ? all / 12 : 1.6 + t * 0.45;
+      if (b.out < all && G.enemies.length < MAX_ENEMIES + 40) {
+        b.acc += rate * dt;
         while (b.acc >= 1 && b.out < all) {
           b.acc -= 1; b.out++;
           const a = U.rnd() * TAU, d = U.rand(10, b.r * 0.8);
           const e = PS.Enemies.spawn(this.pickType(), b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, { hpMult: 0.9 });
-          e.breach = b;
+          if (b.mode === 'swarm') e.breach = b;
           e.spawnT = 0.7; // they climb out before they bite
           e.xp *= 1.5;
         }
@@ -435,7 +461,7 @@
       }
       if (e.elite) {
         for (let i = 0; i < 4; i++) this.pickup('gold', e.x + U.rand(-30, 30), e.y + U.rand(-30, 30), Math.round((5 + t) * s.gold));
-        this.pickup('chest', e.x, e.y, 0);
+        if (!e.noChest) this.pickup('chest', e.x, e.y, 0);
         if (U.rnd() < 0.35) this.pickup('heal', e.x + 24, e.y, 0);
         return;
       }

@@ -51,7 +51,7 @@ const { chromium } = require('playwright');
             for (const id of ['toad', 'toad', 'warder']) { const q = PS.Director.ringPos(-260); PS.Enemies.spawn(id, q.x, q.y, { elite: id === 'warder' && k % 3 === 0 }); }
             if (k % 4 === 0) PS.Director.horde(9, hordes[(k / 4) % hordes.length]);
             // a breach under the hero's feet, so it wakes at once
-            if (k % 6 === 1 && !PS.Director.breach) G.props.push({ kind: 'breach', x: p.x, y: p.y, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
+            if (k % 6 === 1 && !PS.Director.breach) G.props.push({ kind: 'breach', mode: ['swarm', 'champion', 'hold'][(k / 6 | 0) % 3], x: p.x, y: p.y, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
             for (let i = 0; i < 3; i++) {
               const t = PS.Combat.nearest(p.x, p.y, 700);
               if (t) { PS.Combat.react(t, rx[rxN++ % rx.length]); }
