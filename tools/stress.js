@@ -39,10 +39,10 @@ const { chromium } = require('playwright');
         let n = 0, bad = null, rxN = 0;
         const limit = G.time + minutes * 60;
         const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall'], rx = Object.values(PS.Data.REACTIONS);
-        const spawnAt = [200, 260, 320];
+        const spawnAt = [200, 240, 280, 320, 360];
         while (G.time < limit && !G.over) {
           PS.Bot.drive(G); PS.Game.step(1 / 60);
-          if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(4 - spawnAt.length, 0); spawnAt.shift(); }
+          if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(5 - spawnAt.length, 0); spawnAt.shift(); }
           if (n % 240 === 0) {
             // every elite affix in turn (two at a time), every horde pattern, and every reaction on whatever is nearest
             const k = n / 240, pos = PS.Director.ringPos(-200);

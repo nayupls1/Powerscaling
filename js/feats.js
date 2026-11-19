@@ -21,6 +21,7 @@
   feat('win',      'rift', 'Riftbreaker',        'crown',    'Slay the Rift Lord.',                             100, (G) => G.won);
   feat('over15',   'rift', 'Borrowed Time',      'clock',    'Survive to 15:00.',                               80,  (G) => G.time >= 900);
   feat('over18',   'rift', 'Past the End',       'infinity', 'Survive to 18:00.',                               150, (G) => G.time >= 1080);
+  feat('solenne',  'rift', 'Starfall',           'sun',      'Slay Solenne, the boss that waits in overtime.',  120, (G) => G.slain.solenne > 0);
   feat('flawless', 'rift', 'Untouched',          'feather',  'Slay a boss without taking a single hit from the moment it arrives.', 80, (G) => G.flawless > 0);
   feat('daily',    'rift', 'Regular',            'timer',    'Finish a daily rift.',                            30,  (G) => G.over && !!G.daily);
   feat('dailywin', 'rift', 'Day Breaker',        'sun',      'Slay the Rift Lord in a daily rift.',             80,  (G) => G.won && !!G.daily);

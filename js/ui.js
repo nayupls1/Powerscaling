@@ -444,7 +444,7 @@
         const E = PS.Enemies.DEFS, B = PS.Bosses.DEFS;
         const row = (id, name, sub, note, color) => { const k = sh.has(id); return entry(k, color, 'skull', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
         html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color)).join('')}</ul>
-          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`, b.color)).join('')}</ul>`;
+          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), b.overtime ? 'Waits beyond the Rift Lord, two minutes into overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`, b.color)).join('')}</ul>`;
       }
       $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
     },
@@ -486,7 +486,7 @@
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it, then slay enough of what pours out before its timer burns down, and it leaves a relic.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
-          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
+          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has a boss of its own.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
         <div class="help-col">

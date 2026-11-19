@@ -1,4 +1,4 @@
-/* POWERSCALING — bosses: four set-piece fights with telegraphed attack patterns */
+/* POWERSCALING — bosses: four set-piece fights with telegraphed attack patterns, and a fifth that waits in overtime */
 (function () {
   'use strict';
   const PS = (window.PS = window.PS || {});
@@ -198,6 +198,76 @@
           return bs.at >= (bs.rage ? 4.1 : 3.3);
         },
         charge(e, bs, dt, p) { return chargeAttack(e, bs, dt, p, 820, 2); },
+      },
+    },
+    /* ---------------------------------------------------------------- 4: Solenne (overtime only) */
+    {
+      id: 'solenne', name: 'Solenne', title: 'the Dying Star', r: 50, hp: 1700, spd: 70, dmg: 30, atk: 34, xp: 1500, color: '#ffc46b', sprite: 'boss4',
+      cd: 1.5, keep: 250, pattern: ['spiral', 'lattice', 'nova', 'gravity', 'flare'], overtime: true,
+      attacks: {
+        // two arms of bullets wind outward: walk with the turn, or Ward a hole in it
+        spiral(e, bs, dt) {
+          bs.acc = (bs.acc || 0) + dt;
+          while (bs.acc >= 0.09 && bs.at < 3.6) {
+            bs.acc -= 0.09;
+            bs.a = (bs.a || 0) + 0.21;
+            const arms = bs.rage ? 3 : 2;
+            for (let i = 0; i < arms; i++) C.ebullet({ x: e.x, y: e.y, ang: bs.a + (i * TAU) / arms, speed: 200, dmg: e.atk * 0.6, color: '#ffd89a', r: 7, life: 5 });
+          }
+          return bs.at >= 4;
+        },
+        // a checkerboard of blasts under the hero, then the squares in between: stand in a gap, then step into the scorched one
+        lattice(e, bs, dt, p) {
+          const k = Math.floor(bs.at / 0.95);
+          if (k !== bs.step && k < (bs.rage ? 3 : 2)) {
+            bs.step = k;
+            if (k === 0) { bs.gx = p.x; bs.gy = p.y; }
+            const cell = 150;
+            for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+              if (((i + j) & 1) !== (k & 1)) continue;
+              C.hazard({ kind: 'circle', x: bs.gx + i * cell, y: bs.gy + j * cell, r: 70, delay: 0.9, dmg: e.atk, color: '#ffc46b', owner: e });
+            }
+            PS.Audio.play('telegraph');
+          }
+          return bs.at >= (bs.rage ? 3.9 : 2.9);
+        },
+        // three shockwaves, each faster than the last: dash through the rings
+        nova(e, bs) {
+          const k = Math.floor(bs.at / 0.75);
+          if (k !== bs.step && k < 3) {
+            bs.step = k;
+            C.hazard({ kind: 'ring', x: e.x, y: e.y, speed: 250 + k * 70, maxR: 720, dmg: e.atk * 0.8, rad: e.r, color: '#ffc46b' });
+            PS.FX.shake(4);
+            PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.4 });
+          }
+          if (bs.rage && bs.at >= 2.2 && !bs.fired) { bs.fired = true; ringBullets(e, 18, 180, e.atk * 0.6, U.rnd(), '#ffd89a'); }
+          return bs.at >= 2.8;
+        },
+        // the star draws everything in, then bursts: run against the pull, and dash clear before it goes off
+        gravity(e, bs, dt, p) {
+          if (!bs.init) {
+            bs.init = true;
+            C.hazard({ kind: 'circle', x: e.x, y: e.y, r: 270, delay: 2.0, dmg: e.atk * 1.3, color: '#ffc46b', owner: e });
+            PS.FX.portal(e.x, e.y, 270, '#ffc46b');
+            PS.Audio.play('void', { vol: 0.6, pitch: 0.7 });
+          }
+          if (bs.at < 2.0 && p.dashT <= 0) {
+            const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+            if (d > 30 && d < 700) { const pull = (bs.rage ? 150 : 120) * dt; p.x += (dx / d) * pull; p.y += (dy / d) * pull; }
+          }
+          return bs.at >= 2.5;
+        },
+        // a fan of rays, twice: stand between two of them
+        flare(e, bs, dt, p) {
+          const k = Math.floor(bs.at / 1.5);
+          if (k !== bs.step && k < 2) {
+            bs.step = k;
+            const a = Math.atan2(p.y - e.y, p.x - e.x) + (k ? 0.2 : 0), n = bs.rage ? 4 : 3;
+            for (let i = -n; i <= n; i++) C.hazard({ kind: 'beam', x: e.x, y: e.y, ang: a + i * 0.4, len: 950, w: 30, delay: 1.0, dur: 0.35, dmg: e.atk, follow: e, owner: e, color: '#ffc46b' });
+            PS.Audio.play('telegraph');
+          }
+          return bs.at >= 3.2;
+        },
       },
     },
   ];

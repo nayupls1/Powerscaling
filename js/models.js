@@ -650,10 +650,34 @@
       eyes(g, 0.52, 0.34, 0.085, rift);
       for (const s of [-1, 1]) spike(g, 0.88, s * 0.12, 0, 0.16, 0.045, BONE, 0);
     },
+    boss4(g, ph, col, lw, st) {
+      const a = ph * TAU, br = Math.sin(a), rage = st && st.rage, hot = rage ? '#ff7a3d' : col, pale = '#fff3d6';
+      // a ragged corona: long rays and short, turning slowly against each other
+      for (let i = 0; i < 12; i++) {
+        const q = (i * TAU) / 12 + a / 12 * (i % 2 ? 1 : -1), long = i % 2 === 0;
+        spike(g, Math.cos(q) * 0.7, Math.sin(q) * 0.7, q, (long ? 0.95 : 0.55) + br * 0.06, long ? 0.2 : 0.14, long ? hot : lite(hot, 0.3), lw);
+      }
+      // the burning rim, and the dark it is collapsing into
+      ell(g, 0, 0, 0.92, 0.92); F(g, vol(g, 0, 0, 0.92, hot), lw);
+      g.beginPath(); g.arc(0, 0, 0.8, 0, TAU); glowLine(g, pale, 0.05 + 0.015 * br);
+      ell(g, 0, 0, 0.7, 0.7); F(g, '#1a0c1f', lw * 0.8);
+      // fractures of light across the dark face
+      g.beginPath();
+      g.moveTo(-0.56, -0.2); g.lineTo(-0.3, -0.06); g.lineTo(-0.38, 0.24); g.lineTo(-0.12, 0.4);
+      g.moveTo(-0.3, -0.06); g.lineTo(-0.06, -0.3); g.lineTo(-0.2, -0.56);
+      g.moveTo(-0.12, 0.4); g.lineTo(0.1, 0.52);
+      glowLine(g, hot, 0.03 + (rage ? 0.02 : 0));
+      // one burning eye, facing the hero
+      g.beginPath(); g.moveTo(0.02, 0); g.quadraticCurveTo(0.3, -0.34, 0.62, 0); g.quadraticCurveTo(0.3, 0.34, 0.02, 0); g.closePath(); F(g, pale, lw * 0.6);
+      glowDot(g, 0.34, 0, 0.17, hot, 2.2);
+      ell(g, 0.36, 0, 0.05, 0.15); F(g, INK);
+      // embers held in orbit
+      for (let i = 0; i < 4; i++) { const q = a / 4 + (i * TAU) / 4; glowDot(g, Math.cos(q) * 1.5, Math.sin(q) * 1.5, 0.09, pale, 2); }
+    },
   };
   /** walk cycles per second */
   const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0, hoarder: 3.2,
-    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75 };
+    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75, boss4: 0.6 };
 
   /** a sword along +x from the hand at the origin */
   function sword(g, len, w, blade, guard, grip, lw) {
