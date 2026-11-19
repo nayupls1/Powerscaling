@@ -1033,7 +1033,7 @@
               if (G.hoarders) bits.push(`<span class="chip">${ico('coin', 15)} Hoarders caught <em>${G.hoarders}</em></span>`);
               return bits.length ? `<h3 class="over-sub">Along the way</h3><div class="chips">${bits.join('')}</div>` : '';
             })()}
-            <p class="muted seed">Seed ${esc(G.seed)}</p>
+            <p class="muted seed">Seed <span class="seed-text">${esc(G.seed)}</span> <button class="btn btn-small btn-ghost" id="overCopySeed" type="button">Copy</button></p>
           </div>
         </div>
         <div class="over-name">
@@ -1048,6 +1048,11 @@
         </div>`;
       $('ovOver').hidden = false;
       this.runChart($('overChart'), G);
+      const cp = $('overCopySeed');
+      if (cp) cp.addEventListener('click', () => {
+        const done = () => { cp.textContent = 'Copied'; };
+        try { navigator.clipboard.writeText(String(G.seed)).then(done, () => { cp.textContent = 'Select and copy'; }); } catch (e) { cp.textContent = 'Select and copy'; }
+      });
       const all = $('overDmgAll');
       if (all) click(all, () => { $('overDmg').innerHTML = this.dmgBars(G, 99); all.remove(); });
       // count the score up
