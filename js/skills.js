@@ -447,7 +447,7 @@
     firewave: {
       name: 'Flame Wave', el: 'fire', icon: 'wave', usesProj: true, unit: 'wave',
       desc: 'A wall of flame rolls out through everything in its path.',
-      base: { dmg: 22, cd: 2.6, count: 1, area: 1, speed: 470 },
+      base: { dmg: 27, cd: 2.4, count: 1, area: 1, speed: 470 },
       up: [{ dmg: 6 }, { area: 0.2 }, { count: 1 }, { cd: -0.4 }, { dmg: 9 }],
       evo: { name: 'Firestorm', tome: 'swiftness', desc: 'Waves roll out in every direction and leave the ground burning where they die.', mod: { dmg: 6, count: 3 } },
       fire(inst, s, p) {
@@ -466,7 +466,7 @@
     blizzard: {
       name: 'Blizzard', el: 'frost', icon: 'snow', unit: 'storm',
       desc: 'A snowstorm settles where the horde is thickest, slowing and wearing down everything inside.',
-      base: { dmg: 6, cd: 7, area: 1, dur: 1 },
+      base: { dmg: 10, cd: 6, area: 1, dur: 1 },
       up: [{ dmg: 2 }, { area: 0.2 }, { dur: 0.25 }, { cd: -1 }, { dmg: 3, area: 0.15 }],
       evo: { name: 'Whiteout', tome: 'vitality', desc: 'Half again as large, and it keeps freezing what it touches.', mod: { dmg: 3 } },
       fire(inst, s, p) {
@@ -481,7 +481,7 @@
     staticfield: {
       name: 'Static Field', el: 'storm', icon: 'spark', usesProj: true, unit: 'arc',
       desc: 'Sparks leap from you to the nearest enemies, Shocking them.',
-      base: { dmg: 9, cd: 1.0, count: 2, area: 1 },
+      base: { dmg: 13, cd: 0.9, count: 2, area: 1 },
       up: [{ dmg: 3 }, { count: 1 }, { area: 0.2 }, { cd: -0.15 }, { count: 1, dmg: 3 }],
       evo: { name: 'Storm Aegis', tome: 'plating', desc: 'Every spark leaps on to two more enemies, and each discharge mends you a little.', mod: { dmg: 3 } },
       fire(inst, s, p) {
@@ -503,7 +503,7 @@
     miasma: {
       name: 'Miasma', el: 'venom', icon: 'ghost', unit: 'cloud',
       desc: 'A cloud of rot hangs around you, poisoning whatever comes close.',
-      base: { dmg: 4, cd: 0.8, area: 1 },
+      base: { dmg: 7, cd: 0.7, area: 1 },
       up: [{ dmg: 2 }, { area: 0.18 }, { dmg: 2 }, { area: 0.18, cd: -0.1 }, { dmg: 3 }],
       evo: { name: 'Pestilence', tome: 'magnet', desc: 'The cloud lays on two stacks of Poison at a time and leaves everything in it Exposed: 20% more damage taken.', mod: { dmg: 2, area: 0.15 } },
       tick(inst, s, dt, p) {
@@ -519,7 +519,7 @@
     sword: {
       name: 'Falling Sword', el: 'steel', icon: 'swords', usesProj: true, unit: 'sword',
       desc: 'A great blade drops on the toughest enemy nearby. Likely to crit, and it opens a Bleed.',
-      base: { dmg: 52, cd: 3.2, count: 1, area: 1 },
+      base: { dmg: 70, cd: 2.8, count: 1, area: 1 },
       up: [{ dmg: 18 }, { cd: -0.4 }, { count: 1 }, { dmg: 22 }, { cd: -0.5, area: 0.3 }],
       evo: { name: 'Executioner', tome: 'fortune', desc: 'Always a critical hit, and it slays outright any enemy but a boss below a fifth of its health.', mod: { dmg: 20 } },
       fire(inst, s, p) {
@@ -545,7 +545,7 @@
     lance: {
       name: 'Void Lance', el: 'void', icon: 'dash', usesProj: true, unit: 'lance',
       desc: 'A ray of nothing is driven through the nearest enemy and everything behind it.',
-      base: { dmg: 28, cd: 2.4, count: 1, area: 1 },
+      base: { dmg: 36, cd: 2.1, count: 1, area: 1 },
       up: [{ dmg: 8 }, { cd: -0.3 }, { area: 0.3 }, { dmg: 10 }, { count: 1 }],
       evo: { name: 'Annihilation Ray', tome: 'wisdom', desc: 'Twice as wide, and everything it passes through is left Exposed: 20% more damage taken for 4 seconds.', mod: { dmg: 8 } },
       fire(inst, s, p) {
