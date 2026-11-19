@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const PS = (window.PS = window.PS || {});
-  const U = PS.U, TAU = U.TAU;
+  const U = PS.U, TAU = U.TAU, M = PS.Models;
 
   const VIEW_H = 720;     // world units visible vertically
   const MIN_VIEW_W = 700; // never show less than this horizontally (portrait phones)
@@ -237,214 +237,92 @@
     return x + r > view.x0 && x - r < view.x1 && y + r > view.y0 && y - r < view.y1;
   }
 
-  /* ------------------------------------------------------------------ enemy sprites (drawn facing +x) */
-  const eye = (g, x, y, r, col) => {
-    g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-  };
-  const ART = {
-    imp(g, r, col) {
-      g.fillStyle = '#5e1626';
-      g.beginPath(); g.moveTo(r * 0.2, -r * 0.5); g.lineTo(r * 1.15, -r * 0.95); g.lineTo(r * 0.75, -r * 0.2); g.fill();
-      g.beginPath(); g.moveTo(r * 0.2, r * 0.5); g.lineTo(r * 1.15, r * 0.95); g.lineTo(r * 0.75, r * 0.2); g.fill();
-      body(g, r, col);
-      eye(g, r * 0.45, -r * 0.32, r * 0.2, '#ffe14d'); eye(g, r * 0.45, r * 0.32, r * 0.2, '#ffe14d');
-    },
-    bat(g, r, col) {
-      g.fillStyle = '#4a2a8a';
-      for (const s of [-1, 1]) {
-        g.beginPath();
-        g.moveTo(0, 0); g.quadraticCurveTo(-r * 0.2, s * r * 1.5, -r * 1.1, s * r * 1.7);
-        g.quadraticCurveTo(-r * 0.6, s * r * 0.8, -r * 0.9, s * r * 0.3); g.closePath(); g.fill();
-      }
-      body(g, r * 0.7, col);
-      eye(g, r * 0.3, -r * 0.22, r * 0.16, '#ff6b9a'); eye(g, r * 0.3, r * 0.22, r * 0.16, '#ff6b9a');
-    },
-    spitter(g, r, col) {
-      body(g, r, col);
-      g.fillStyle = '#2c5a1c';
-      for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-r * 0.45 + (i % 2) * r * 0.4, (i < 2 ? -1 : 1) * r * 0.45, r * 0.16, 0, TAU); g.fill(); }
-      g.fillStyle = '#16300e'; g.beginPath(); g.arc(r * 0.6, 0, r * 0.38, 0, TAU); g.fill();
-      g.fillStyle = '#b6ff5a'; g.beginPath(); g.arc(r * 0.6, 0, r * 0.18, 0, TAU); g.fill();
-    },
-    slime(g, r, col) {
-      g.globalAlpha = 0.85; body(g, r, col); g.globalAlpha = 1;
-      g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.ellipse(-r * 0.2, -r * 0.4, r * 0.35, r * 0.2, -0.5, 0, TAU); g.fill();
-      eye(g, r * 0.4, -r * 0.25, r * 0.15, '#0c2a28'); eye(g, r * 0.4, r * 0.25, r * 0.15, '#0c2a28');
-    },
-    slimelet(g, r, col) { ART.slime(g, r, col); },
-    hound(g, r, col) {
-      g.fillStyle = col;
-      g.beginPath(); g.ellipse(-r * 0.1, 0, r * 1.15, r * 0.72, 0, 0, TAU); g.fill();
-      g.beginPath(); g.moveTo(r * 0.5, -r * 0.5); g.lineTo(r * 1.5, 0); g.lineTo(r * 0.5, r * 0.5); g.fill();
-      outline(g, () => { g.ellipse(-r * 0.1, 0, r * 1.15, r * 0.72, 0, 0, TAU); });
-      g.fillStyle = '#6e1f12';
-      g.beginPath(); g.moveTo(r * 0.1, -r * 0.6); g.lineTo(-r * 0.3, -r * 1.1); g.lineTo(-r * 0.3, -r * 0.5); g.fill();
-      g.beginPath(); g.moveTo(r * 0.1, r * 0.6); g.lineTo(-r * 0.3, r * 1.1); g.lineTo(-r * 0.3, r * 0.5); g.fill();
-      eye(g, r * 0.6, -r * 0.25, r * 0.14, '#ffe14d'); eye(g, r * 0.6, r * 0.25, r * 0.14, '#ffe14d');
-    },
-    brute(g, r, col) {
-      g.fillStyle = col;
-      g.beginPath(); g.roundRect(-r * 0.95, -r * 0.95, r * 1.9, r * 1.9, r * 0.5); g.fill();
-      outline(g, () => { g.roundRect(-r * 0.95, -r * 0.95, r * 1.9, r * 1.9, r * 0.5); });
-      g.fillStyle = '#4d1f16';
-      g.beginPath(); g.ellipse(-r * 0.1, -r * 0.85, r * 0.55, r * 0.3, 0, 0, TAU); g.fill();
-      g.beginPath(); g.ellipse(-r * 0.1, r * 0.85, r * 0.55, r * 0.3, 0, 0, TAU); g.fill();
-      g.fillStyle = '#f0e2c0';
-      g.beginPath(); g.moveTo(r * 0.7, -r * 0.45); g.lineTo(r * 1.2, -r * 0.6); g.lineTo(r * 0.8, -r * 0.2); g.fill();
-      g.beginPath(); g.moveTo(r * 0.7, r * 0.45); g.lineTo(r * 1.2, r * 0.6); g.lineTo(r * 0.8, r * 0.2); g.fill();
-      eye(g, r * 0.5, -r * 0.25, r * 0.12, '#ff9a4d'); eye(g, r * 0.5, r * 0.25, r * 0.12, '#ff9a4d');
-    },
-    bloater(g, r, col) {
-      body(g, r, col);
-      g.fillStyle = '#efe38a';
-      const spots = [[-0.4, -0.4, 0.22], [0.1, 0.5, 0.26], [-0.5, 0.25, 0.16], [0.35, -0.35, 0.2], [-0.05, -0.05, 0.14]];
-      for (const s of spots) { g.beginPath(); g.arc(s[0] * r, s[1] * r, s[2] * r, 0, TAU); g.fill(); }
-      eye(g, r * 0.62, -r * 0.2, r * 0.1, '#3a2f08'); eye(g, r * 0.62, r * 0.2, r * 0.1, '#3a2f08');
-    },
-    wraith(g, r, col) {
-      g.globalAlpha = 0.8;
-      g.fillStyle = col;
-      g.beginPath();
-      g.arc(0, 0, r, -Math.PI / 2, Math.PI / 2);
-      g.quadraticCurveTo(-r * 0.6, r * 0.7, -r * 2.1, r * 0.25);
-      g.quadraticCurveTo(-r * 1.2, 0, -r * 2.1, -r * 0.25);
-      g.quadraticCurveTo(-r * 0.6, -r * 0.7, 0, -r);
-      g.fill();
-      g.globalAlpha = 1;
-      g.fillStyle = '#1b2748'; g.beginPath(); g.arc(r * 0.2, 0, r * 0.55, 0, TAU); g.fill();
-      eye(g, r * 0.4, -r * 0.2, r * 0.13, '#ffffff'); eye(g, r * 0.4, r * 0.2, r * 0.13, '#ffffff');
-    },
-    mortar(g, r, col) {
-      // squat shell-back with a stubby cannon
-      g.fillStyle = '#6b3a12';
-      g.beginPath(); g.roundRect(r * 0.3, -r * 0.32, r * 1.05, r * 0.64, r * 0.2); g.fill();
-      body(g, r, col);
-      g.fillStyle = '#3b2009';
-      g.beginPath(); g.arc(-r * 0.1, 0, r * 0.55, 0, TAU); g.fill();
-      g.fillStyle = '#ffd08a';
-      g.beginPath(); g.arc(-r * 0.1, 0, r * 0.26, 0, TAU); g.fill();
-      g.fillStyle = '#ffa53d';
-      g.beginPath(); g.arc(r * 1.3, 0, r * 0.2, 0, TAU); g.fill();
-    },
-    hexer(g, r, col) {
-      g.fillStyle = col;
-      g.beginPath(); g.moveTo(r * 1.1, 0); g.lineTo(0, -r); g.lineTo(-r * 1.1, 0); g.lineTo(0, r); g.closePath(); g.fill();
-      outline(g, () => { g.moveTo(r * 1.1, 0); g.lineTo(0, -r); g.lineTo(-r * 1.1, 0); g.lineTo(0, r); g.closePath(); });
-      g.fillStyle = '#3a1436'; g.beginPath(); g.arc(0, 0, r * 0.5, 0, TAU); g.fill();
-      g.fillStyle = '#ff9be6'; g.beginPath(); g.arc(r * 0.15, 0, r * 0.22, 0, TAU); g.fill();
-    },
-    knight(g, r, col) {
-      body(g, r, col);
-      g.fillStyle = '#2b3048'; g.beginPath(); g.arc(0, 0, r * 0.62, 0, TAU); g.fill();
-      g.fillStyle = '#ff5a6e'; g.fillRect(r * 0.15, -r * 0.4, r * 0.18, r * 0.8);
-      g.strokeStyle = '#aeb6d6'; g.lineWidth = r * 0.26; g.lineCap = 'round';
-      g.beginPath(); g.arc(0, 0, r * 1.12, -0.75, 0.75); g.stroke();
-    },
-    boss0(g, r, col) {
-      g.fillStyle = '#5a1d12';
-      for (let i = 0; i < 8; i++) {
-        const a = Math.PI * 0.55 + (i / 7) * Math.PI * 0.9;
-        g.beginPath(); g.moveTo(Math.cos(a - 0.14) * r * 0.85, Math.sin(a - 0.14) * r * 0.85);
-        g.lineTo(Math.cos(a) * r * 1.3, Math.sin(a) * r * 1.3); g.lineTo(Math.cos(a + 0.14) * r * 0.85, Math.sin(a + 0.14) * r * 0.85); g.fill();
-      }
-      ART.brute(g, r * 0.95, col);
-      g.fillStyle = '#f0e2c0';
-      g.beginPath(); g.moveTo(r * 0.3, -r * 0.8); g.quadraticCurveTo(r * 1.3, -r * 1.25, r * 1.5, -r * 0.45); g.quadraticCurveTo(r * 1.0, -r * 0.8, r * 0.55, -r * 0.55); g.fill();
-      g.beginPath(); g.moveTo(r * 0.3, r * 0.8); g.quadraticCurveTo(r * 1.3, r * 1.25, r * 1.5, r * 0.45); g.quadraticCurveTo(r * 1.0, r * 0.8, r * 0.55, r * 0.55); g.fill();
-    },
-    boss1(g, r) {
-      g.strokeStyle = '#3b6a22'; g.lineWidth = r * 0.12; g.lineCap = 'round';
-      for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
-        const bx = -r * 0.6 + i * r * 0.4;
-        g.beginPath(); g.moveTo(bx, s * r * 0.5); g.lineTo(bx - r * 0.1, s * r * 1.15); g.lineTo(bx + r * 0.25, s * r * 1.45); g.stroke();
-      }
-      g.fillStyle = '#4f9a2d'; g.beginPath(); g.ellipse(-r * 0.35, 0, r * 0.95, r * 0.8, 0, 0, TAU); g.fill();
-      outline(g, () => { g.ellipse(-r * 0.35, 0, r * 0.95, r * 0.8, 0, 0, TAU); });
-      g.fillStyle = '#c8ff8a';
-      for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(-r * 0.9 + i * r * 0.28, (i % 2 ? 1 : -1) * r * 0.3, r * 0.14, 0, TAU); g.fill(); }
-      g.fillStyle = '#6fc23c'; g.beginPath(); g.arc(r * 0.55, 0, r * 0.52, 0, TAU); g.fill();
-      for (const s of [-1, 1]) { eye(g, r * 0.75, s * r * 0.2, r * 0.13, '#1a0d24'); eye(g, r * 0.55, s * r * 0.38, r * 0.09, '#1a0d24'); }
-      g.fillStyle = '#f0e2c0';
-      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(r * 0.95, s * r * 0.12); g.lineTo(r * 1.4, s * r * 0.28); g.lineTo(r * 1.0, s * r * 0.36); g.fill(); }
-    },
-    boss2(g, r) {
-      g.fillStyle = '#1c3a52';
-      g.beginPath(); g.moveTo(r * 0.6, 0); g.quadraticCurveTo(0, -r * 1.3, -r * 1.3, -r * 0.9); g.lineTo(-r * 1.0, 0); g.lineTo(-r * 1.3, r * 0.9); g.quadraticCurveTo(0, r * 1.3, r * 0.6, 0); g.fill();
-      g.fillStyle = '#2f6a8f'; g.beginPath(); g.arc(0, 0, r * 0.75, 0, TAU); g.fill();
-      outline(g, () => { g.arc(0, 0, r * 0.75, 0, TAU); });
-      g.fillStyle = '#e8f6ff'; g.beginPath(); g.arc(r * 0.15, 0, r * 0.42, 0, TAU); g.fill();
-      eye(g, r * 0.3, -r * 0.15, r * 0.11, '#0b2233'); eye(g, r * 0.3, r * 0.15, r * 0.11, '#0b2233');
-      g.fillStyle = '#ffe14d';
-      for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(-r * 0.25, i * r * 0.17 - r * 0.07); g.lineTo(-r * 0.75, i * r * 0.22); g.lineTo(-r * 0.25, i * r * 0.17 + r * 0.07); g.fill(); }
-    },
-    boss3(g, r) {
-      g.fillStyle = '#3a1259';
-      for (const s of [-1, 1]) {
-        g.beginPath(); g.moveTo(-r * 0.2, s * r * 0.4);
-        g.quadraticCurveTo(-r * 0.3, s * r * 1.7, -r * 1.5, s * r * 1.5);
-        g.quadraticCurveTo(-r * 0.9, s * r * 1.1, -r * 1.2, s * r * 0.7);
-        g.quadraticCurveTo(-r * 0.7, s * r * 0.7, -r * 0.8, s * r * 0.25); g.closePath(); g.fill();
-      }
-      g.fillStyle = '#6a2aa8'; g.beginPath(); g.arc(0, 0, r * 0.85, 0, TAU); g.fill();
-      outline(g, () => { g.arc(0, 0, r * 0.85, 0, TAU); });
-      g.fillStyle = '#1a0828';
-      for (const s of [-1, 1]) {
-        g.beginPath(); g.moveTo(r * 0.2, s * r * 0.6); g.quadraticCurveTo(r * 1.2, s * r * 1.3, r * 1.55, s * r * 0.35); g.quadraticCurveTo(r * 1.0, s * r * 0.75, r * 0.5, s * r * 0.4); g.fill();
-      }
-      eye(g, r * 0.42, 0, r * 0.2, '#ffe14d');
-      eye(g, r * 0.35, -r * 0.38, r * 0.12, '#ff6bd6'); eye(g, r * 0.35, r * 0.38, r * 0.12, '#ff6bd6');
-      g.fillStyle = '#1a0828'; g.beginPath(); g.ellipse(r * 0.45, 0, r * 0.06, r * 0.16, 0, 0, TAU); g.fill();
-    },
-  };
-  function body(g, r, col) {
-    g.fillStyle = col;
-    g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-    outline(g, () => { g.arc(0, 0, r, 0, TAU); });
-    g.fillStyle = 'rgba(255,255,255,0.14)';
-    g.beginPath(); g.arc(-r * 0.25, -r * 0.3, r * 0.5, 0, TAU); g.fill();
+  /* ------------------------------------------------------------------ horde sprites
+     The art lives in js/models.js. Each horde type is cached as a strip of walk-cycle frames, supersampled for the screen
+     it will be drawn on; bosses, heroes and minions are drawn live. */
+  let sprK = 0;
+  /** n frames of a model of radius r world units; draw(g, f) paints frame f in unit space */
+  function buildFrames(n, r, draw) {
+    const K = sprK;
+    const size = Math.ceil(r * 5.2), px = size * K, c = px / 2;
+    const raw = [];
+    // the art canvas is generous so nothing clips; crop every frame to the box that holds the whole cycle's opaque pixels,
+    // so each enemy blit (hundreds a frame late in a run) only touches pixels that can show something
+    let x0 = px, y0 = px, x1 = 0, y1 = 0, readable = true;
+    for (let f = 0; f < n; f++) {
+      const cv = mk(px, px), g = cv.getContext('2d');
+      g.setTransform(K * r, 0, 0, K * r, c, c);
+      draw(g, f);
+      raw.push(cv);
+      try {
+        const d = g.getImageData(0, 0, px, px).data;
+        for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+          if (d[(y * px + x) * 4 + 3] > 6) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+        }
+      } catch (e) { readable = false; /* tainted or unsupported: keep the full canvas */ }
+    }
+    if (!readable || x1 < x0) { x0 = 0; y0 = 0; x1 = px - 1; y1 = px - 1; }
+    x0 = Math.max(0, x0 - K); y0 = Math.max(0, y0 - K); x1 = Math.min(px - 1, x1 + K); y1 = Math.min(px - 1, y1 + K);
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const frames = raw.map((cv) => {
+      const img = mk(w, h);
+      img.getContext('2d').drawImage(cv, x0, y0, w, h, 0, 0, w, h);
+      return { img, white: null, ice: null };
+    });
+    // x, y, w, h: where a frame sits around the model's origin, in world units
+    return { frames, x: (x0 - c) / K, y: (y0 - c) / K, w: w / K, h: h / K };
   }
-  function outline(g, path) {
-    g.strokeStyle = 'rgba(10,6,22,0.75)';
-    g.lineWidth = 2;
-    g.beginPath(); path(); g.stroke();
+  /** a flat-colour copy of a frame, made the first time it is needed */
+  function tinted(fr, which) {
+    if (fr[which]) return fr[which];
+    const c = mk(fr.img.width, fr.img.height), cg = c.getContext('2d');
+    cg.drawImage(fr.img, 0, 0);
+    cg.globalCompositeOperation = 'source-atop';
+    cg.globalAlpha = which === 'white' ? 0.92 : 0.6;
+    cg.fillStyle = which === 'white' ? '#ffffff' : '#9fe6ff';
+    cg.fillRect(0, 0, c.width, c.height);
+    return (fr[which] = c);
   }
-  function buildSprite(key, r, col) {
-    const K = 2; // supersample
-    let size = Math.ceil(r * 5.2);
-    const full = mk(size * K, size * K), g = full.getContext('2d');
-    g.setTransform(K, 0, 0, K, (size * K) / 2, (size * K) / 2);
-    ART[key](g, r, col);
-    // the art canvas is generous so nothing clips; crop it to the farthest opaque pixel from the centre so every enemy
-    // blit (hundreds a frame late in a run) only touches pixels that can show something
-    let img = full;
-    try {
-      const N = full.width, px = full.getContext('2d').getImageData(0, 0, N, N).data, c = N / 2;
-      let m2 = 0;
-      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        if (px[(y * N + x) * 4 + 3] > 6) { const dx = x + 0.5 - c, dy = y + 0.5 - c, d = dx * dx + dy * dy; if (d > m2) m2 = d; }
-      }
-      const half = Math.min(c, Math.ceil(Math.sqrt(m2) + 2 * K)), n = half * 2;
-      if (n < N) {
-        img = mk(n, n);
-        img.getContext('2d').drawImage(full, c - half, c - half, n, n, 0, 0, n, n);
-        size = n / K;
-      }
-    } catch (e) { /* tainted or unsupported: keep the full canvas */ }
-    const tint = (color, alpha) => {
-      const c = mk(img.width, img.height), cg = c.getContext('2d');
-      cg.drawImage(img, 0, 0);
-      cg.globalCompositeOperation = 'source-atop';
-      cg.globalAlpha = alpha;
-      cg.fillStyle = color;
-      cg.fillRect(0, 0, c.width, c.height);
-      return c;
-    };
-    return { img, white: tint('#ffffff', 0.92), ice: tint('#9fe6ff', 0.6), size };
-  }
+  const SWING = 5; // poses across a minion's weapon swing
   function buildSprites() {
-    const defs = PS.Enemies.DEFS;
-    for (const id in defs) SPR[id] = buildSprite(id, defs[id].r, defs[id].color);
-    for (const b of PS.Bosses.DEFS) SPR[b.sprite] = buildSprite(b.sprite, b.r, b.color);
+    const defs = PS.Enemies.DEFS, N = M.FRAMES;
+    for (const id in defs) {
+      const d = defs[id], lw = M.ink(d.r);
+      SPR[id] = buildFrames(N, d.r, (g, f) => M.enemy(g, id, f / N, d.color, lw));
+      SPR[id].rate = M.RATE[id] || 1.5;
+    }
+    // the Reaper's dead: a walk cycle, then the swing poses
+    for (const m of [['skeleton', 11], ['knight', 15]]) {
+      SPR['m_' + m[0]] = buildFrames(N + SWING, m[1], (g, f) => M.minion(g, m[0], f < N ? f / N : 0, f < N ? 0 : 1 - (f - N) / SWING, 1.5 / m[1]));
+    }
+    SPR.m_familiar = buildFrames(N, 8, (g, f) => M.minion(g, 'familiar', f / N, 0, 1.4 / 8));
+  }
+
+  /* The hero and the boss are drawn fresh, but into a scratch canvas of their own that is then blitted. Their shading uses
+     gradients, and a single gradient fill on the main canvas knocks Chromium's software rasterizer off its fast path for
+     the ground pattern for the rest of the session (about 2 ms a frame). It also lets a whole model fade as one piece. */
+  const scratch = {};
+  /** who: which scratch canvas; ext: the model's reach in its own units; sx, sy: world units per model unit;
+      draw(g) paints it facing +x, or pass null to blit what is already there */
+  function drawLive(who, x, y, rot, sx, sy, ext, alpha, draw) {
+    const R = Math.ceil(ext * Math.max(sx, sy) * scale) + 2, n = R * 2;
+    const sc = scratch[who] || (scratch[who] = { cv: mk(n, n), g: null });
+    if (sc.cv.width < n) { sc.cv.width = sc.cv.height = n; }
+    const g = sc.g || (sc.g = sc.cv.getContext('2d'));
+    // keep the model's sub-pixel position inside the scratch so the blit can land on whole device pixels
+    const px = (x - camL) * scale, py = (y - camT) * scale, ix = Math.floor(px), iy = Math.floor(py);
+    if (draw) {
+      const c = Math.cos(rot), sn = Math.sin(rot);
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, n, n);
+      g.setTransform(c * sx * scale, sn * sx * scale, -sn * sy * scale, c * sy * scale, R + px - ix, R + py - iy);
+      draw(g);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sc.cv, 0, 0, n, n, ix - R, iy - R, n, n);
+    ctx.globalAlpha = 1;
+    worldTf();
   }
 
   /* ------------------------------------------------------------------ layers */
@@ -697,19 +575,24 @@
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+    const N = M.FRAMES;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!visible(e.x, e.y, e.r * 2.6)) continue;
+      if (e.boss) { drawBoss(e, t, G.frame); continue; }
       const spr = SPR[e.def.sprite];
       const sc = e.r / e.def.r;
-      const wob = e.freezeT > 0 ? 0 : Math.sin(t * 9 + e.wob) * 0.06;
-      // small enemies pop white when hit; elites and bosses only tint so their art stays readable under sustained fire
+      const frozen = e.freezeT > 0;
+      const wob = frozen ? 0 : Math.sin(t * 9 + e.wob) * 0.035;
+      // each enemy runs its walk cycle from its own offset; frozen ones hold a pose
+      const fr = spr.frames[frozen ? e.id % N : ((t * spr.rate + e.wob) * N | 0) % N];
+      // small enemies pop white when hit; elites only tint so their art stays readable under sustained fire
       const flash = e.flash > 0;
-      const img = flash && !e.big ? spr.white : e.freezeT > 0 ? spr.ice : spr.img;
+      const img = flash && !e.big ? tinted(fr, 'white') : frozen ? tinted(fr, 'ice') : fr.img;
       ctx.globalAlpha = e.spawnT > 0 ? Math.max(0.15, 1 - e.spawnT / 0.35) : 1;
       spriteTf(e.x, e.y, e.ang, sc * (1 + wob), sc * (1 - wob));
-      ctx.drawImage(img, -spr.size / 2, -spr.size / 2, spr.size, spr.size);
-      if (flash && e.big) { ctx.globalAlpha = 0.4; ctx.drawImage(spr.white, -spr.size / 2, -spr.size / 2, spr.size, spr.size); }
+      ctx.drawImage(img, spr.x, spr.y, spr.w, spr.h);
+      if (flash && e.big) { ctx.globalAlpha = 0.4; ctx.drawImage(tinted(fr, 'white'), spr.x, spr.y, spr.w, spr.h); }
     }
     ctx.globalAlpha = 1;
     worldTf();
@@ -736,40 +619,53 @@
     }
   }
 
+  /** bosses are drawn live: one on screen at a time, and it deserves smooth motion at full resolution.
+      The art is repainted every other frame (30 poses a second is plenty) and blitted on the frames between. */
+  const bossPaint = { id: 0, frame: -9, scale: 0 };
+  function drawBoss(e, t, frame) {
+    const def = e.def, breathe = Math.sin(t * 2.6) * 0.015;
+    let sc = e.r, alpha = 1;
+    if (e.spawnT > 0) {
+      // stepping out of the rift: a silhouette in its own colour that resolves into the creature
+      const q = Math.min(1, e.spawnT / 1.1);
+      sc *= 1 - q * 0.22;
+      alpha = 1 - q * 0.45;
+      M.tint(def.color, q);
+    } else if (e.flash > 0) M.tint('#ffffff', 0.4);
+    const ph = t * (M.RATE[def.sprite] || 1), lw = M.ink(e.r);
+    const fresh = bossPaint.id !== e.id || bossPaint.scale !== scale || frame - bossPaint.frame >= 2 || frame < bossPaint.frame;
+    if (fresh) { bossPaint.id = e.id; bossPaint.frame = frame; bossPaint.scale = scale; }
+    drawLive('boss', e.x, e.y, e.ang, sc * (1 + breathe), sc * (1 - breathe), 2.25, alpha, fresh ? (g) => M.enemy(g, def.sprite, ph, def.color, lw, e.bs) : null);
+    M.tint(null, 0);
+  }
+
   function drawMinions(G) {
-    const t = G.time;
+    const N = M.FRAMES;
     for (const m of G.minions) {
       if (!visible(m.x, m.y, 40)) continue;
       const fade = Math.min(1, m.life / 1.5);
+      const spr = SPR['m_' + m.kind];
+      let my = m.y, fr;
       if (m.kind === 'familiar') {
-        const by = Math.sin(m.bob) * 3;
+        my += Math.sin(m.bob) * 3;
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(m.x, m.y + by, 26, '#c06bff', 0.6);
+        drawGlow(m.x, my, 26, '#c06bff', 0.6);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#f3e6ff'; ctx.beginPath(); ctx.arc(m.x, m.y + by, 8, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#7a2fd6'; ctx.beginPath(); ctx.arc(m.x + Math.cos(m.ang) * 3, m.y + by + Math.sin(m.ang) * 3, 4.2, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#12061f'; ctx.beginPath(); ctx.arc(m.x + Math.cos(m.ang) * 4, m.y + by + Math.sin(m.ang) * 4, 2, 0, TAU); ctx.fill();
-        continue;
+        fr = spr.frames[(m.bob * 0.3 * N | 0) % N];
+      } else {
+        const r = m.r;
+        ctx.globalAlpha = 0.28 * fade; ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.ellipse(m.x, m.y + r * 0.6, r, r * 0.45, 0, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(m.x, m.y, r * 2.4, '#a35cff', 0.3 * fade);
+        ctx.globalCompositeOperation = 'source-over';
+        // mid-swing it holds a swing pose, otherwise it walks
+        fr = spr.frames[m.swing > 0.04 ? N + Math.min(SWING - 1, (1 - m.swing) * SWING | 0) : (m.bob * 0.32 * N | 0) % N];
       }
-      const king = m.kind === 'knight', r = m.r;
-      ctx.globalAlpha = 0.28 * fade; ctx.fillStyle = '#000';
-      ctx.beginPath(); ctx.ellipse(m.x, m.y + r * 0.6, r, r * 0.45, 0, 0, TAU); ctx.fill();
-      ctx.globalCompositeOperation = 'lighter';
-      drawGlow(m.x, m.y, r * 2.4, '#a35cff', 0.3 * fade);
-      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade;
-      ctx.fillStyle = king ? '#3b2a5c' : '#e9e4d6';
-      ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, TAU); ctx.fill();
-      ctx.strokeStyle = king ? '#c06bff' : 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2; ctx.stroke();
-      const ex = Math.cos(m.ang), ey = Math.sin(m.ang);
-      ctx.fillStyle = king ? '#ff6bd6' : '#3a1259';
-      ctx.beginPath(); ctx.arc(m.x + ex * r * 0.4 - ey * r * 0.3, m.y + ey * r * 0.4 + ex * r * 0.3, r * 0.18, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.arc(m.x + ex * r * 0.4 + ey * r * 0.3, m.y + ey * r * 0.4 - ex * r * 0.3, r * 0.18, 0, TAU); ctx.fill();
-      // weapon swipe
-      const sw = m.ang - 0.9 + m.swing * 1.8;
-      ctx.strokeStyle = king ? '#e3b8ff' : '#cfc8b4'; ctx.lineWidth = king ? 4 : 3; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(m.x + Math.cos(sw) * r * 0.8, m.y + Math.sin(sw) * r * 0.8); ctx.lineTo(m.x + Math.cos(sw) * (r + (king ? 18 : 12)), m.y + Math.sin(sw) * (r + (king ? 18 : 12))); ctx.stroke();
+      spriteTf(m.x, my, m.ang, 1, 1);
+      ctx.drawImage(fr.img, spr.x, spr.y, spr.w, spr.h);
+      worldTf();
     }
     ctx.globalAlpha = 1;
   }
@@ -799,70 +695,21 @@
     ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, r * 1.55, r * 0.95, 0, 0, TAU); ctx.stroke();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, r * 1.55, r * 0.95, 0, 0, TAU); ctx.stroke();
-    // blink while invulnerable after a hit
+    // blink while invulnerable after a hit, and flash white on the hit itself
     const blink = p.hurtFlash > 0 || (p.inv > 0 && p.dashT <= 0 && Math.floor(t * 18) % 2 === 0);
-    ctx.globalAlpha = blink ? 0.55 : 1;
-    const bobY = p.moving ? Math.sin(p.walk) * 1.5 : 0;
-    const ax = Math.cos(p.aim), ay = Math.sin(p.aim);
-
-    // cloak behind (opposite of aim)
-    ctx.fillStyle = shade(cls.color, -0.45);
-    ctx.beginPath();
-    ctx.moveTo(x - ay * r * 0.9, y + ax * r * 0.9 + bobY);
-    ctx.quadraticCurveTo(x - ax * r * 2.0 + Math.sin(t * 6) * 2, y - ay * r * 2.0 + bobY, x + ay * r * 0.9, y - ax * r * 0.9 + bobY);
-    ctx.closePath(); ctx.fill();
-    // body
-    ctx.fillStyle = p.hurtFlash > 0 ? '#ffffff' : cls.color;
-    ctx.beginPath(); ctx.arc(x, y + bobY, r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(10,6,22,0.8)'; ctx.lineWidth = 2; ctx.stroke();
-    // shoulders
-    ctx.fillStyle = shade(cls.color, -0.25);
-    ctx.beginPath(); ctx.arc(x - ay * r * 0.85, y + ax * r * 0.85 + bobY, r * 0.42, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + ay * r * 0.85, y - ax * r * 0.85 + bobY, r * 0.42, 0, TAU); ctx.fill();
-    // head
-    ctx.fillStyle = cls.accent;
-    ctx.beginPath(); ctx.arc(x + ax * r * 0.15, y + ay * r * 0.15 + bobY, r * 0.55, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(10,6,22,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-
-    // weapon
-    const id = cls.id;
-    ctx.lineCap = 'round';
-    if (id === 'vanguard') {
-      const a = p.aim + 0.9 - p.swing * 1.9 + (p.whirlT > 0 ? t * 22 : 0);
-      const hx = x + Math.cos(a) * r * 0.9, hy = y + Math.sin(a) * r * 0.9 + bobY;
-      ctx.strokeStyle = '#5a4a3a'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + Math.cos(a) * 8, hy + Math.sin(a) * 8); ctx.stroke();
-      ctx.strokeStyle = '#e8eeff'; ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * 8, hy + Math.sin(a) * 8); ctx.lineTo(hx + Math.cos(a) * 36, hy + Math.sin(a) * 36); ctx.stroke();
-      ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * 8 - Math.sin(a) * 6, hy + Math.sin(a) * 8 + Math.cos(a) * 6); ctx.lineTo(hx + Math.cos(a) * 8 + Math.sin(a) * 6, hy + Math.sin(a) * 8 - Math.cos(a) * 6); ctx.stroke();
-    } else if (id === 'pyromancer') {
-      const hx = x + ax * r * 0.6 - ay * r * 0.8, hy = y + ay * r * 0.6 + ax * r * 0.8 + bobY;
-      const tx = hx + ax * (24 + p.swing * 4), ty = hy + ay * (24 + p.swing * 4);
-      ctx.strokeStyle = '#6a4a2e'; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.moveTo(hx - ax * 10, hy - ay * 10); ctx.lineTo(tx, ty); ctx.stroke();
+    if (p.hurtFlash > 0) M.tint('#ffffff', 0.85);
+    const bobY = p.moving ? Math.sin(p.walk * 2) * 0.8 : 0;
+    // the whole hero turns with the aim, and spins outright during a whirlwind
+    const rot = p.aim + (p.whirlT > 0 ? t * 22 : 0);
+    let lights = null;
+    drawLive('hero', x, y + bobY, rot, r, r, 3.9, blink ? 0.55 : 1, (g) => { lights = M.hero(g, p, t, 1.6 / r); });
+    M.tint(null, 0);
+    // what the hero carries that glows (a staff's fire) is added on top, in world space
+    if (lights) {
+      const c = Math.cos(rot), sn = Math.sin(rot);
       ctx.globalCompositeOperation = 'lighter';
-      drawGlow(tx, ty, 16 + p.swing * 10, '#ff7a3d', 0.9);
+      for (const l of lights) drawGlow(x + (c * l.x - sn * l.y) * r, y + bobY + (sn * l.x + c * l.y) * r, l.r * r, l.col, l.a);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffd06b'; ctx.beginPath(); ctx.arc(tx, ty, 4, 0, TAU); ctx.fill();
-    } else if (id === 'ranger') {
-      const bx = x + ax * r * 1.1, by = y + ay * r * 1.1 + bobY;
-      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(bx - ax * 10, by - ay * 10, 17, p.aim - 1.15, p.aim + 1.15); ctx.stroke();
-      ctx.strokeStyle = 'rgba(241,231,207,0.8)'; ctx.lineWidth = 1.2;
-      const s1x = bx - ax * 10 + Math.cos(p.aim - 1.15) * 17, s1y = by - ay * 10 + Math.sin(p.aim - 1.15) * 17;
-      const s2x = bx - ax * 10 + Math.cos(p.aim + 1.15) * 17, s2y = by - ay * 10 + Math.sin(p.aim + 1.15) * 17;
-      const pull = 6 * (1 - p.swing);
-      ctx.beginPath(); ctx.moveTo(s1x, s1y); ctx.lineTo(bx - ax * (3 + pull), by - ay * (3 + pull)); ctx.lineTo(s2x, s2y); ctx.stroke();
-    } else if (id === 'reaper') {
-      const a = p.aim + 0.5 - p.swing * 1.2;
-      const hx = x + Math.cos(a) * r * 0.5 - ay * r * 0.7, hy = y + Math.sin(a) * r * 0.5 + ax * r * 0.7 + bobY;
-      const tx = hx + Math.cos(a) * 30, ty = hy + Math.sin(a) * 30;
-      ctx.strokeStyle = '#3a2a4a'; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.moveTo(hx - Math.cos(a) * 12, hy - Math.sin(a) * 12); ctx.lineTo(tx, ty); ctx.stroke();
-      ctx.strokeStyle = '#e3b8ff'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(tx - Math.cos(a) * 2 + Math.cos(a + 1.57) * 14, ty - Math.sin(a) * 2 + Math.sin(a + 1.57) * 14, 15, a - 1.9, a - 0.5); ctx.stroke();
     }
     ctx.globalAlpha = 1;
     // Ward: an expanding dome while it is up, and a faint arc when it is ready again
@@ -903,14 +750,6 @@
       ctx.beginPath(); ctx.arc(x + (i - (maxC - 1) / 2) * 9, y + r + 12, 2.6, 0, TAU); ctx.fill();
     }
   }
-  function shade(hex, amt) {
-    const n = parseInt(hex.slice(1), 16);
-    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    const f = amt < 0 ? 1 + amt : 1, add = amt > 0 ? amt * 255 : 0;
-    r = Math.min(255, r * f + add) | 0; g = Math.min(255, g * f + add) | 0; b = Math.min(255, b * f + add) | 0;
-    return `rgb(${r},${g},${b})`;
-  }
-
   function drawOrbits(G) {
     for (const o of G.orbits) {
       if (o.kind === 'iceorb') {
@@ -1117,7 +956,6 @@
     init(cv) {
       canvas = cv;
       ctx = canvas.getContext('2d', { alpha: false });
-      buildSprites();
       this.resize();
       window.addEventListener('resize', () => this.resize());
     },
@@ -1163,6 +1001,9 @@
       canvas.width = W; canvas.height = H;
       scale = Math.min(H / VIEW_H, W / MIN_VIEW_W);
       tilePx = Math.max(64, Math.round(512 * scale));
+      // horde sprites are supersampled 2x, or 3x on screens dense enough to show the difference; never rebuilt downward
+      const k = scale > 2.3 ? 3 : 2;
+      if (k > sprK) { sprK = k; buildSprites(); }
       if (PS.G) { PS.G.viewW = W / scale; PS.G.viewH = H / scale; }
     },
     viewSize() { return { w: W / scale, h: H / scale }; },
