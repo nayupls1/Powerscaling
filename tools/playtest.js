@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   const flags = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v === undefined ? true : v]; }));
   const pos = args.filter((a) => !a.startsWith('--'));
   const clsArg = pos[0] || 'all', minutes = +(pos[1] || 13), runs = +(pos[2] || 1);
-  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller'] : [clsArg];
+  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden'] : [clsArg];
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];

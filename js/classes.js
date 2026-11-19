@@ -470,6 +470,104 @@
         },
       ],
     },
+    /* ============================================================ FROSTWARDEN */
+    frostwarden: {
+      name: 'Frostwarden', title: 'Close-range controller', difficulty: 'Moderate', color: '#9ff0e0', accent: '#ffffff', primary: 'breath',
+      blurb: 'Stands in the thick of it behind a cone of freezing breath. Sturdy and slow, and nothing near it moves fast for long.',
+      base: { maxHp: 135, speed: 200, armor: 4, dashCd: 2.3, regen: 0.5 },
+      dashName: 'Ice Slide', botRange: 100, chillBonus: 0.3,
+      passive: 'You leave a strip of ice that Chills whatever crosses it. Everything Chilled takes 30% more damage from you.',
+      unlock: { text: 'Slay 10 bosses in all to unlock', check: (save) => save.stats.bosses >= 10 },
+      ability: {
+        name: 'Glacial Tomb', icon: 'crystal', cd: 16,
+        desc: 'Freeze everything around you solid for a moment. When the ice breaks, it breaks them: heavy damage to everything that was caught.',
+        use(p) {
+          const s = p.stats, r = 260 * s.area, dmg = abil(p, 85, 'frost') * (s.f.avalanche ? 2.5 : 1);
+          PS.FX.ring(p.x, p.y, r, '#bdf0ff', 0.5);
+          PS.FX.frostBurst(p.x, p.y, r);
+          PS.FX.flash('#bdf0ff', 0.2);
+          const caught = [];
+          PS.G.grid.query(p.x, p.y, r, (e) => { caught.push(e); if (e.boss) C.chill(e, 4); else { e.freezeImm = 0; C.freeze(e, 1, 2.2); } });
+          C.deflect(p.x, p.y, r, false);
+          p.tombT = 1.6; p.tomb = { caught, dmg };
+          PS.Audio.play('ability');
+          PS.Audio.play('freeze', { vol: 0.7 });
+        },
+      },
+      update(p, dt) {
+        const s = p.stats, f = s.f;
+        if (p.snapT > 0) p.snapT -= dt;
+        if (p.iceArmorCd > 0) p.iceArmorCd -= dt;
+        if (p.tombT > 0) {
+          p.tombT -= dt;
+          if (p.tombT <= 0 && p.tomb) {
+            // the ice breaks
+            for (const e of p.tomb.caught) {
+              if (e.dead) continue;
+              PS.FX.shatter(e.x, e.y, '#bdf0ff');
+              C.damage(e, p.tomb.dmg, { el: 'frost', src: 'Glacial Tomb', knock: 120 });
+            }
+            p.tomb = null;
+            PS.FX.shake(6);
+            PS.Audio.play('explode', { vol: 0.5, pitch: 1.4 });
+          }
+        }
+        if (f.blizzardWalk) {
+          p.walkT = (p.walkT || 0) - dt;
+          if (p.walkT <= 0) {
+            p.walkT = 0.5;
+            const r = 150 * s.area;
+            C.aoe(p.x, p.y, r, C.power('frost') * 0.5, { el: 'frost', src: 'Blizzard Walk', noProc: true });
+          }
+          p.miasmaR = 0;
+        }
+      },
+      onHurt(p) {
+        const f = p.stats.f;
+        if (!f.iceArmor || p.iceArmorCd > 0) return;
+        p.iceArmorCd = 4;
+        PS.FX.ring(p.x, p.y, 150 * p.stats.area, '#bdf0ff', 0.3);
+        PS.G.grid.query(p.x, p.y, 150 * p.stats.area, (e) => { C.freeze(e, 1, 1.5); });
+      },
+      onDash(p) {
+        p.iceDrop = 0;
+        if (p.stats.f.coldSnap) p.snapT = 3;
+      },
+      dashing(p, dt) {
+        // the slide lays ice behind it: it Chills, and with Black Ice it bites
+        const s = p.stats, f = s.f;
+        p.iceDrop -= dt;
+        if (p.iceDrop > 0) return;
+        p.iceDrop = 0.04;
+        C.zone({ x: p.x, y: p.y, r: 44 * s.area, life: (f.blackIce ? 5 : 2.5) * s.duration, tick: 0.5, firstTick: 0.05, dmg: f.blackIce ? C.power('frost') * 0.55 : 0.01, el: 'frost', src: 'Ice Slide', kind: 'blizzard', color: '#6fd8ff', slow: 1 });
+      },
+      branches: [
+        {
+          name: 'Winter', icon: 'snow', color: '#bdf0ff',
+          nodes: [
+            { name: 'Deep Freeze', icon: 'crystal', desc: 'Frost Breath has a chance to freeze what it touches solid.', apply: (s) => { s.f.deepFreeze = 1; } },
+            { name: 'Wide Maw', icon: 'expand', desc: 'Frost Breath reaches 30% further and spreads 30% wider.', apply: (s) => { s.f.wideMaw = 1; } },
+            { name: 'Brittle', icon: 'shards', desc: 'Frost Breath deals 40% more damage to frozen enemies, and you deal 20% more Rime damage.', apply: (s) => { s.f.shatterBreath = 1; s.el.frost += 0.2; } },
+          ],
+        },
+        {
+          name: 'Glacier', icon: 'mountain', color: '#9ff0e0',
+          nodes: [
+            { name: 'Permafrost', icon: 'heart', desc: '+35 max health and +6 armor.', apply: (s) => { s.maxHp += 35; s.armor += 6; } },
+            { name: 'Ice Armor', icon: 'armor', desc: 'Being hit freezes everything near you. This can happen once every 4 seconds.', apply: (s) => { s.f.iceArmor = 1; } },
+            { name: 'Avalanche', icon: 'meteor', desc: 'Glacial Tomb breaks for two and a half times the damage. +25% ability haste.', apply: (s) => { s.f.avalanche = 1; s.abilityHaste += 0.25; } },
+          ],
+        },
+        {
+          name: 'Rime', icon: 'dash', color: '#6fd8ff',
+          nodes: [
+            { name: 'Black Ice', icon: 'dash', desc: 'The ice left by Ice Slide lasts twice as long and damages what stands on it. +1 dash charge.', apply: (s) => { s.f.blackIce = 1; s.dashCharges += 1; } },
+            { name: 'Cold Snap', icon: 'hourglass', desc: 'For 3 seconds after an Ice Slide, Frost Breath deals 50% more damage.', apply: (s) => { s.f.coldSnap = 1; } },
+            { name: 'Blizzard Walk', icon: 'tornado', desc: 'A storm follows you, wearing down and Chilling everything near. +10% move speed.', apply: (s) => { s.f.blizzardWalk = 1; s.speed *= 1.1; } },
+          ],
+        },
+      ],
+    },
   };
 
   for (const id in CLASSES) CLASSES[id].id = id;

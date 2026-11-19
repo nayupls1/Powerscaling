@@ -16,7 +16,7 @@ const { chromium } = require('playwright');
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
   let pass = 0;
-  for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller']) {
+  for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden']) {
     for (const half of [0, 1]) {
       const res = await page.evaluate(async ({ cls, half, minutes, pass }) => {
         PS.Save.data.unlocked.reaper = true;

@@ -945,6 +945,17 @@
       ctx.beginPath(); ctx.arc(x, y, p.auraR, 0, TAU); ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
+    if (p.breathT > 0) {
+      // Frost Breath: a soft wedge of cold with no hard edge, brighter toward the mouth
+      p.breathT -= G.rdt || 0.016;
+      const k = Math.min(1, p.breathT / 0.2), a0 = p.aim - p.breathHalf, a1 = p.aim + p.breathHalf;
+      ctx.fillStyle = '#bdf0ff';
+      for (const [f, al] of [[1, 0.07], [0.72, 0.07], [0.42, 0.09]]) {
+        ctx.globalAlpha = al * k * (0.85 + 0.15 * Math.sin(t * 30 + f * 9));
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, p.breathR * f, a0, a1); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
     if (p.miasmaR > 0) {
       ctx.globalCompositeOperation = 'lighter';
       drawGlow(x, y, p.miasmaR * 1.1, '#5fb82e', 0.13 + 0.04 * Math.sin(t * 5));

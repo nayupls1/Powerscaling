@@ -312,6 +312,11 @@
         d.unlocked.reaper = true;
         PS.UI.toast('Reaper unlocked', 'scythe');
       }
+      if (!d.unlocked.frostwarden && d.stats.bosses >= 10 && !PS.G.bot) {
+        d.unlocked.frostwarden = true;
+        PS.G.unlockedClass = 'frostwarden';
+        PS.UI.toast('Frostwarden unlocked', 'snow');
+      }
       PS.Save.save();
     },
     victory() {

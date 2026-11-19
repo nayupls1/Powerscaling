@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = U.esc;
   const ico = (name, size, color) => PS.Icons.svg(name, { size: size || 20, color: color || 'currentColor' });
-  const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder' };
+  const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder', frostwarden: 'snow' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
   let codexTab = 'relics', sigilPeek = '', padNav = 0;

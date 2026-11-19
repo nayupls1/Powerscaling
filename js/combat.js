@@ -73,6 +73,7 @@
       if (e.shockT > 0) m += (aff.storm >= 2 ? 0.30 : 0.15) + (s.f.staticShock ? 0.15 : 0);
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
       if (e.markT > 0) m += 0.4;
+      if (e.chillT > 0 && p.cls.chillBonus) m += p.cls.chillBonus; // the Frostwarden's passive
       if (e.exposeT > 0) m += 0.2;
       if (e.big) m += s.bossDmg;
       if (s.f.execute && e.hp < e.maxHp * 0.25) m += s.f.execute;

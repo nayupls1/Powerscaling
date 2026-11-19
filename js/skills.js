@@ -722,6 +722,33 @@
         PS.Audio.play('zap', { vol: bolt ? 0.6 : 0.4, pitch: bolt ? 0.7 : 1.15 });
       },
     },
+    breath: {
+      name: 'Frost Breath', el: 'frost', icon: 'snow', primary: true, unit: 'breath',
+      desc: 'A cone of killing cold in front of you that never lets up. It hits everything inside it, and Chills.',
+      base: { dmg: 12, cd: 0.25, area: 1 },
+      up: [{ dmg: 2 }, { area: 0.15 }, { dmg: 2 }, { cd: -0.04, dmg: 1 }, { dmg: 3, area: 0.15 }],
+      fire(inst, s, p) {
+        const G = PS.G, f = p.stats.f;
+        const R = 245 * (0.55 + 0.45 * s.area) * (f.wideMaw ? 1.3 : 1), half = 0.46 * (f.wideMaw ? 1.3 : 1);
+        let dmg = s.dmg * (p.snapT > 0 ? 1.5 : 1);
+        const o = { el: 'frost', src: inst.name, ang: p.aim, knock: 18, freeze: f.deepFreeze ? 0.07 : 0, freezeDur: 1.1 };
+        G.grid.query(p.x, p.y, R, (e) => {
+          const dx = e.x - p.x, dy = e.y - p.y;
+          if (dx * dx + dy * dy > 40 * 40 && Math.abs(U.angDiff(p.aim, Math.atan2(dy, dx))) > half) return;
+          C.damage(e, e.freezeT > 0 && f.shatterBreath ? dmg * 1.4 : dmg, o);
+        });
+        C.deflect(p.x, p.y, R * 0.8, false, p.aim, half);
+        p.breathR = R; p.breathHalf = half; p.breathT = 0.34; // for the renderer: the cone, as a wash of cold
+        // the breath itself: a few slivers of ice thrown down the cone, for show
+        for (let i = 0; i < 2; i++) {
+          C.proj({ x: p.x + Math.cos(p.aim) * 16, y: p.y + Math.sin(p.aim) * 16, ang: p.aim + U.frand(-half, half) * 0.9, speed: R / 0.3, dmg: 0, el: 'frost', src: inst.name,
+            r: 5, size: U.frand(0.6, 1.1), life: 0.28, kind: 'shard', color: EL.frost.color, noHit: true });
+        }
+        p.swing = 1;
+        inst.snd = (inst.snd || 0) + 1;
+        if (inst.snd % 3 === 0) PS.Audio.play('frost', { vol: 0.16, pitch: 1.3 });
+      },
+    },
     scythe: {
       name: 'Soul Scythe', el: 'void', icon: 'scythe', primary: true, usesProj: true, unit: 'scythe',
       desc: 'A spectral scythe that spins out where you aim and returns.',

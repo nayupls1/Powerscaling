@@ -844,6 +844,32 @@
       g.beginPath(); g.arc(0.14, 0, 0.44, -1.15, 1.15); S(g, brass, 0.085);
       poly(g, [0.64, 0, 0.55, 0.08, 0.46, 0, 0.55, -0.08]); F(g, col, lw * 0.6);
     },
+    frostwarden(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.06, robe = mix(col, '#17364a', 0.66), fur = '#f1fbff', ice = '#bdf0ff';
+      // a heavy cloak, its hem hung with icicles
+      g.beginPath(); g.moveTo(-0.15, -0.78); g.quadraticCurveTo(-1.0, -0.96, -1.5, -0.6 + fl);
+      g.lineTo(-1.36, -0.3); g.lineTo(-1.72, -0.18 + fl); g.lineTo(-1.4, 0); g.lineTo(-1.72, 0.18 - fl); g.lineTo(-1.36, 0.3); g.lineTo(-1.5, 0.6 - fl);
+      g.quadraticCurveTo(-1.0, 0.96, -0.15, 0.78); g.closePath();
+      F(g, dark(robe, 0.2), lw);
+      feet(g, wk, '#22323c', lw);
+      // a horn of ice held to the mouth in both hands: the breath comes out of it
+      for (const s of [-1, 1]) limb(g, [0, s * 0.72, 0.5, s * 0.6, 0.86, s * 0.2], 0.27, robe, lw);
+      poly(g, [0.62, -0.17, 1.5 + sw * 0.1, -0.4, 1.62 + sw * 0.1, 0, 1.5 + sw * 0.1, 0.4, 0.62, 0.17]); F(g, vol(g, 1.1, 0, 0.6, ice), lw);
+      g.beginPath(); g.moveTo(0.9, -0.2); g.lineTo(0.9, 0.2); g.moveTo(1.2, -0.3); g.lineTo(1.2, 0.3); S(g, dark(ice, 0.35), 0.05, 0.7);
+      o.glow(g, 1.7, 0, 0.8 + sw * 0.7, '#9fe6ff', 0.75);
+      ell(g, 1.62 + sw * 0.1, 0, 0.1, 0.3); F(g, '#ffffff');
+      for (const s of [-1, 1]) { ell(g, 0.88, s * 0.2, 0.17, 0.15); F(g, '#f0c9a0', lw); }
+      // body under a fur mantle
+      ell(g, -0.05, 0, 0.64, 0.88); F(g, vol(g, -0.05, 0, 0.88, robe), lw);
+      g.beginPath();
+      for (let i = 0; i <= 10; i++) { const q = PI * 0.5 + (i / 10) * PI, rr = 0.86 + (i % 2 ? 0.1 : 0); const x = -0.02 + Math.cos(q) * rr * 0.72, y = Math.sin(q) * rr; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.quadraticCurveTo(0.34, 0, -0.02, 0.86); g.closePath(); F(g, vol(g, -0.2, 0, 0.9, fur), lw);
+      // hooded head with a crown of ice
+      ell(g, 0.16, 0, 0.46, 0.44); F(g, vol(g, 0.16, 0, 0.46, lite(robe, 0.2)), lw);
+      for (const a of [-2.4, -1.75, 1.75, 2.4, PI]) spike(g, 0.16 + Math.cos(a) * 0.36, Math.sin(a) * 0.36, a, 0.42, 0.1, ice, lw * 0.8);
+      g.beginPath(); g.arc(0.18, 0, 0.3, -1.0, 1.0); g.closePath(); F(g, '#0f2530');
+      eyes(g, 0.36, 0.13, 0.055, col);
+    },
     reaper(g, o) {
       const { t, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.08, shroud = '#2e1a4a', pale = acc; // it floats: no stride
       // shroud in tatters, thinning to nothing

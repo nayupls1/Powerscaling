@@ -106,7 +106,7 @@
       } else if (nearest) {
         // nothing to grab: keep fighting distance, with a strafe so we don't run in a straight line
         const dx = nearest.x - p.x, dy = nearest.y - p.y, d = Math.hypot(dx, dy) || 1;
-        const want = cfg.range || (p.cls.id === 'vanguard' ? 70 : 190);
+        const want = cfg.range || p.cls.botRange || (p.cls.id === 'vanguard' ? 70 : 190);
         const w = d > want ? 1.2 : -0.6;
         fx += (dx / d) * w - (dy / d) * 0.5; fy += (dy / d) * w + (dx / d) * 0.5;
       }

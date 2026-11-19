@@ -1,7 +1,7 @@
 #!/bin/sh
 # run several playtests in parallel and print one-line summaries: tools/batch.sh "<extra flags>" [minutes]
 FLAGS="$1"; MIN="${2:-14}"
-for c in vanguard pyromancer ranger reaper stormcaller; do
+for c in vanguard pyromancer ranger reaper stormcaller frostwarden; do
   ( node "$(dirname "$0")/playtest.js" $c $MIN 2 --quiet $FLAGS 2>&1 | node -e '
     let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
       const re=/\{[\s\S]*?\n\}/g; let m;
