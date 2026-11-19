@@ -79,6 +79,8 @@
         const rank = G && G.daily ? n.max : tree[n.id] || 0;
         if (rank > 0) n.apply(s, rank);
       }
+      // class mastery (not in the daily rift, where everyone plays on equal terms)
+      if (G && !G.daily) s.dmg += 0.01 * D.masteryRank(PS.Save.data.mastery[cls.id] || 0);
       for (const t of this.tomes) t.def.apply(s, t.val);
       for (const id in this.boons) D.BOONS[id].apply(s, this.boons[id]);
       for (const id of this.pacts) if (D.PACTS[id].stats) D.PACTS[id].stats(s);

@@ -35,6 +35,7 @@
   feat('w_plaguebearer', 'class', 'Patient Zero', 'flask',   'Slay the Rift Lord as the Plaguebearer.',         60,  wonAs('plaguebearer'));
   feat('capstone', 'class', 'Ascended',          'arrowup',  'Reach the final tier of a class path.',           40,  (G, p) => p.talents.some((r, i) => r >= p.cls.branches[i].nodes.length));
   feat('lvl40',    'class', 'Seasoned',          'star',     'Reach level 40.',                                 40,  (G, p) => p.level >= 40);
+  feat('master5',  'class', 'Devoted',           'star',     'Reach mastery rank 5 with any class.',            80,  (G, p, d) => G.over && Object.keys(d.mastery).some((c) => D.masteryRank(d.mastery[c]) >= 5));
   feat('lvl60',    'class', 'Paragon',           'trophy',   'Reach level 60.',                                 100, (G, p) => p.level >= 60);
 
   feat('depth1',   'depth', 'Deeper',            'key',      'Slay the Rift Lord at Rift Depth 1 or deeper.',   80,  wonAt(1));
@@ -51,8 +52,8 @@
   feat('rx800',    'build', 'Chain Reaction',    'chain',    'Set off 800 reactions in one run.',               60,  (G) => { let n = 0; for (const k in G.reactions) n += G.reactions[k]; return n >= 800; });
   feat('minimal',  'build', 'Minimalist',        'lock',     'Slay the Rift Lord holding four skills or fewer.', 150, (G, p) => G.won && p.skills.length <= 4);
 
-  feat('relic20',  'loot',  'Collector',         'chest',    'Hold 20 relics.',                                 40,  (G, p) => relicCount(p) >= 20);
-  feat('relic35',  'loot',  'Hoarder',           'jar',      'Hold 35 relics.',                                 100, (G, p) => relicCount(p) >= 35);
+  feat('relic30',  'loot',  'Collector',         'chest',    'Hold 30 relics.',                                 40,  (G, p) => relicCount(p) >= 30);
+  feat('relic45',  'loot',  'Hoarder',           'jar',      'Hold 45 relics.',                                 100, (G, p) => relicCount(p) >= 45);
   feat('legend',   'loot',  'Storied',           'phoenix',  'Find a legendary relic.',                         40,  (G, p) => p.relicOrder.some((id) => D.RELICS[id].tier === 4));
   feat('curator',  'loot',  'Curator',           'book',     'Record 30 different relics in the codex.',        80,  (G, p, d) => G.over && Object.keys(d.codex.relics).length >= 30);
   feat('gold5k',   'loot',  'Deep Pockets',      'coin',     'Earn 5,000 gold in one run.',                     40,  (G) => G.goldEarned >= 5000);

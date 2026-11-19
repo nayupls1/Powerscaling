@@ -211,6 +211,12 @@
             <div class="kit"><span class="kit-ico" style="--c:${c.color}">${ico(c.ability.icon, 26)}</span><div><b>${c.ability.name}</b><small>Ability, ${c.ability.cd}s cooldown</small><p>${c.ability.desc}</p></div></div>
             <div class="kit"><span class="kit-ico" style="--c:#bcd0ff">${ico('dash', 26)}</span><div><b>${c.dashName}</b><small>Dash</small><p>A quick burst of movement. You cannot be hurt while dashing.${c.passive ? ' ' + c.passive : ''}</p></div></div>
           </div>
+          ${(() => {
+            const pts = d.mastery[selClass] || 0, rank = D.masteryRank(pts), M = D.MASTERY, lo = rank ? M[rank - 1] : 0, hi = M[rank];
+            return `<div class="mastery" data-tip="Every run with this class earns mastery, a point per 1,000 score. Each rank is +1% damage for this class.">
+              <span><b>Mastery ${rank}</b><small>${rank ? '+' + rank + '% damage' : 'No bonus yet'}${hi ? ` · ${U.fmtNum(hi - pts)} to rank ${rank + 1}` : ' · mastered'}</small></span>
+              <span class="mastery-bar"><i style="width:${hi ? Math.round(100 * (pts - lo) / (hi - lo)) : 100}%"></i></span></div>`;
+          })()}
           ${this.depthPicker()}
           ${this.sigilPicker()}
           <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
@@ -968,6 +974,7 @@
           <div class="score-tags">
             ${res.unlockedDepth ? `<span class="tag gold">${ico('key', 14)} Rift Depth ${res.unlockedDepth} unlocked</span>` : ''}
             ${res.unlockedClass ? `<span class="tag gold">${ico(CLASS_ICON[res.unlockedClass], 14)} ${D.CLASSES[res.unlockedClass].name} unlocked</span>` : ''}
+            ${res.mastery && res.mastery.up ? `<span class="tag gold">${ico('star', 14)} ${c.name} mastery ${res.mastery.rank}</span>` : res.mastery ? `<span class="tag">${ico('star', 14)} +${res.mastery.gained} mastery</span>` : ''}
             ${res.best ? `<span class="tag gold">${G.rush ? 'Your fastest clear' : G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
             ${G.rush ? `<span class="tag">${ico('swords', 14)} Boss rush</span>` : ''}
             ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}

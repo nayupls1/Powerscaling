@@ -143,6 +143,11 @@
   });
   for (const id in D.PACTS) D.PACTS[id].id = id;
 
+  /* ---------- Class mastery: every run with a class earns it points (a thousandth of the score); ranks give that class
+     +1% damage each. Small on purpose: a reason to stay with a class, not a second skill tree ---------- */
+  D.MASTERY = [40, 120, 250, 450, 700, 1000, 1400, 1900, 2500, 3200]; // points needed for ranks 1..10
+  D.masteryRank = (pts) => { let r = 0; while (r < D.MASTERY.length && pts >= D.MASTERY[r]) r++; return r; };
+
   /* ---------- Sigils: one perk worn into a run, each unlocked by a feat (PS.Feats). The daily rift allows none ---------- */
   // feat: the feat id that unlocks it. stats(s) on every recalc, rules(r) and start(G, p) once when the run begins.
   D.SIGILS = {

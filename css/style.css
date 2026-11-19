@@ -250,6 +250,11 @@ i[data-icon], .count i { display: inline-flex; }
 /* rift depth and the daily rift */
 .class-clear { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 0.8rem; font-weight: 700; color: var(--gilt); }
 .depth { display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px; background: rgba(15, 11, 34, 0.5); border: 1px solid var(--line); }
+.mastery { display: grid; grid-template-columns: 1fr minmax(90px, 40%); gap: 14px; align-items: center; padding: 10px 16px; border-radius: 12px; background: rgba(15, 11, 34, 0.5); border: 1px solid var(--line); }
+.mastery > span:first-child { display: grid; }
+.mastery small { color: var(--muted); font-size: 0.84rem; }
+.mastery-bar { height: 8px; border-radius: 99px; background: rgba(239, 232, 216, 0.1); overflow: hidden; }
+.mastery-bar i { display: block; height: 100%; background: var(--c, var(--gilt)); border-radius: 99px; }
 .sigil-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .sigil { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 10px; background: rgba(239, 232, 216, 0.06); border: 2px solid var(--line); color: var(--bone); cursor: pointer; }
 .sigil:hover:not(:disabled) { border-color: var(--gilt); }
