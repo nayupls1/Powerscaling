@@ -17,7 +17,7 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
+  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17], [9, 24.5], [10.5, 35], [12, 49]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
   // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
   // still describes the game: with it, the bot's results match what they were before reactions existed.
@@ -86,7 +86,7 @@
     depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.72 + 0.13 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
+      return (0.72 + 0.14 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
     /** seconds between hordes */
