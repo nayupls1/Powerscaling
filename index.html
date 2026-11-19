@@ -8,7 +8,7 @@
   <meta name="description" content="A top-down roguelike horde survivor. Pick a class, stack skills, break the rift.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -66,17 +66,17 @@
   <!-- ============================== menus ============================== -->
   <div id="screens" class="screens">
     <section class="screen screen-title" id="scrTitle">
-      <div class="title-wrap">
+      <div class="title-hero">
         <h1 class="logo" id="logo" aria-label="Powerscaling"></h1>
         <p class="tagline">Start weak. Stack everything. Break the rift.</p>
-        <nav class="mainnav">
-          <button class="btn btn-primary" id="navPlay">Enter the rift</button>
-          <button class="btn" id="navTree">Skill tree <span class="pill" id="navEssence"></span></button>
-          <button class="btn" id="navBoard">Leaderboard</button>
-          <button class="btn" id="navHelp">How to play</button>
-          <button class="btn" id="navSettings">Settings</button>
-        </nav>
       </div>
+      <nav class="mainnav" aria-label="Main menu">
+        <button class="btn btn-primary btn-enter" id="navPlay">Enter the rift</button>
+        <button class="nav-row" id="navTree"><span>Skill tree</span><span class="pill" id="navEssence"></span></button>
+        <button class="nav-row" id="navBoard"><span>Leaderboard</span></button>
+        <button class="nav-row" id="navHelp"><span>How to play</span></button>
+        <button class="nav-row" id="navSettings"><span>Settings</span></button>
+      </nav>
       <aside class="title-side" id="titleSide"></aside>
     </section>
 
@@ -106,7 +106,7 @@
       <header class="screen-head">
         <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
         <h2>Leaderboard</h2>
-        <span class="muted">Saved on this device</span>
+        <span class="board-scope" id="boardScope">Saved on this device</span>
       </header>
       <div class="tabs" id="boardTabs"></div>
       <div class="board" id="boardBody"></div>
