@@ -4,7 +4,7 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U;
 
-  const PRIORITY = { evolve: 100, talent: 90, relic: 50, boon: 50, skill: 40, skillup: 34, tome: 28, over: 12, heal: 2, gold: 1 };
+  const PRIORITY = { evolve: 100, talent: 90, relic: 50, boon: 50, pact: 50, skill: 40, skillup: 34, tome: 28, over: 12, heal: 2, gold: 1 };
 
   const Bot = {
     /** forget the steering carried over from the last run, so a seeded run replays exactly */
@@ -92,7 +92,8 @@
         for (const pr of G.props) {
           if (pr.dead) continue;
           if (pr.kind === 'chest' && p.gold >= PS.Director.chestPrice()) consider(pr.x, pr.y, 300);
-          if (pr.kind === 'shrine') consider(pr.x, pr.y, 200);
+          if (pr.kind === 'shrine' || pr.kind === 'altar') consider(pr.x, pr.y, 200);
+          if (pr.kind === 'breach' && !pr.active && p.hp > p.stats.maxHp * 0.6) consider(pr.x, pr.y, 150);
         }
       }
       if (goal) {

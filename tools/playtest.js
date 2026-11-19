@@ -61,7 +61,7 @@ const { chromium } = require('playwright');
         const summary = { cls, seed: G.seed, depth: G.depth, mutator: G.rules.mutator, reactions: rx, hurtBy: Object.entries(G.hurtBy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => k + ' ' + Math.round(v)),
           time: Math.round(G.time), dead: !!G.over, level: p.level, kills: G.kills, bosses: G.bossesKilled, won: G.won, score: PS.Game.finalScore(G),
           skills: p.skills.map((s) => s.name + ' L' + s.level + (s.evolved ? '*' : '')), tomes: p.tomes.map((t) => t.id + t.level), relics: p.relicOrder.map((id) => id + (p.relics[id] > 1 ? 'x' + p.relics[id] : '')),
-          talents: p.talents.join('/'), aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
+          talents: p.talents.join('/'), pacts: p.pacts.join(','), breaches: G.breaches + ' sealed, ' + G.breachesLost + ' lost', aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
           killedBy: G.over && G.boss ? G.boss.def.name : null, bossLog: G.bossLog.map((b) => b.name + '@' + b.at + ' ' + b.took + 's').join(', '), taken: Math.round(G.dmgTaken), hp: Math.round(p.hp) + '/' + p.stats.maxHp };
         if (!G.over) PS.Game.endRun(true);
         summary.essence = G.result.essence;

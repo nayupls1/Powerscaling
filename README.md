@@ -43,6 +43,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Reactions** — hit one enemy with two different elements within 4 seconds and the pair reacts: fifteen reactions, one for every pair (Ember and Blight *Combust* the poison stacks, Rime and Tempest *Superconduct* into a stun, Iron and Abyss *Sunder* the crowd). A split build is a real build, not a failed mono-element one. The pause screen lists the reactions your current skills can set off, and a new-skill card says what it would react with.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
+- **Altars and breaches** — dark altars offer one of nine pacts: a strong gift with a price that lasts the run (35% more damage for a fifth of your health, a rare relic for elites that come 40% more often), or you can walk away. Breaches are a trial: step in to wake one, then slay enough of what pours out before the timer on its rim burns down, and it leaves a relic behind.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
 - **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
 - **Elites with affixes** — every elite carries one of seven affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding or Frenzied. Deeper rifts and overtime stack more than one.
@@ -89,14 +90,14 @@ js/util.js        math helpers, spatial hash
 js/save.js        local storage plus server sync: progress, settings, leaderboard
 js/audio.js       synthesized sound effects and music
 js/icons.js       vector glyph library used by the UI and canvas
-js/data.js        elements, rarities, affinities, tomes, relics, meta tree, reactions, elite affixes, depths, mutators
+js/data.js        elements, rarities, affinities, tomes, relics, pacts, meta tree, reactions, elite affixes, depths, mutators
 js/skills.js      skill definitions and behaviour
 js/classes.js     classes, abilities, talent paths
 js/player.js      stats, movement, dash, damage intake, levelling
 js/combat.js      damage pipeline, statuses, reactions, projectiles, zones, hazards
 js/enemies.js     enemy roster, AI and elite affixes
 js/bosses.js      boss fights
-js/director.js    difficulty curves, spawning, drops, chests, shrines
+js/director.js    difficulty curves, spawning, drops, chests, shrines, altars, breaches
 js/rewards.js     reward card generation
 js/fx.js          effects: particles, explosions, bolts, scorch marks, damage numbers, screen shake
 js/models.js      character art: the horde, bosses, heroes and minions

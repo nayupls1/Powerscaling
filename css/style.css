@@ -371,6 +371,7 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
 .choice-head h2 { font-size: clamp(2.4rem, 6.4vw, 4.2rem); color: var(--gilt); text-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); }
 .kind-talent .choice-head h2 { color: #ffb9a8; }
 .kind-relic .choice-head h2 { color: #dccbff; }
+.kind-pact .choice-head h2 { color: #ff8a9a; }
 .choice-head p { color: var(--muted); font-weight: 600; margin-top: 4px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 290px)); justify-content: center; gap: clamp(10px, 1.6vw, 18px); width: 100%; }
 .card {
@@ -391,6 +392,9 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
 .card-el { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 700; color: var(--c); }
 .card-desc { font-size: 1rem; font-weight: 500; color: #e6e0f4; }
 .card-line { font-size: 0.84rem; color: #c9b8ff; line-height: 1.3; }
+.card-price { font-size: 0.9rem; font-weight: 700; color: #ff8a9a; line-height: 1.3; padding-top: 7px; border-top: 1px solid rgba(255, 90, 122, 0.35); width: 100%; }
+.card-price::before { content: 'Price: '; color: #ff5a7a; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.08em; }
+.chip.pact { --rc: rgba(255, 90, 122, 0.55); color: #ffc2cc; }
 .card-rar { margin-top: auto; padding-top: 8px; font-size: 0.82rem; font-weight: 800; color: var(--rc); }
 .card.r-epic, .card.r-legendary, .card.sp-evolve { box-shadow: 0 0 22px color-mix(in oklab, var(--rc), transparent 70%); }
 .card.r-legendary::after, .card.sp-evolve::after { content: ""; position: absolute; inset: 0; border-radius: 14px; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.16) 50%, transparent 65%); background-size: 250% 100%; animation: sheen 2.2s linear infinite; }
@@ -526,7 +530,7 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
   .card-ico { grid-row: 1 / span 6; width: 60px; height: 60px; border-radius: 14px; margin: 0; }
   .card-ico .ps-icon { width: 32px; height: 32px; }
   .card-tag { padding: 0; grid-column: 2; }
-  .card-title, .card-el, .card-desc, .card-line, .card-rar { grid-column: 2; }
+  .card-title, .card-el, .card-desc, .card-line, .card-price, .card-rar { grid-column: 2; }
   .card-title { font-size: 1.4rem; }
   .card-rar { margin-top: 0; padding-top: 2px; }
   .card-key { display: none; }
@@ -612,6 +616,7 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
   .card-title { font-size: 0.95rem; }
   .card-desc { font-size: 0.82rem; line-height: 1.25; }
   .card-line { font-size: 0.72rem; line-height: 1.2; }
+  .card-price { font-size: 0.76rem; padding-top: 4px; }
   .card-el, .card-key { display: none; }
   .card-rar { font-size: 0.72rem; padding-top: 2px; }
   .choice-actions { min-height: 0; }

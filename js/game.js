@@ -59,7 +59,7 @@
         cam: { x: 0, y: 0 }, shake: 0, flashA: 0, flashCol: '#fff', hitstop: 0, slowmo: 0, boss: null, over: false,
         viewW: vs.w || 1280, viewH: vs.h || 800, biome: 0,
         ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
-        picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
+        breaches: 0, breachesLost: 0, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
       PS.G = G;
       PS.FX.reset();
@@ -217,6 +217,9 @@
         if (q.kind === 'chest') {
           const cards = R.relicChoices(p, q.n, q.minTier);
           spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: q.n > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
+        } else if (q.kind === 'altar') {
+          const cards = R.pactChoices(p);
+          if (cards.length) spec = { kind: 'pact', title: 'The altar offers a pact', sub: 'Every gift has a price, and both last the whole run. You may walk away.', cards };
         } else {
           spec = { kind: 'shrine', title: 'The shrine answers', sub: 'Choose a blessing.', cards: R.boonChoices(p) };
         }
@@ -252,7 +255,7 @@
     choose(spec, card) {
       const G = PS.G, p = G.player;
       if (card) PS.Rewards.apply(p, card);
-      else p.gold += 10;
+      else if (spec.kind === 'level') p.gold += 10;
       const more = G.queue.length || p.pendingLevels > 0;
       if (more) {
         // chain straight into the next reward

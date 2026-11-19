@@ -182,6 +182,15 @@
       });
     },
 
+    /* ------------------------------------------------------------ altar pacts */
+    pactChoices(p) {
+      const ids = U.shuffle(Object.keys(D.PACTS).filter((id) => !p.pacts.includes(id)), LOOT).slice(0, 3);
+      return ids.map((id) => {
+        const def = D.PACTS[id];
+        return { type: 'pact', id, tier: 3, special: 'pact', icon: def.icon, title: def.name, color: '#ff5a7a', tag: 'Pact', desc: def.gift, price: def.price, lines: [] };
+      });
+    },
+
     /* ------------------------------------------------------------ apply */
     apply(p, card) {
       const S = PS.Skills;
@@ -221,6 +230,7 @@
           break;
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;
+        case 'pact': p.addPact(card.id); PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#ff2846', 0.3); PS.FX.surge(p.x, p.y, '#ff5a7a', false); break;
         case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
       }

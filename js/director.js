@@ -62,6 +62,9 @@
       this.endlessBossT = 0;
       this.chestT = 6;
       this.shrineT = 40;
+      this.altarT = 165;   // dark altars: a pact with a price
+      this.breachT = 100;  // breaches: a timed kill trial for a relic
+      this.breach = null;  // the breach being fought, if any
       this.chestCost = 35;
       this.chestsOpened = 0;
       this.victory = false; this.victoryAt = 0;
@@ -219,7 +222,7 @@
           if (pr.kind === 'chest') {
             if (U.dist2(pr.x, pr.y, p.x, p.y) < 1500 * 1500) near++;
             else pr.dead = true; // left far behind
-          } else if (pr.kind === 'shrine' && U.dist2(pr.x, pr.y, p.x, p.y) > 2400 * 2400) pr.dead = true;
+          } else if (pr !== this.breach && U.dist2(pr.x, pr.y, p.x, p.y) > 2400 * 2400) pr.dead = true;
         }
         if (near < 2) {
           const a = U.rnd() * TAU, d = U.rand(520, 860);
@@ -236,8 +239,94 @@
           PS.UI.toast('A shrine has appeared', 'spark');
         }
       }
+      // a dark altar now and then, and a breach to fight over; neither while a boss holds the field
+      this.altarT -= dt;
+      if (this.altarT <= 0 && !bossAlive) {
+        this.altarT = 150;
+        if (!G.props.some((x) => x.kind === 'altar') && p.pacts.length < Object.keys(PS.Data.PACTS).length) {
+          const a = U.rnd() * TAU, d = U.rand(560, 820);
+          G.props.push({ kind: 'altar', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 64, dead: false, t: 0, charge: 0, bob: 0 });
+          PS.UI.toast('A dark altar has risen', 'blood');
+          PS.UI.tip('altar', 'Altars offer pacts: a strong gift with a lasting price', 'blood');
+        }
+      }
+      this.breachT -= dt;
+      if (this.breachT <= 0 && !bossAlive) {
+        this.breachT = 115;
+        if (!G.props.some((x) => x.kind === 'breach')) {
+          const a = U.rnd() * TAU, d = U.rand(520, 760);
+          G.props.push({ kind: 'breach', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
+          PS.UI.toast('A breach has opened', 'rift');
+          PS.UI.tip('breach', 'Step into a breach to wake it, then slay what pours out before it seals', 'rift');
+        }
+      }
       this.updateProps(dt);
       this.updatePickups(dt);
+    },
+
+    /* ------------------------------------------------------------ breaches */
+    /** called by Combat.kill for anything a breach spat out */
+    breachKill(e) {
+      const b = this.breach;
+      if (!b || e.breach !== b) return;
+      b.got++;
+      if (b.got >= b.need) this.breachEnd(true);
+    },
+    breachEnd(won) {
+      const G = PS.G, b = this.breach;
+      if (!b) return;
+      this.breach = null;
+      b.dead = true;
+      this.breachT = Math.max(this.breachT, 70);
+      if (won) {
+        G.breaches++;
+        G.score += 400 + 40 * b.need;
+        PS.FX.flash('#c06bff', 0.3);
+        PS.FX.ring(b.x, b.y, 260, '#e3b8ff', 0.6);
+        PS.FX.surge(b.x, b.y, '#c06bff', true);
+        PS.Audio.play('evolve', { vol: 0.6, pitch: 1.2 });
+        PS.UI.toast('Breach sealed', 'rift');
+        const s = G.player.stats, t = this.minutes();
+        for (let i = 0; i < 5; i++) this.pickup('gold', b.x + U.rand(-40, 40), b.y + U.rand(-40, 40), Math.round((4 + t) * s.gold));
+        this.pickup('breachchest', b.x, b.y, 0);
+      } else {
+        G.breachesLost++;
+        PS.FX.ring(b.x, b.y, 200, '#7a6a9a', 0.5);
+        PS.Audio.play('deny', { vol: 0.6, pitch: 0.7 });
+        PS.UI.toast('The breach sealed itself. Its spoils are lost', 'rift');
+      }
+    },
+    updateBreach(b, dt, inside) {
+      const G = PS.G;
+      if (!b.active) {
+        if (!inside) return;
+        const t = this.minutes();
+        b.active = true;
+        b.need = Math.min(80, Math.round(14 + t * 5.5));
+        b.left = b.total = 24;
+        b.out = 0; b.got = 0; b.acc = 3; // a first clutch at once
+        this.breach = b;
+        PS.FX.ring(b.x, b.y, b.r, '#c06bff', 0.5);
+        PS.FX.shake(5);
+        PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
+        PS.UI.toast(`The breach wakes. Slay ${b.need} of its spawn`, 'rift');
+        return;
+      }
+      b.left -= dt;
+      if (b.left <= 0) { this.breachEnd(false); return; }
+      // everything it will ever spit out is out within the first 60% of the timer, a few more than are needed
+      const all = Math.ceil(b.need * 1.15);
+      if (b.out < all) {
+        b.acc += (all / (b.total * 0.6)) * dt;
+        while (b.acc >= 1 && b.out < all) {
+          b.acc -= 1; b.out++;
+          const a = U.rnd() * TAU, d = U.rand(10, b.r * 0.8);
+          const e = PS.Enemies.spawn(this.pickType(), b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, { hpMult: 0.9 });
+          e.breach = b;
+          e.spawnT = 0.7; // they climb out before they bite
+          e.xp *= 1.5;
+        }
+      }
     },
 
     /** how many elite affixes the rift hands out right now */
@@ -352,7 +441,7 @@
     },
     pickup(kind, x, y, val) {
       const a = U.rnd() * TAU, sp = U.rand(40, 120);
-      PS.G.pickups.push({ kind, x, y, val, r: kind === 'chest' || kind === 'bosschest' ? 20 : 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, pull: false, dead: false, age: 0 });
+      PS.G.pickups.push({ kind, x, y, val, r: kind.endsWith('chest') ? 20 : 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, pull: false, dead: false, age: 0 });
     },
     updatePickups(dt) {
       const G = PS.G, p = G.player, s = p.stats, list = G.pickups;
@@ -367,7 +456,7 @@
           if (Math.abs(k.vx) < 1 && Math.abs(k.vy) < 1) { k.vx = 0; k.vy = 0; }
         }
         const dx = p.x - k.x, dy = p.y - k.y, d2 = dx * dx + dy * dy;
-        const chest = k.kind === 'chest' || k.kind === 'bosschest';
+        const chest = k.kind.endsWith('chest');
         if (!k.pull && !chest && d2 < range2 && k.age > 0.15) k.pull = true;
         if (k.pull) {
           const d = Math.sqrt(d2) || 1;
@@ -426,6 +515,9 @@
         case 'bosschest':
           PS.Game.openChest(3, 2);
           break;
+        case 'breachchest':
+          PS.Game.openChest(2, 1);
+          break;
       }
     },
 
@@ -455,6 +547,18 @@
               PS.Audio.play('deny', { vol: 0.5 });
             }
           }
+        } else if (pr.kind === 'breach') {
+          this.updateBreach(pr, dt, d2 < pr.r * pr.r);
+        } else if (pr.kind === 'altar') {
+          if (d2 < pr.r * pr.r) {
+            pr.charge += dt / 2.2;
+            if (pr.charge >= 1) {
+              pr.dead = true;
+              PS.FX.ring(pr.x, pr.y, 160, '#ff5a7a', 0.5);
+              PS.Audio.play('shrine', { pitch: 0.6 });
+              PS.G.queue.push({ kind: 'altar' });
+            }
+          } else pr.charge = Math.max(0, pr.charge - dt * 0.5);
         } else if (pr.kind === 'shrine') {
           if (d2 < pr.r * pr.r) {
             pr.charge += dt / 2.2;

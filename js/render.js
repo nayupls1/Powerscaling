@@ -518,10 +518,12 @@
     ctx.globalAlpha = 1;
   }
 
+  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'] };
+
   function drawProps(G) {
     const p = G.player, t = G.time;
     for (const pr of G.props) {
-      if (pr.dead || !visible(pr.x, pr.y, 90)) continue;
+      if (pr.dead || !visible(pr.x, pr.y, pr.r + 30)) continue;
       if (pr.kind === 'chest') {
         const cost = PS.Director.chestPrice(), can = p.gold >= cost;
         ctx.globalCompositeOperation = 'lighter';
@@ -534,6 +536,73 @@
         ctx.strokeText(cost + ' gold', pr.x, pr.y - 34);
         ctx.fillStyle = can ? '#ffd35c' : '#ff8a8a';
         ctx.fillText(cost + ' gold', pr.x, pr.y - 34);
+      } else if (pr.kind === 'altar') {
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = '#ff5a7a'; ctx.lineWidth = 2;
+        ctx.setLineDash([3, 9]); ctx.lineDashOffset = -t * 14;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.95; ctx.lineWidth = 5; ctx.strokeStyle = '#ffd0d8';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y - 10, 62, '#ff2846', 0.35 + 0.15 * Math.sin(t * 3.1));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 15, 28, 9, 0, 0, TAU); ctx.fill();
+        // a squat slab on two steps, with a bowl of something red
+        ctx.fillStyle = '#2a2038';
+        ctx.beginPath(); ctx.roundRect(pr.x - 26, pr.y + 4, 52, 12, 3); ctx.fill();
+        ctx.fillStyle = '#3b2d4f';
+        ctx.beginPath(); ctx.roundRect(pr.x - 19, pr.y - 6, 38, 12, 3); ctx.fill();
+        ctx.fillStyle = '#54406e';
+        ctx.beginPath(); ctx.moveTo(pr.x - 22, pr.y - 6); ctx.lineTo(pr.x - 16, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 22, pr.y - 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff3d5e';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y - 20, 12, 4, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffb3c0';
+        const fl = 5 + 2 * Math.sin(t * 9 + pr.x);
+        ctx.beginPath(); ctx.moveTo(pr.x - 5, pr.y - 21); ctx.quadraticCurveTo(pr.x - 2, pr.y - 28 - fl, pr.x + 1, pr.y - 34 - fl); ctx.quadraticCurveTo(pr.x + 6, pr.y - 27, pr.x + 5, pr.y - 21); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pr.x - 22, pr.y - 6); ctx.lineTo(pr.x - 16, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 22, pr.y - 6); ctx.closePath(); ctx.stroke();
+      } else if (pr.kind === 'breach') {
+        const act = pr.active, pulse = 0.5 + 0.5 * Math.sin(t * (act ? 7 : 2.4));
+        ctx.globalAlpha = act ? 0.8 : 0.5;
+        ctx.strokeStyle = '#c06bff'; ctx.lineWidth = act ? 3 : 2;
+        ctx.setLineDash([14, 10]); ctx.lineDashOffset = t * (act ? 60 : 18);
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (act) {
+          // the timer burns down around the rim
+          ctx.globalAlpha = 0.95; ctx.lineWidth = 5; ctx.strokeStyle = pr.left < 7 ? '#ff5a7a' : '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + (pr.left / pr.total) * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y, 80, '#a35cff', 0.3 + 0.2 * pulse);
+        ctx.globalCompositeOperation = 'source-over';
+        // the tear itself: a jagged dark slit with a bright edge
+        const h = 34 + 4 * pulse, w = 9 + 3 * pulse;
+        ctx.fillStyle = '#12061f';
+        ctx.beginPath();
+        ctx.moveTo(pr.x, pr.y - h); ctx.lineTo(pr.x + w, pr.y - h * 0.35); ctx.lineTo(pr.x + w * 0.4, pr.y); ctx.lineTo(pr.x + w * 1.1, pr.y + h * 0.4); ctx.lineTo(pr.x, pr.y + h);
+        ctx.lineTo(pr.x - w, pr.y + h * 0.3); ctx.lineTo(pr.x - w * 0.4, pr.y - h * 0.05); ctx.lineTo(pr.x - w * 1.1, pr.y - h * 0.45);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#e3b8ff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+        const label = act ? pr.got + ' / ' + pr.need : 'Breach';
+        ctx.font = `800 ${act ? 20 : 14}px ${PS.FONT_NUM}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,8,28,0.9)';
+        ctx.strokeText(label, pr.x, pr.y - h - 16);
+        ctx.fillStyle = act && pr.left < 7 ? '#ff8a9a' : '#e3b8ff';
+        ctx.fillText(label, pr.x, pr.y - h - 16);
+        if (act) {
+          const tl = Math.ceil(pr.left) + 's';
+          ctx.font = `700 13px ${PS.FONT_NUM}`;
+          ctx.strokeText(tl, pr.x, pr.y + h + 14);
+          ctx.fillText(tl, pr.x, pr.y + h + 14);
+        }
       } else if (pr.kind === 'shrine') {
         ctx.globalAlpha = 0.5;
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
@@ -619,8 +688,8 @@
     for (const k of list) {
       if (k.kind === 'xp' || k.kind === 'gold' || !visible(k.x, k.y, 30)) continue;
       const bob = Math.sin(t * 4 + k.x * 0.05) * 2;
-      if (k.kind === 'chest' || k.kind === 'bosschest') {
-        const boss = k.kind === 'bosschest';
+      if (k.kind.endsWith('chest')) {
+        const boss = k.kind !== 'chest';
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(k.x, k.y, boss ? 90 : 60, boss ? '#c06bff' : '#ffcf5c', 0.5 + 0.15 * Math.sin(t * 5));
         ctx.globalCompositeOperation = 'source-over';
@@ -1185,11 +1254,11 @@
       ctx.closePath(); ctx.fill();
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
-    for (const pr of G.props) if (!pr.dead) mark(pr.x, pr.y, pr.kind === 'chest' ? '#ffcf5c' : '#ffe9a8', pr.kind === 'chest' ? 'chest' : 'spark');
+    for (const pr of G.props) if (!pr.dead) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, m[0], m[1]); }
     // only the nearest heal/magnet is worth pointing at, and heals only when hurt
     let heal = null, hd = 1e12, mag = null, md = 1e12;
     for (const k of G.pickups) {
-      if (k.kind === 'chest' || k.kind === 'bosschest') mark(k.x, k.y, '#c77dff', 'chest');
+      if (k.kind.endsWith('chest')) mark(k.x, k.y, '#c77dff', 'chest');
       else if (k.kind === 'heal' || k.kind === 'magnet') {
         const d = U.dist2(k.x, k.y, p.x, p.y);
         if (k.kind === 'heal') { if (d < hd) { hd = d; heal = k; } }

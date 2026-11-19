@@ -643,9 +643,9 @@
       box.innerHTML = spec.cards.map((c, i) => {
         const rar = D.RARITY[c.tier] || D.RARITY[0];
         const col = c.color || (c.el ? elColor(c.el) : rar.color);
-        const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : rar.name;
+        const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : c.special === 'pact' ? 'Pact' : rar.name;
         const canBan = spec.kind === 'level' && (c.type === 'skill' || c.type === 'tome');
-        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' ? col : rar.color};--c:${col};--d:${i * 70}ms">
+        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' || c.special === 'pact' ? col : rar.color};--c:${col};--d:${i * 70}ms">
           <span class="card-key">${i + 1}</span>
           <span class="card-ban">${ico('ban', 22)}</span>
           <span class="card-tag">${esc(c.tag)}</span>
@@ -653,6 +653,7 @@
           <span class="card-title">${esc(c.title)}</span>
           ${c.el ? `<span class="card-el">${ico(D.ELEMENTS[c.el].icon, 13)} ${D.ELEMENTS[c.el].name}</span>` : ''}
           <span class="card-desc">${esc(c.desc)}</span>
+          ${c.price ? `<span class="card-price">${esc(c.price)}</span>` : ''}
           ${c.lines.map((l) => `<span class="card-line">${esc(l)}</span>`).join('')}
           <span class="card-rar">${kind}</span>
         </button>`;
@@ -668,6 +669,9 @@
           <button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Skip for 10 gold</button>`;
         click($('actReroll'), () => { if (!this.clickGuard()) this.rerollCards(); });
         click($('actBanish'), () => { if (!this.clickGuard()) { banishMode = !banishMode; this.renderCards(); } });
+        click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
+      } else if (spec.kind === 'pact') {
+        act.innerHTML = `<button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Walk away</button>`;
         click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
       } else act.innerHTML = '';
       box.classList.toggle('banishing', banishMode);
@@ -745,6 +749,7 @@
           <div class="chips">${p.tomes.map((t) => `<span class="chip" data-tip="+${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 15)} ${t.def.name.replace('Tome of ', '')} <em>${t.level}</em></span>`).join('') || '<span class="muted">None yet.</span>'}</div>
           <h3>Relics</h3>
           <div class="chips">${p.relicOrder.map((id) => { const r = D.RELICS[id]; return `<span class="chip r-${D.RARITY[r.tier].id}" style="--rc:${D.RARITY[r.tier].color}" data-tip="${esc(r.desc)}">${ico(r.icon, 15)} ${esc(r.name)}${p.relics[id] > 1 ? ` <em>×${p.relics[id]}</em>` : ''}</span>`; }).join('') || '<span class="muted">Open chests to find relics.</span>'}</div>
+          ${p.pacts.length ? `<h3>Pacts</h3><div class="chips">${p.pacts.map((id) => { const b = D.PACTS[id]; return `<span class="chip pact" data-tip="<b>${esc(b.name)}</b><br>${esc(b.gift)}<br><span class='off'>${esc(b.price)}</span>">${ico(b.icon, 15)} ${esc(b.name)}</span>`; }).join('')}</div>` : ''}
           ${Object.keys(p.boons).length ? `<h3>Blessings</h3><div class="chips">${Object.keys(p.boons).map((id) => { const b = D.BOONS[id]; return `<span class="chip">${ico(b.icon, 15)} +${b.fmt(p.boons[id])} ${b.stat.toLowerCase()}</span>`; }).join('')}</div>` : ''}
           <h3>Stats</h3>
           <dl class="statlist">${stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>

@@ -109,6 +109,30 @@
     b_cdr:   { name: 'Blessing of Focus',   icon: 'hourglass', per: 0.08, stat: 'Ability haste', fmt: pc, apply: (s, v) => { s.abilityHaste += v; } },
   };
 
+  /* ---------- Pacts: offered by the dark altars. A strong gift with a lasting price; each can be struck once a run ---------- */
+  // stats(s): the hero's side, applied on every recalc. rules(r): turned once, when the pact is struck. now(G, p): a one-off.
+  D.PACTS = {
+    blood:    { name: 'Pact of Blood',    icon: 'blood',     gift: '+35% damage.',                         price: '20% less max health.',
+      stats: (s) => { s.dmg += 0.35; s.hpMult -= 0.2; } },
+    frenzy:   { name: 'Pact of Frenzy',   icon: 'hourglass', gift: '+30% attack speed.',                   price: 'The horde moves 10% faster.',
+      stats: (s) => { s.atkSpd += 0.3; }, rules: (r) => { r.speed *= 1.1; } },
+    avarice:  { name: 'Pact of Avarice',  icon: 'coin',      gift: '150 gold now, and +60% gold found.',   price: 'Healing is 30% weaker.',
+      stats: (s) => { s.gold += 0.6; }, rules: (r) => { r.heal *= 0.7; }, now: (G, p) => { p.gold += 150; G.goldEarned += 150; } },
+    hunt:     { name: 'Pact of the Hunt', icon: 'skull',     gift: 'A relic of Rare quality or better, now.', price: 'Elites arrive 40% more often.',
+      rules: (r) => { r.eliteEvery *= 0.7; }, now: () => { PS.Game.openChest(3, 2); } },
+    insight:  { name: 'Pact of Insight',  icon: 'eye',       gift: '+35% experience.',                     price: 'The horde has 15% more health.',
+      stats: (s) => { s.xp += 0.35; }, rules: (r) => { r.hp *= 1.15; } },
+    glass:    { name: 'Pact of Edges',    icon: 'crosshair', gift: '+20% critical chance and +60% critical damage.', price: 'Enemies hit 20% harder.',
+      stats: (s) => { s.crit += 0.2; s.critMult += 0.6; }, rules: (r) => { r.dmg *= 1.2; } },
+    echoes:   { name: 'Pact of Echoes',   icon: 'multishot', gift: '+1 projectile on every skill that fires them.', price: 'Your ability recharges 30% slower.',
+      stats: (s) => { s.proj += 1; s.abilityHaste -= 0.23; } },
+    colossus: { name: 'Pact of the Titan', icon: 'mountain', gift: '+35% area of effect and +40 max health.', price: 'You move 12% slower.',
+      stats: (s) => { s.area += 0.35; s.maxHp += 40; s.speed *= 0.88; } },
+    swarm:    { name: 'Pact of the Swarm', icon: 'ghost',    gift: 'Two skill levels, now.',                price: 'Hordes arrive 35% more often.',
+      rules: (r) => { r.hordeEvery *= 0.74; }, now: (G, p) => { p.gainLevel(); p.gainLevel(); } },
+  };
+  for (const id in D.PACTS) D.PACTS[id].id = id;
+
   /* ---------- Relics: found in chests and dropped by bosses. No slot limit. ---------- */
   const affRelic = (el, name, icon) => ({
     name, icon, tier: 1, max: 2,

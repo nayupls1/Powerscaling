@@ -30,6 +30,7 @@
       this.tomes = [];
       this.relics = {}; this.relicOrder = [];
       this.boons = {};
+      this.pacts = [];
       this.talents = [0, 0, 0];
       this.talentsDue = 0;
       this.banned = new Set();
@@ -79,6 +80,7 @@
       }
       for (const t of this.tomes) t.def.apply(s, t.val);
       for (const id in this.boons) D.BOONS[id].apply(s, this.boons[id]);
+      for (const id of this.pacts) if (D.PACTS[id].stats) D.PACTS[id].stats(s);
       for (const id in this.relics) D.RELICS[id].apply(s, this.relics[id], this);
       cls.branches.forEach((br, bi) => {
         for (let i = 0; i < this.talents[bi]; i++) br.nodes[i].apply(s, this);
@@ -380,11 +382,15 @@
       this.xp += v * this.stats.xp;
       while (this.xp >= this.xpNext) {
         this.xp -= this.xpNext;
-        this.level++;
-        this.xpNext = xpFor(this.level);
-        this.pendingLevels++;
-        if (this.level % 6 === 0) this.talentsDue++;
+        this.gainLevel();
       }
+    }
+    /** one level, however it was earned (experience, or a pact that hands levels out) */
+    gainLevel() {
+      this.level++;
+      this.xpNext = xpFor(this.level);
+      this.pendingLevels++;
+      if (this.level % 6 === 0) this.talentsDue++;
     }
     onKill(e, o, canProc) {
       if (this.cls.onKill) this.cls.onKill(this, e, canProc);
@@ -418,6 +424,14 @@
       const def = D.BOONS[id];
       this.boons[id] = (this.boons[id] || 0) + D.incFor(def, tier);
       this.recalc();
+    }
+    /** strike a pact: its price is paid at once (the run's rules turn), its gift lasts the run */
+    addPact(id) {
+      const def = D.PACTS[id], G = PS.G;
+      this.pacts.push(id);
+      if (def.rules) def.rules(G.rules);
+      this.recalc();
+      if (def.now) def.now(G, this);
     }
     talentTotal() { return this.talents[0] + this.talents[1] + this.talents[2]; }
   }

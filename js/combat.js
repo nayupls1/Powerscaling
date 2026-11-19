@@ -338,6 +338,7 @@
 
       // drops
       PS.Director.drops(e);
+      if (e.breach) PS.Director.breachKill(e);
 
       const canProc = G.procN < 20;
       if (canProc) {
