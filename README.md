@@ -54,6 +54,8 @@ A run is paced in four acts of three minutes, each closed by a boss. The hero st
 - **Falls** follow them: every boss slain deepens the rift, making the horde sturdier in one step, and new enemy types arrive through the run.
 - **Waves**: spawn pressure breathes in a cycle anchored on the hordes, with a lull after each horde breaks and a surge that builds into the next. The swells start gentle and reach full strength once the kit has filled out.
 
+Every level-up restores 3% of max health, a breather that matters most in the opening, when levels come fast and the kit is small.
+
 Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), interpolated geometrically, so each act can be tuned on its own. Overtime starts when the Rift Lord falls and ramps until it ends the run. The permanent skill tree roughly doubles a hero's strength when fully bought: enough that a weaker player can grind their way to a win, not so much that a strong one is never threatened.
 
 ## Project layout

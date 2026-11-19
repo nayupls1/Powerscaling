@@ -37,7 +37,7 @@
   const BOSSES = [
     /* ---------------------------------------------------------------- 0: Gorath */
     {
-      id: 'gorath', name: 'Gorath', title: 'the Bonecrusher', r: 46, hp: 900, spd: 80, dmg: 18, atk: 20, xp: 120, color: '#d1482f', sprite: 'boss0',
+      id: 'gorath', name: 'Gorath', title: 'the Bonecrusher', r: 46, hp: 800, spd: 80, dmg: 18, atk: 20, xp: 120, color: '#d1482f', sprite: 'boss0',
       cd: 2.1, pattern: ['slam', 'charge', 'summon', 'slam', 'charge'],
       attacks: {
         slam(e, bs, dt, p) {
@@ -64,7 +64,7 @@
     },
     /* ---------------------------------------------------------------- 1: Vexara */
     {
-      id: 'vexara', name: 'Vexara', title: 'the Hive Mother', r: 42, hp: 1100, spd: 64, dmg: 20, atk: 24, xp: 300, color: '#8fe04a', sprite: 'boss1',
+      id: 'vexara', name: 'Vexara', title: 'the Hive Mother', r: 42, hp: 950, spd: 64, dmg: 20, atk: 24, xp: 300, color: '#8fe04a', sprite: 'boss1',
       cd: 1.9, keep: 250, pattern: ['spiral', 'pools', 'brood', 'burst', 'pools'],
       attacks: {
         spiral(e, bs, dt) {

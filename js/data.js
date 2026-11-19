@@ -189,7 +189,7 @@
   node('v1', 'vitality', 'Hardy',        'heart',   -1.35, 0,  5, 20,  ['core'], (r) => `+${10 * r} max health`, (s, r) => { s.maxHp += 10 * r; });
   node('v2', 'vitality', 'Mending',      'plus',    -2.6, -1.15,  5, 35,  ['v1'],   (r) => `+${(0.25 * r).toFixed(2)} health regeneration`, (s, r) => { s.regen += 0.25 * r; });
   node('v3', 'vitality', 'Thick Hide',   'shield',  -2.6, 1.15,   5, 35,  ['v1'],   (r) => `+${2 * r} armor`, (s, r) => { s.armor += 2 * r; });
-  node('v4', 'vitality', 'Second Wind',  'potion',  -3.85, -1.15,  3, 60,  ['v2'],   (r) => `Level-ups heal ${5 * r}% of max health`, (s, r) => { s.m.levelHeal = 0.05 * r; });
+  node('v4', 'vitality', 'Second Wind',  'potion',  -3.85, -1.15,  3, 60,  ['v2'],   (r) => `Level-ups heal ${5 * r}% more of max health`, (s, r) => { s.m.levelHeal = 0.05 * r; });
   node('v5', 'vitality', 'Evasion',      'feather', -3.85, 1.15,   3, 60,  ['v3'],   (r) => `+${2 * r}% chance to dodge hits`, (s, r) => { s.dodge += 0.02 * r; });
   node('v6', 'vitality', 'Aegis',        'cross',   -4.75, 0,   2, 90,  ['v4', 'v5'], (r) => `Stay invulnerable ${(0.15 * r).toFixed(2)}s longer after being hit`, (s, r) => { s.m.iframes = 0.15 * r; });
   node('v7', 'vitality', 'Undying',      'phoenix', -5.95, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });

@@ -16,7 +16,7 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.5], [1, 2.1], [2, 2.9], [3, 4], [4.5, 7], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
+  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
 
   // from: minute the type first appears, w: weight once established
