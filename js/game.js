@@ -59,7 +59,7 @@
         cam: { x: 0, y: 0 }, shake: 0, flashA: 0, flashCol: '#fff', hitstop: 0, slowmo: 0, boss: null, over: false,
         viewW: vs.w || 1280, viewH: vs.h || 800, biome: 0,
         ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
-        breaches: 0, breachesLost: 0, flawless: 0, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
+        breaches: 0, breachesLost: 0, flawless: 0, hoarders: 0, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
       PS.G = G;
       PS.FX.reset();

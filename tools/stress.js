@@ -47,6 +47,7 @@ const { chromium } = require('playwright');
             // every elite affix in turn (two at a time), every horde pattern, and every reaction on whatever is nearest
             const k = n / 240, pos = PS.Director.ringPos(-200);
             PS.Enemies.spawn('hound', pos.x, pos.y, { elite: true, affixes: [affixes[k % affixes.length], affixes[(k + 3) % affixes.length]] });
+            if (k % 5 === 0) { const q = PS.Director.ringPos(-300), h = PS.Enemies.spawn('hoarder', q.x, q.y); h.life = k % 10 ? 15 : 0.5; h.dripAt = h.maxHp * 0.8; }
             for (const id of ['toad', 'toad', 'warder']) { const q = PS.Director.ringPos(-260); PS.Enemies.spawn(id, q.x, q.y, { elite: id === 'warder' && k % 3 === 0 }); }
             if (k % 4 === 0) PS.Director.horde(9, hordes[(k / 4) % hordes.length]);
             // a breach under the hero's feet, so it wakes at once

@@ -44,10 +44,11 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
 - **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 52 relics from chests, elites and bosses, and blessings from shrines on the map.
 - **Altars and breaches** — dark altars offer one of nine pacts: a strong gift with a price that lasts the run (35% more damage for a fifth of your health, a rare relic for elites that come 40% more often), or you can walk away. Breaches are a trial: step in to wake one, then slay enough of what pours out before the timer on its rim burns down, and it leaves a relic behind.
+- **Hoarders** — every couple of minutes a Rift Hoarder scurries out with a sack of gold and a relic and runs for it, shedding coins as it is hurt. Kill it before the ring around it empties, or it slips away.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
 - **Red means danger** — every enemy blast, beam and shockwave is drawn in one reserved red with a dashed rim that flashes white before it lands, whoever cast it. The hero's own ground effects are soft-edged, and their strikes are marked with a thin reticle, so a glance tells you which circles to leave.
 - **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
-- **A horde with roles** — fourteen enemy types arrive through the run. Besides chasers, chargers and gunners there are Rift Toads, which crouch, mark the spot you stand on and leap onto it, and Warders, which shield every enemy inside their dotted ring until you cut them down.
+- **A horde with roles** — fifteen enemy types arrive through the run. Besides chasers, chargers and gunners there are Rift Toads, which crouch, mark the spot you stand on and leap onto it, and Warders, which shield every enemy inside their dotted ring until you cut them down.
 - **Elites with affixes** — every elite carries one of seven affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding or Frenzied. Deeper rifts and overtime stack more than one.
 - **Four horde shapes** — the closing ring and the stampede, then a pincer from two sides and a wall that sweeps the whole screen with a single gap in it.
 - **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.
@@ -55,7 +56,7 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 - **Daily rift** — one seed a day, the same for everyone: a set class, one of eight mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence.
 - **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
 - **Codex** — a record of every relic you have held, evolution awakened, reaction set off and pact struck, and a bestiary with a note and a kill count for each enemy. Undiscovered entries stay hidden.
-- **Feats** — 47 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
+- **Feats** — 48 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
 - **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 

@@ -67,6 +67,7 @@
       this.altarT = 165;   // dark altars: a pact with a price
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
+      this.hoarderT = 130; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
       this.victory = false; this.victoryAt = 0;
@@ -262,6 +263,19 @@
           PS.UI.tip('breach', 'Step into a breach to wake it, then slay what pours out before it seals', 'rift');
         }
       }
+      this.hoarderT -= dt;
+      if (this.hoarderT <= 0 && !bossAlive) {
+        this.hoarderT = 110 + EV() * 50;
+        const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
+        const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
+        const e = PS.Enemies.spawn('hoarder', x, y, { hpMult: 5 });
+        e.life = 15; e.dripAt = e.maxHp * 0.8; e.score = 300; e.spawnT = 0.5;
+        this.hoarder = e;
+        PS.FX.portal(x, y, 60, '#f0b94a');
+        PS.Audio.play('chest', { vol: 0.5, pitch: 1.4 });
+        PS.UI.toast('A Hoarder scurries out of the rift. Catch it', 'coin');
+        PS.UI.tip('hoarder', 'Hoarders carry gold and a relic, and run. Kill one before it slips away', 'coin');
+      }
       this.updateProps(dt);
       this.updatePickups(dt);
     },
@@ -405,6 +419,14 @@
         for (let i = 0; i < 8; i++) this.pickup('gold', e.x + U.rand(-60, 60), e.y + U.rand(-60, 60), Math.round((12 + t * 2) * s.gold));
         this.pickup('bosschest', e.x, e.y, 0);
         this.pickup('heal', e.x + 40, e.y + 20, 0);
+        return;
+      }
+      if (e.def.hoard) {
+        if (this.hoarder === e) this.hoarder = null;
+        G.hoarders++;
+        for (let i = 0; i < 10; i++) this.pickup('gold', e.x + U.rand(-40, 40), e.y + U.rand(-40, 40), Math.round((6 + t * 1.5) * s.gold));
+        this.pickup('chest', e.x, e.y, 0);
+        PS.UI.toast('Hoarder slain', 'coin');
         return;
       }
       if (e.elite) {

@@ -399,6 +399,22 @@
       ell(g, 0.08, 0, 0.3, 0.3); F(g, dk, lw * 0.7);
       g.beginPath(); g.arc(0.08, 0, 0.5, 0, TAU); S(g, dk, 0.05, 0.6);
     },
+    hoarder(g, ph, col, lw) {
+      const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.45), sack = '#8a5a2b', gold = '#ffd35c';
+      // a bulging sack slung behind, coins spilling from a tear
+      ell(g, -0.78, 0.06 + sw * 0.05, 0.72, 0.66); F(g, vol(g, -0.78, 0.06, 0.72, sack), lw);
+      g.beginPath(); g.moveTo(-0.3, -0.2); g.quadraticCurveTo(-0.1, 0.05, -0.3, 0.3); S(g, dark(sack, 0.4), 0.09);
+      for (const c of [[-1.1, -0.3, 0.13], [-0.9, 0.36, 0.11], [-1.36, 0.12, 0.1], [-0.62, -0.26, 0.09]]) { ell(g, c[0], c[1] + sw * 0.03, c[2], c[2]); F(g, gold, lw * 0.6); }
+      // scurrying feet
+      for (const s of [-1, 1]) { ell(g, 0.1 + s * sw * 0.34, s * 0.5, 0.3, 0.17); F(g, dk, lw); }
+      // arms hugging the sack strap
+      for (const s of [-1, 1]) limb(g, [0.2, s * 0.56, -0.1, s * 0.78, -0.4, s * 0.5], 0.2, dk, lw);
+      ell(g, 0.2, 0, 0.62, 0.6); F(g, vol(g, 0.2, 0, 0.62, col), lw);
+      // big ears and greedy eyes
+      for (const s of [-1, 1]) { poly(g, [0.2, s * 0.44, 0.02, s * 1.04, 0.52, s * 0.6]); F(g, lite(col, 0.15), lw); }
+      eyes(g, 0.52, 0.24, 0.13, '#ffffff', true);
+      glowDot(g, 0.82, 0, 0.07, gold, 1.6);
+    },
     knight(g, ph, col, lw) {
       const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.5), red = '#ff5a6e', steel = lite(col, 0.25);
       // tattered cape
@@ -636,7 +652,7 @@
     },
   };
   /** walk cycles per second */
-  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0,
+  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0, hoarder: 3.2,
     boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75 };
 
   /** a sword along +x from the hand at the origin */

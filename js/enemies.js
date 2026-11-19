@@ -18,6 +18,7 @@
     hexer:    { name: 'Hexer',        r: 14, hp: 30, spd: 60,  dmg: 8,  xp: 5, mass: 1,   ai: 'ranged',  color: '#c04bb0', range: 330, shotCd: 3.4, shotDmg: 9, shotSpd: 190, burst: 3 },
     toad:     { name: 'Rift Toad',    r: 15, hp: 26, spd: 46,  dmg: 11, xp: 4, mass: 1.4, ai: 'leaper',  color: '#3fbf6a', leap: { range: 340, cd: 4, r: 56, dmg: 13 } },
     warder:   { name: 'Warder',       r: 15, hp: 36, spd: 52,  dmg: 8,  xp: 7, mass: 1.6, ai: 'warder',  color: '#e9d8a6', ward: { r: 150, cut: 0.33 } },
+    hoarder:  { name: 'Rift Hoarder', r: 15, hp: 55, spd: 118, dmg: 0,  xp: 12, mass: 1.5, ai: 'flee',    color: '#f0b94a', harmless: true, hoard: true },
     knight:   { name: 'Dread Knight', r: 16, hp: 72, spd: 66,  dmg: 17, xp: 8, mass: 2.6, ai: 'chase',   color: '#5b6485', taken: 0.75 },
   };
   // one line each for the codex: what it does and what to do about it
@@ -36,6 +37,7 @@
     hexer: 'Fires bursts of three bolts. A Ward throws them straight back.',
     warder: 'Everything inside its dotted ring takes a third less damage. Kill it first.',
     knight: 'Armoured: takes a quarter less damage from everything.',
+    hoarder: 'Carries a sack of gold and a relic, and runs. Catch it before it slips back into the rift.',
   };
   for (const id in DEFS) { DEFS[id].id = id; DEFS[id].sprite = id; DEFS[id].note = NOTES[id] || ''; }
 
@@ -263,12 +265,12 @@
 
         // ---- contact damage
         const rr = e.r + p.r * 0.75;
-        if (d < rr && e.freezeT <= 0 && e.spawnT <= 0 && e.hop <= 0) {
+        if (d < rr && e.freezeT <= 0 && e.spawnT <= 0 && e.hop <= 0 && !e.def.harmless) {
           p.hurt(e.dmg * (pandemic && e.poisStacks > 0 ? 0.75 : 1), e);
         }
 
         // ---- recycle stragglers far behind the player
-        if (d > 1350 && !e.boss) {
+        if (d > 1350 && !e.boss && !e.def.hoard) {
           const pos = PS.Director.ringPos();
           e.x = pos.x; e.y = pos.y; e.kx = 0; e.ky = 0;
         }
@@ -309,6 +311,27 @@
     },
     chase(e, dt, sp, dx, dy, d) {
       moveTo(e, dx, dy, d, sp, dt);
+    },
+    flee(e, dt, sp, dx, dy, d) {
+      // runs from the hero in a weaving line, shedding coins as it is hurt, and slips away if it is not caught in time
+      const G = PS.G, w = Math.sin(e.t * 2.6 + e.wob) * 0.8;
+      const nx = -dx / d, ny = -dy / d, vx = nx - ny * w, vy = ny + nx * w, l = Math.hypot(vx, vy) || 1;
+      const k = d > 520 ? 0.35 : 1; // it dawdles once it has a lead, so it can be run down
+      e.x += (vx / l) * sp * k * dt; e.y += (vy / l) * sp * k * dt;
+      e.ang = Math.atan2(vy, vx);
+      if (e.hp < e.dripAt) {
+        e.dripAt -= e.maxHp * 0.2;
+        for (let i = 0; i < 2; i++) PS.Director.pickup('gold', e.x, e.y, Math.round((4 + PS.Director.minutes()) * G.player.stats.gold));
+        PS.Audio.play('gold', { vol: 0.4 });
+      }
+      e.life -= dt;
+      if (e.life <= 0) {
+        e.dead = true; // gone, not slain: no drops, no kill
+        PS.FX.puff(e.x, e.y, '#c06bff', 14);
+        PS.FX.ring(e.x, e.y, 60, '#c06bff', 0.35);
+        PS.UI.toast('The Hoarder slipped away', 'coin');
+        if (PS.Director.hoarder === e) PS.Director.hoarder = null;
+      }
     },
     leaper(e, dt, sp, dx, dy, d, p) {
       // state 0 shuffle closer, 1 crouch (the landing spot is marked), 2 in the air, 3 recover

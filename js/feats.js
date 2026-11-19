@@ -55,6 +55,7 @@
   feat('gold5k',   'loot',  'Deep Pockets',      'coin',     'Earn 5,000 gold in one run.',                     40,  (G) => G.goldEarned >= 5000);
   feat('pact1',    'loot',  'Signed in Blood',   'blood',    'Strike a pact at a dark altar.',                  20,  (G, p) => p.pacts.length >= 1);
   feat('pact3',    'loot',  'In Too Deep',       'mask',     'Hold three pacts at once.',                       60,  (G, p) => p.pacts.length >= 3);
+  feat('hoarder',  'loot',  'Finders Keepers',   'coin',     'Catch and slay a Rift Hoarder.',                  20,  (G) => G.hoarders >= 1);
   feat('breach1',  'loot',  'Sealer',            'rift',     'Seal a breach.',                                  20,  (G) => G.breaches >= 1);
   feat('breach4',  'loot',  'Warden of the Rift', 'shield',  'Seal four breaches in one run.',                  60,  (G) => G.breaches >= 4);
 

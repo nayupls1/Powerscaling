@@ -777,6 +777,11 @@
         ctx.globalAlpha = 0.35; ctx.fillStyle = '#9fe6ff';
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.9, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
       }
+      if (e.def.hoard) {
+        // how long before it slips away, as a ring that empties
+        ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 7, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, e.life / 15)); ctx.stroke(); ctx.globalAlpha = 1;
+      }
       if (e.def.ward) {
         // the Warder's reach: pale, thin and dotted, nothing like the red of a blast
         ctx.globalAlpha = 0.5; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * 12;
@@ -1302,6 +1307,8 @@
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
     for (const pr of G.props) if (!pr.dead) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, m[0], m[1]); }
+    const hoarder = PS.Director.hoarder;
+    if (hoarder && !hoarder.dead) mark(hoarder.x, hoarder.y, '#ffd35c', 'coin');
     // only the nearest heal/magnet is worth pointing at, and heals only when hurt
     let heal = null, hd = 1e12, mag = null, md = 1e12;
     for (const k of G.pickups) {
