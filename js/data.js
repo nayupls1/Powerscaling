@@ -219,7 +219,7 @@
     momentum:   { name: 'Stormstride',     icon: 'wings',   tier: 3, max: 1, desc: '+12% move speed. Bonus move speed also raises your damage.', apply: (s) => { s.speed *= 1.12; s.f.momentum = 1; } },
     twinsouls:  { name: 'Twin Souls',      icon: 'multishot', tier: 3, max: 2, desc: '+1 projectile on every skill that fires projectiles.', apply: (s, n) => { s.proj += n; } },
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
-    stillwater: { name: 'Still Water',     icon: 'wave',    tier: 3, max: 1, desc: '+6% damage for every 10 seconds since you were last hit, up to +48%. Being hit resets it.', apply: (s, n, p) => { s.dmg += Math.min(0.48, 0.06 * Math.floor((p.calmT || 0) / 10)); }, dynamic: true },
+    stillwater: { name: 'Still Water',     icon: 'wave',    tier: 3, max: 1, desc: '+5% damage for every 10 seconds since you were last hit, up to +35%. Being hit resets it.', apply: (s, n, p) => { s.dmg += Math.min(0.35, 0.05 * Math.floor((p.calmT || 0) / 10)); }, dynamic: true },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },
