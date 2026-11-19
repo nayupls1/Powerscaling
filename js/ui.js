@@ -434,10 +434,19 @@
       const d = PS.Save.data, rows = d.history;
       $('boardScope').textContent = 'Your last ' + (rows.length || '') + ' runs on this device';
       $('boardScope').classList.remove('global');
-      if (!rows.length) { $('boardBody').innerHTML = '<div class="empty"><p>No runs yet. Every run you finish is kept here with its seed.</p></div>'; return; }
+      const seedBox = `<form class="seed-form" id="seedForm"><label for="seedIn">Play a seed</label>
+          <input id="seedIn" type="text" maxlength="40" placeholder="Paste a seed from a friend's run" autocomplete="off">
+          <select id="seedCls" aria-label="Class">${D.CLASS_IDS.filter((id) => d.unlocked[id]).map((id) => `<option value="${id}"${id === selClass ? ' selected' : ''}>${D.CLASSES[id].name}</option>`).join('')}</select>
+          <button class="btn btn-small" type="submit">Play</button></form>`;
+      const wireSeed = () => $('seedForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const v = $('seedIn').value.trim();
+        if (v) { PS.Audio.play('uiClick', { vol: 0.5 }); PS.Game.start($('seedCls').value, { seed: v }); }
+      });
+      if (!rows.length) { $('boardBody').innerHTML = seedBox + '<div class="empty"><p>No runs yet. Every run you finish is kept here with its seed.</p></div>'; wireSeed(); return; }
       const per = {};
       for (const r of rows) { const c = per[r.cls] || (per[r.cls] = { n: 0, won: 0, best: 0 }); c.n++; if (r.won) c.won++; c.best = Math.max(c.best, r.score); }
-      $('boardBody').innerHTML = `
+      $('boardBody').innerHTML = `${seedBox}
         <div class="hist-sum">${D.CLASS_IDS.filter((id) => per[id]).map((id) => `<span class="chip" style="--rc:${D.CLASSES[id].color}"><b style="color:${D.CLASSES[id].color}">${D.CLASSES[id].name}</b> ${per[id].n} run${per[id].n > 1 ? 's' : ''}, ${per[id].won} won, best <em>${U.fmtNum(per[id].best)}</em></span>`).join('')}</div>
         <ul class="hist">${rows.map((r, i) => {
           const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
@@ -447,10 +456,11 @@
             <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
             <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
             <span class="hist-build muted">${esc((r.build || []).join(', '))}</span>
-            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · seed ${esc(String(r.seed).slice(0, 12))}</small>
+            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · seed <span class="seed-text">${esc(String(r.seed))}</span></small>
               ${r.daily || r.rush ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
           </li>`;
         }).join('')}</ul>`;
+      wireSeed();
       $('boardBody').querySelectorAll('[data-replay]').forEach((b) => click(b, () => {
         const r = rows[+b.dataset.replay];
         PS.Game.start(r.cls, { seed: r.seed, depth: Math.min(r.depth || 0, d.depth.max) });
