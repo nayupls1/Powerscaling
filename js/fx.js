@@ -4,13 +4,16 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U, TAU = U.TAU;
   const MAX_PARTS = 900, MAX_NUMS = 90;
+  // kill procs can fire 20 rings or blasts a frame; past this many on screen more of them only cost frame time
+  const MAX_RINGS = 70, MAX_BOOMS = 60;
   const EL_COL = { fire: '#ffb061', frost: '#9fe6ff', storm: '#ffe14d', venom: '#b8f078', steel: '#f4f6ff', void: '#dba6ff' };
 
   let parts = [], nums = [], bolts = [], rings = [], slashes = [], ghosts = [], booms = [];
   let budget = 0; // per-frame particle allowance so mass deaths don't flood
+  let cap = MAX_PARTS;
 
   function part(x, y, vx, vy, life, size, color, drag, grav) {
-    if (parts.length >= MAX_PARTS || budget <= 0) return;
+    if (parts.length >= cap || budget <= 0) return;
     budget--;
     parts.push({ x, y, vx, vy, life, max: life, size, color, drag: drag === undefined ? 3 : drag, grav: grav || 0 });
   }
@@ -26,7 +29,10 @@
     counts() { return { parts: parts.length, nums: nums.length }; },
 
     update(dt) {
-      budget = 140;
+      // fewer particles once the renderer has had to trade away resolution
+      const det = PS.Render.detail();
+      budget = Math.round(140 * det);
+      cap = Math.round(MAX_PARTS * det);
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i];
         p.life -= dt;
@@ -94,13 +100,15 @@
       booms.push({ x: e.x, y: e.y, r: 320, life: 0.6, max: 0.6, color: e.def.color, big: true });
     },
     explosion(x, y, r, color, big) {
+      if (booms.length >= (big ? MAX_BOOMS * 1.5 : MAX_BOOMS)) { burst(x, y, 3, color, r * 3.2, 0.4, 4); return; }
       booms.push({ x, y, r, life: big ? 0.42 : 0.28, max: big ? 0.42 : 0.28, color, big: !!big });
       burst(x, y, big ? 18 : 6, color, r * 3.2, 0.4, big ? 6 : 4);
     },
     ring(x, y, r, color, dur) {
+      if (rings.length >= MAX_RINGS) return;
       rings.push({ x, y, r, life: dur || 0.3, max: dur || 0.3, color, w: 4 });
     },
-    shatter(x, y, color) { burst(x, y, 7, color, 240, 0.4, 4); rings.push({ x, y, r: 70, life: 0.22, max: 0.22, color, w: 3 }); },
+    shatter(x, y, color) { burst(x, y, 7, color, 240, 0.4, 4); if (rings.length < MAX_RINGS) rings.push({ x, y, r: 70, life: 0.22, max: 0.22, color, w: 3 }); },
     frostBurst(x, y, r) {
       for (let i = 0; i < 26; i++) {
         const a = (i / 26) * TAU, sp = r * 2.6;
@@ -277,6 +285,7 @@
     },
   };
 
-  PS.FONT_NUM = '"Outfit", "Segoe UI", system-ui, sans-serif';
+  // condensed numerals: big numbers stay narrow enough to read in a crowd
+  PS.FONT_NUM = '"Big Shoulders Display", "Arial Narrow", system-ui, sans-serif';
   PS.FX = FX;
 })();

@@ -19,6 +19,8 @@
   let camL = 0, camT = 0; // world coords of the screen's top-left
   const view = { x0: 0, y0: 0, x1: 0, y1: 0 };
   const tiles = [], SPR = {}, glows = {};
+  const RES_STEPS = [1, 0.85, 0.7, 0.6, 0.5];
+  const auto = { ema: 16, slow: 0, fast: 0, cool: 0, ceil: 1, raisedAt: -1e9 };
 
   function mk(w, h) {
     const c = document.createElement('canvas');
@@ -40,8 +42,31 @@
     glows[color] = g;
     return g;
   }
+  /* Soft glows are the biggest fill cost late in a run: dozens of zone, aura and projectile glows, each hundreds of pixels
+     wide. Magnifying the 64px gradient that far takes the slow filtered path, so big glows use a copy cached at their
+     on-screen size (radius steps of ~2.5%) and are blitted 1:1 on whole device pixels, about three times cheaper. */
+  const sized = new Map();
   function drawGlow(x, y, r, color, alpha) {
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    const px = r * scale;
+    if (px < 40 || px > 480) { ctx.drawImage(glow(color), x - r, y - r, r * 2, r * 2); return; }
+    const q = Math.round(Math.log(px) * 40), key = color + q;
+    let g = sized.get(key);
+    if (!g) {
+      const R = Math.round(Math.exp(q / 40));
+      g = mk(R * 2, R * 2);
+      g.getContext('2d').drawImage(glow(color), 0, 0, R * 2, R * 2);
+      if (sized.size > 200) sized.delete(sized.keys().next().value); // oldest first; the working set is small
+      sized.set(key, g);
+    }
+    const h = g.width / 2;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(g, Math.round((x - camL) * scale - h), Math.round((y - camT) * scale - h));
+    worldTf();
+  }
+  /** glow in raw canvas pixels (screen space), for the menu backdrop */
+  function drawGlowPx(x, y, r, color, alpha) {
+    ctx.globalAlpha = alpha;
     ctx.drawImage(glow(color), x - r, y - r, r * 2, r * 2);
   }
 
@@ -385,10 +410,26 @@
   }
   function buildSprite(key, r, col) {
     const K = 2; // supersample
-    const size = Math.ceil(r * 5.2);
-    const img = mk(size * K, size * K), g = img.getContext('2d');
+    let size = Math.ceil(r * 5.2);
+    const full = mk(size * K, size * K), g = full.getContext('2d');
     g.setTransform(K, 0, 0, K, (size * K) / 2, (size * K) / 2);
     ART[key](g, r, col);
+    // the art canvas is generous so nothing clips; crop it to the farthest opaque pixel from the centre so every enemy
+    // blit (hundreds a frame late in a run) only touches pixels that can show something
+    let img = full;
+    try {
+      const N = full.width, px = full.getContext('2d').getImageData(0, 0, N, N).data, c = N / 2;
+      let m2 = 0;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        if (px[(y * N + x) * 4 + 3] > 6) { const dx = x + 0.5 - c, dy = y + 0.5 - c, d = dx * dx + dy * dy; if (d > m2) m2 = d; }
+      }
+      const half = Math.min(c, Math.ceil(Math.sqrt(m2) + 2 * K)), n = half * 2;
+      if (n < N) {
+        img = mk(n, n);
+        img.getContext('2d').drawImage(full, c - half, c - half, n, n, 0, 0, n, n);
+        size = n / K;
+      }
+    } catch (e) { /* tainted or unsupported: keep the full canvas */ }
     const tint = (color, alpha) => {
       const c = mk(img.width, img.height), cg = c.getContext('2d');
       cg.drawImage(img, 0, 0);
@@ -409,6 +450,7 @@
   /* ------------------------------------------------------------------ layers */
   function drawZones(G) {
     const t = G.time;
+    let riftGlows = 8;
     for (const z of G.zones) {
       if (!visible(z.x, z.y, z.r + 20)) continue;
       const fade = Math.min(1, z.life / 0.4, z.age / 0.2);
@@ -445,8 +487,9 @@
         ctx.globalAlpha = 0.4 * fade;
         ctx.fillStyle = '#12061f';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 0.45, 0, TAU); ctx.fill();
+        // a rift glow covers the whole zone and implosions stack by the dozen: only a few long-lived rifts get one
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.22 * fade);
+        if (k === 'rift' && riftGlows-- > 0) drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.22 * fade);
         ctx.strokeStyle = '#dba6ff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.8 * fade;
         for (let i = 0; i < 3; i++) {
           const a = -t * 4 + (i * TAU) / 3, rr = z.r * (0.35 + 0.22 * i);
@@ -1078,8 +1121,42 @@
       this.resize();
       window.addEventListener('resize', () => this.resize());
     },
+    /* Resolution scaling. 'high' renders at the device pixel ratio (capped at 2), 'low' at 70% of it, and 'auto' starts high
+       and steps the backing resolution down while frames run long, then back up once there is headroom again. */
+    quality: 'auto',
+    res: 1,
+    setQuality(q) {
+      this.quality = q === 'high' || q === 'low' ? q : 'auto';
+      this.res = this.quality === 'low' ? 0.7 : 1;
+      auto.ema = 16; auto.slow = 0; auto.fast = 0; auto.ceil = 1;
+      this.resize();
+    },
+    /** real (unclamped) frame interval in ms, fed by the main loop while a run is being played */
+    frameTime(ms) {
+      if (this.quality !== 'auto' || !(ms > 0) || ms > 250) return; // tab switches and hitches are not load
+      auto.ema += (ms - auto.ema) * 0.05;
+      if (auto.cool > 0) { auto.cool -= ms; return; }
+      if (auto.ema > 22) {
+        // sustained below ~45 fps: drop a step; a step that had to be undone soon after caps how high we climb back
+        if ((auto.slow += ms) > 1500 && this.res > RES_STEPS[RES_STEPS.length - 1]) {
+          if (performance.now() - auto.raisedAt < 6000) auto.ceil = this.res - 0.01;
+          this.res = RES_STEPS.find((r) => r < this.res - 0.01) || this.res;
+          auto.slow = 0; auto.fast = 0; auto.cool = 2000; auto.ema = 16;
+          this.resize();
+        }
+      } else auto.slow = Math.max(0, auto.slow - ms);
+      if (auto.ema < 17.5 && this.res < 1) {
+        const up = RES_STEPS.slice().reverse().find((r) => r > this.res + 0.01 && r <= auto.ceil);
+        if (up && (auto.fast += ms) > 8000) {
+          this.res = up; auto.fast = 0; auto.cool = 2000; auto.raisedAt = performance.now();
+          this.resize();
+        }
+      } else auto.fast = 0;
+    },
+    /** effects budget: 1 at full quality, less once auto has had to give up resolution */
+    detail() { return this.quality === 'low' ? 0.6 : this.res >= 0.85 ? 1 : this.res >= 0.7 ? 0.8 : 0.6; },
     resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 2) * this.res;
       const cw = canvas.clientWidth || window.innerWidth, ch = canvas.clientHeight || window.innerHeight;
       W = Math.max(1, Math.round(cw * dpr));
       H = Math.max(1, Math.round(ch * dpr));
@@ -1089,6 +1166,8 @@
       if (PS.G) { PS.G.viewW = W / scale; PS.G.viewH = H / scale; }
     },
     viewSize() { return { w: W / scale, h: H / scale }; },
+    width() { return W * 10000 + H; },
+    drawnW: 0,
     /** convert a client (CSS px) position into world coordinates */
     toWorld(cx, cy) {
       const rect = canvas.getBoundingClientRect();
@@ -1121,7 +1200,8 @@
       };
       drawGround(G); lap('ground');
       worldTf();
-      drawZones(G); lap('zones');
+      drawZones(G);
+      lap('zones');
       drawHazards(G);
       drawProps(G); lap('hazards+props');
       drawPickups(G); lap('pickups');
@@ -1139,6 +1219,7 @@
       drawOverlays(G); lap('overlays');
       drawIndicators(G); lap('indicators');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.drawnW = W * 10000 + H;
     },
     /** idle backdrop behind the menus */
     clearOverlays,
@@ -1161,7 +1242,7 @@
         const ph = (t * sp + U.hash2(i, 7)) % 1;
         const x = (U.hash2(i, 11) + Math.sin(t * 0.4 + i) * 0.02) * W, y = (1 - ph) * (H + 80) - 40;
         const r = (5 + U.hash2(i, 5) * 16) * dpr;
-        drawGlow(x, y, r, i % 3 ? '#ff7a3d' : '#9b6bff', Math.sin(ph * Math.PI) * 0.5);
+        drawGlowPx(x, y, r, i % 3 ? '#ff7a3d' : '#9b6bff', Math.sin(ph * Math.PI) * 0.5);
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;

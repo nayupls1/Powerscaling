@@ -16,6 +16,7 @@
       PS.Audio.setMusicVolume(set.music);
       const canvas = document.getElementById('game');
       PS.Render.init(canvas);
+      PS.Render.setQuality(set.quality);
       PS.Input.init(canvas);
       PS.UI.init();
       const unlock = () => { PS.Audio.init(); PS.Audio.music(this.state === 'menu' ? 'menu' : 'run'); };
@@ -84,6 +85,7 @@
     loop(ts) {
       requestAnimationFrame((t) => this.loop(t));
       let dt = (ts - this.last) / 1000;
+      if (this.state === 'play') PS.Render.frameTime(ts - this.last);
       this.last = ts;
       if (!(dt > 0)) dt = 0.016;
       if (dt > 0.05) dt = 0.05;
@@ -103,7 +105,10 @@
       } else if (this.state === 'over') {
         // let effects settle behind the summary
         PS.FX.update(dt * 0.4);
+      } else if (G.frozenDrawn && PS.Render.drawnW === PS.Render.width()) {
+        return; // paused or picking a card: the scene is a still frame, so don't redraw it 60 times a second
       }
+      G.frozenDrawn = this.state === 'paused' || this.state === 'choice';
       PS.Render.draw(G);
     },
 
