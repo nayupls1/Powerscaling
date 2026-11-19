@@ -74,12 +74,13 @@
           onLand() { const off = U.rnd() * TAU; for (let i = 0; i < 14; i++) C.ebullet({ x, y, ang: off + (i * TAU) / 14, speed: 170, dmg, r: 7, color: '#ff8a4d', life: 4 }); } });
       },
     },
+    // each affix keeps its own timer (e.afBlink, e.afMend, ...): an elite can carry several at once
     blinking: {
-      spawn(e) { e.afT = 4; },
+      spawn(e) { e.afBlink = 4; },
       update(e, dt, G, p, d) {
-        e.afT -= dt;
-        if (e.afT > 0 || d < 240) return;
-        e.afT = 6;
+        e.afBlink -= dt;
+        if (e.afBlink > 0 || d < 240) return;
+        e.afBlink = 6;
         PS.FX.puff(e.x, e.y, '#c06bff', 12);
         const a = U.rnd() * TAU;
         e.x = p.x + Math.cos(a) * 150; e.y = p.y + Math.sin(a) * 150; e.kx = 0; e.ky = 0;
@@ -89,31 +90,31 @@
       },
     },
     mending: {
-      spawn(e) { e.afT = 1.5; },
+      spawn(e) { e.afMend = 1.5; },
       update(e, dt, G) {
-        e.afT -= dt;
-        if (e.afT > 0) return;
-        e.afT = 1.5;
+        e.afMend -= dt;
+        if (e.afMend > 0) return;
+        e.afMend = 1.5;
         let n = 0;
         G.grid.query(e.x, e.y, 200, (o) => { if (!o.big && o.hp < o.maxHp) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.15); n++; } });
         if (n) PS.FX.ring(e.x, e.y, 200, '#7dffa0', 0.3);
       },
     },
     molten: {
-      spawn(e) { e.afT = 1.5; },
+      spawn(e) { e.afMolten = 1.5; },
       update(e, dt, G, p, d) {
-        e.afT -= dt;
-        if (e.afT > 0 || d > 560) return;
-        e.afT = 1.3;
+        e.afMolten -= dt;
+        if (e.afMolten > 0 || d > 560) return;
+        e.afMolten = 1.3;
         C.hazard({ kind: 'circle', x: e.x, y: e.y, r: 58, delay: 0.9, dmg: e.dmg * 0.7, color: '#ff5a3d' });
       },
     },
     brooding: {
-      spawn(e) { e.afT = 5; },
+      spawn(e) { e.afBrood = 5; },
       update(e, dt, G, p, d) {
-        e.afT -= dt;
-        if (e.afT > 0 || d > 700 || G.enemies.length > 280) return;
-        e.afT = 7;
+        e.afBrood -= dt;
+        if (e.afBrood > 0 || d > 700 || G.enemies.length > 280) return;
+        e.afBrood = 7;
         for (let i = 0; i < 3; i++) {
           const a = (i * TAU) / 3 + U.rnd();
           const c = E.spawn('slimelet', e.x + Math.cos(a) * (e.r + 8), e.y + Math.sin(a) * (e.r + 8));
@@ -134,11 +135,11 @@
       },
     },
     warding: {
-      spawn(e) { e.afT = 0.4; },
+      spawn(e) { e.afWard = 0.4; },
       update(e, dt, G) {
-        e.afT -= dt;
-        if (e.afT > 0) return;
-        e.afT = 0.4;
+        e.afWard -= dt;
+        if (e.afWard > 0) return;
+        e.afWard = 0.4;
         const until = G.time + 0.6;
         G.grid.query(e.x, e.y, 150, (o) => { if (o !== e && !o.big && o.def.ai !== 'warder') { o.wardT = until; o.wardCut = 0.33; } });
       },
@@ -262,6 +263,7 @@
         if (e.freezeT > 0) {
           e.freezeT -= dt;
           e.hop = 0;
+          if (e.def.hoard) e.life -= dt; // ice does not stop its clock
         } else {
           let sp = e.speed * tideSpeed;
           if (e.chillT > 0) sp *= 1 - (e.boss ? slowAmt * 0.4 : slowAmt);

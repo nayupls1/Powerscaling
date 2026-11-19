@@ -304,7 +304,7 @@
       const cx = this.data.codex, p = G.player;
       for (const id of p.relicOrder) cx.relics[id] = 1;
       for (const k of p.skills) if (k.evolved) cx.evos[k.id] = 1;
-      for (const id of p.pacts) cx.pacts[id] = 1;
+      if (!G.rules.startPacts) for (const id of p.pacts) cx.pacts[id] = 1;
       for (const name in G.reactions) cx.rx[name] = 1;
       for (const id in G.slain) cx.foes[id] = (cx.foes[id] || 0) + G.slain[id];
       if (!this.data.unlocked.plaguebearer && Object.keys(cx.pacts).length >= 3) { this.data.unlocked.plaguebearer = true; G.unlockedClass = G.unlockedClass || 'plaguebearer'; }

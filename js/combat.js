@@ -379,7 +379,7 @@
           PS.Audio.play('explode', { vol: 0.4 });
         }
       }
-      if (e.big) p.trophies++;
+      if (e.big && p.relics.warbanner) p.trophies++;
       p.onKill(e, o || EMPTY, canProc);
       if (e.def.onDeath) e.def.onDeath(e);
       if (e.affixes) PS.Enemies.affixDeath(e);

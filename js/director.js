@@ -71,7 +71,7 @@
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
-      this.tideT = 200; this.tide = null; this.tideLeft = 0; // rift tides: see Data.TIDES
+      this.tideT = 200; this.tide = null; this.tideLeft = 0; this.lastTide = ''; this.guardedAt = 0; // rift tides: see Data.TIDES
       this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
       this.chestsOpened = 0;
@@ -154,7 +154,7 @@
       // a boss holds back the horde for a while; drag the fight out and the rift stops waiting
       const bossHold = bossAlive && G.time - G.boss.bornAt < 75;
 
-      if (G.rush) { this.updateRush(dt); this.updatePickups(dt); return; }
+      if (G.rush) { this.updateRush(dt); this.updateProps(dt); this.updatePickups(dt); return; }
       // ---- bosses
       if (this.bossIdx < BOSS_TIMES.length) {
         if (G.time >= BOSS_TIMES[this.bossIdx] && !bossAlive) {
@@ -241,7 +241,7 @@
         if (near < 2) {
           const a = U.rnd() * TAU, d = U.rand(520, 860);
           // now and then a chest that asks no gold: an elite stands guard inside it
-          const cursed = this.minutes() > 2.5 && U.rnd() < 0.22 && !G.props.some((x) => x.cursed);
+          const cursed = this.minutes() > 2.5 && G.time > this.guardedAt && U.rnd() < 0.22 && !G.props.some((x) => x.cursed);
           G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: U.rnd() * 6, cursed });
         }
         U.compact(G.props);
@@ -557,9 +557,11 @@
       }
       const r = U.rnd();
       // kill counts already climb with the horde, so a coin barely grows with time: gold, and the chests it buys, stay an event
-      if (r < 0.05 * this.tideOf('gold', 1)) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + U.rnd() * 2 + t * 0.05) * s.gold)));
+      // Gold Rain rolls its extra coins on their own die, so the rare drops below keep their odds
+      const rain = this.tideOf('gold', 1);
+      if (r < 0.05 || (rain > 1 && U.rnd() < 0.05 * (rain - 1))) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + U.rnd() * 2 + t * 0.05) * s.gold)));
       // rare drops are rate-limited: kill counts late in a run would otherwise rain them
-      else if (r < 0.0535 && r >= 0.05) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
+      else if (r < 0.0535) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
       else if (r < 0.0545) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
       else if (r < 0.0552) { if (G.time > this.bombAt) { this.bombAt = G.time + 90; this.pickup('bomb', e.x, e.y, 0); } }
     },
@@ -689,6 +691,7 @@
               PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
               PS.UI.toast(`The chest was guarded: ${e.label}`, 'skull');
               G.cursedOpened = (G.cursedOpened || 0) + 1;
+              this.guardedAt = G.time + 75; // a free relic and an elite's chest: not one after another
               PS.Game.openChest(1, 1);
             }
           } else if (d2 < 38 * 38) {

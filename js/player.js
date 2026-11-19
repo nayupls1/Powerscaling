@@ -31,7 +31,7 @@
       this.relics = {}; this.relicOrder = [];
       this.boons = {};
       this.pacts = [];
-      this.trophies = 0; this.calmT = 0; this.skinT = 0; this.gemsEaten = 0; // relic counters
+      this.charge = 0; this.trophies = 0; this.calmT = 0; this.skinT = 0; this.gemsEaten = 0; // relic counters
       this.talents = [0, 0, 0];
       this.talentsDue = 0;
       this.banned = new Set();

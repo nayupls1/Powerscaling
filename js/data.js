@@ -359,10 +359,10 @@
    * above it, and the rift itself hardens a little with every step (DEPTH_HP, DEPTH_DMG) so the ladder climbs evenly
    * instead of only at the modifiers that touch raw numbers. Measured with the bot and the full skill tree
    * (tools/curve.js --tree=full --depth=N): the careless player model wins about four runs in five at depth 0, about
-   * half at depth 6 and one in five at depth 10, where the careful one still wins most of the time.
+   * two in three at depth 6 and one in seven at depth 10, where the careful one still wins most of the time.
    */
-  D.DEPTH_HP = 1.06;   // horde health per depth, compounding
-  D.DEPTH_DMG = 1.03;  // enemy damage per depth, compounding
+  D.DEPTH_HP = 1.095;  // horde health per depth, compounding
+  D.DEPTH_DMG = 1.055; // enemy damage per depth, compounding
   D.DEPTHS = [
     { name: 'Thick Hides',     icon: 'armor',     text: 'The horde has 15% more health.',                      apply: (r) => { r.hp *= 1.15; } },
     { name: 'Sharpened Claws', icon: 'fang',      text: 'Enemies hit 15% harder.',                             apply: (r) => { r.dmg *= 1.15; } },
