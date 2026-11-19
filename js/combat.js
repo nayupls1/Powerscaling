@@ -333,6 +333,8 @@
       e.dead = true;
       G.kills++;
       p.kills++;
+      const kid = e.def.id;
+      G.slain[kid] = (G.slain[kid] || 0) + 1;
       G.score += e.score;
       PS.FX.death(e);
       if (e.big) PS.Audio.play('eliteDie'); else PS.Audio.play('kill', { vol: 0.4 });

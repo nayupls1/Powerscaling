@@ -20,7 +20,24 @@
     warder:   { name: 'Warder',       r: 15, hp: 36, spd: 52,  dmg: 8,  xp: 7, mass: 1.6, ai: 'warder',  color: '#e9d8a6', ward: { r: 150, cut: 0.33 } },
     knight:   { name: 'Dread Knight', r: 16, hp: 72, spd: 66,  dmg: 17, xp: 8, mass: 2.6, ai: 'chase',   color: '#5b6485', taken: 0.75 },
   };
-  for (const id in DEFS) { DEFS[id].id = id; DEFS[id].sprite = id; }
+  // one line each for the codex: what it does and what to do about it
+  const NOTES = {
+    imp: 'The rank and file. Harmless alone, never alone.',
+    bat: 'Fast and weaving. Comes in rings that close on you.',
+    spitter: 'Keeps its distance and spits. Your attack cuts its shots out of the air.',
+    slime: 'Bursts into three Oozelings when it dies.',
+    slimelet: 'What is left of an Ooze. Quick, and soon dealt with.',
+    hound: 'Lines up, then charges in a straight line. Step aside as it winds up.',
+    brute: 'Slow, heavy, and hard to shove. Hits like a wall.',
+    bloater: 'Explodes when it dies, hurting you and the horde alike. Kill it in a crowd, from a distance.',
+    wraith: 'Lunges in pulses and passes through its own kind.',
+    mortar: 'Shells the spot where you stand. Keep moving and it never lands.',
+    toad: 'Crouches, marks the ground under you, then leaps onto the mark. Step off it.',
+    hexer: 'Fires bursts of three bolts. A Ward throws them straight back.',
+    warder: 'Everything inside its dotted ring takes a third less damage. Kill it first.',
+    knight: 'Armoured: takes a quarter less damage from everything.',
+  };
+  for (const id in DEFS) { DEFS[id].id = id; DEFS[id].sprite = id; DEFS[id].note = NOTES[id] || ''; }
 
   DEFS.bloater.onDeath = function (e) {
     // bloaters burst — dangerous to the player, and to the horde around them

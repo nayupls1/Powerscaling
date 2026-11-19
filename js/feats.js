@@ -51,6 +51,7 @@
   feat('relic20',  'loot',  'Collector',         'chest',    'Hold 20 relics.',                                 40,  (G, p) => relicCount(p) >= 20);
   feat('relic35',  'loot',  'Hoarder',           'jar',      'Hold 35 relics.',                                 100, (G, p) => relicCount(p) >= 35);
   feat('legend',   'loot',  'Storied',           'phoenix',  'Find a legendary relic.',                         40,  (G, p) => p.relicOrder.some((id) => D.RELICS[id].tier === 4));
+  feat('curator',  'loot',  'Curator',           'book',     'Record 30 different relics in the codex.',        80,  (G, p, d) => G.over && Object.keys(d.codex.relics).length >= 30);
   feat('gold5k',   'loot',  'Deep Pockets',      'coin',     'Earn 5,000 gold in one run.',                     40,  (G) => G.goldEarned >= 5000);
   feat('pact1',    'loot',  'Signed in Blood',   'blood',    'Strike a pact at a dark altar.',                  20,  (G, p) => p.pacts.length >= 1);
   feat('pact3',    'loot',  'In Too Deep',       'mask',     'Hold three pacts at once.',                       60,  (G, p) => p.pacts.length >= 3);
@@ -61,6 +62,7 @@
   feat('kill40k',  'slay',  'Extinction',        'meteor',   'Slay 40,000 enemies in one run.',                 120, (G) => G.kills >= 40000);
   feat('life100k', 'slay',  'Veteran',           'swords',   'Slay 100,000 enemies across all runs.',           60,  (G, p, d) => d.stats.kills + G.kills >= 1e5);
   feat('life1m',   'slay',  'Legend of the Rift', 'trophy',  'Slay 1,000,000 enemies across all runs.',         200, (G, p, d) => d.stats.kills + G.kills >= 1e6);
+  feat('bestiary', 'slay',  'Know Thy Enemy',    'eye',      'Slay every kind of enemy and every boss.',        80,  (G, p, d) => G.over && Object.keys(PS.Enemies.DEFS).concat(PS.Bosses.DEFS.map((b) => b.id)).every((id) => d.codex.foes[id] > 0));
   feat('deflect',  'slay',  'Return to Sender',  'echo',     'Deflect 2,500 bullets in one run.',               40,  (G) => G.deflected >= 2500);
   feat('score100', 'slay',  'Six Figures',       'target',   'Score 100,000 in one run.',                       50,  (G) => PS.Game.finalScore(G) >= 100000);
   feat('score250', 'slay',  'Off the Charts',    'star',     'Score 250,000 in one run.',                       150, (G) => PS.Game.finalScore(G) >= 250000);

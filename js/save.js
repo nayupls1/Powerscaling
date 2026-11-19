@@ -24,6 +24,7 @@
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
+    codex: { relics: {}, evos: {}, rx: {}, pacts: {}, foes: {} }, // what has been found (1) and how many of each foe have fallen
     feats: {},           // featId -> when it was earned (ms)
     depth: { max: 0, sel: 0, clear: {} },                 // Rift Depths: deepest unlocked, the one selected, deepest cleared per class
     daily: { date: '', best: 0, attempts: 0, runs: [] },  // this player's daily rift for `date` (UTC); starts over each day
@@ -47,6 +48,8 @@
     if (typeof out.name !== 'string') out.name = '';
     out.tree = obj(d.tree);
     out.feats = obj(d.feats);
+    const cx = obj(d.codex);
+    out.codex = { relics: obj(cx.relics), evos: obj(cx.evos), rx: obj(cx.rx), pacts: obj(cx.pacts), foes: obj(cx.foes) };
     const dp = obj(d.depth), cap = PS.Data ? PS.Data.DEPTH_MAX : 10;
     const max = num(dp.max) ? Math.max(0, Math.min(cap, Math.floor(dp.max))) : 0;
     out.depth = { max, sel: num(dp.sel) ? Math.max(0, Math.min(max, Math.floor(dp.sel))) : 0, clear: obj(dp.clear) };
@@ -287,6 +290,15 @@
     /** add a finished run; returns its 1-based rank on the local board (or 0 if it fell off).
         The global rank arrives later as run.globalRank plus a 'ps:run' event.
         Daily rift runs go on the day's own list (the game keeps data.daily current), never on the main board. */
+    /** fold what a finished run found into the codex (saved by whoever saves next: endRun always does) */
+    record(G) {
+      const cx = this.data.codex, p = G.player;
+      for (const id of p.relicOrder) cx.relics[id] = 1;
+      for (const k of p.skills) if (k.evolved) cx.evos[k.id] = 1;
+      for (const id of p.pacts) cx.pacts[id] = 1;
+      for (const name in G.reactions) cx.rx[name] = 1;
+      for (const id in G.slain) cx.foes[id] = (cx.foes[id] || 0) + G.slain[id];
+    },
     addRun(run) {
       const b = run.daily ? this.data.daily.runs : this.data.board;
       b.push(run);

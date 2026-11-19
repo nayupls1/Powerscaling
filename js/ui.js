@@ -9,6 +9,7 @@
   const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
+  let codexTab = 'relics';
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -53,6 +54,7 @@
       click($('navDaily'), () => this.showScreen('scrDaily'));
       click($('navTree'), () => this.showScreen('scrTree'));
       click($('navFeats'), () => this.showScreen('scrFeats'));
+      click($('navCodex'), () => this.showScreen('scrCodex'));
       click($('navBoard'), () => this.showScreen('scrBoard'));
       click($('navHelp'), () => this.showScreen('scrHelp'));
       click($('navSettings'), () => this.showScreen('scrSettings'));
@@ -119,6 +121,7 @@
       if (id === 'scrBoard') this.renderBoard();
       if (id === 'scrHelp') this.renderHelp();
       if (id === 'scrFeats') this.renderFeats();
+      if (id === 'scrCodex') this.renderCodex();
       if (id === 'scrSettings') this.renderSettings($('settingsBody'));
     },
     renderTitle() {
@@ -128,6 +131,8 @@
       $('navTree').classList.toggle('has-news', affordable);
       const fs = PS.Feats.summary();
       $('navFeatsPill').innerHTML = `${ico('trophy', 13)} ${fs.done} / ${fs.total}`;
+      const cx = this.codexCount();
+      $('navCodexPill').innerHTML = `${ico('book', 13)} ${Math.floor(100 * cx.done / cx.total)}%`;
       const scope = PS.Save.boardScope ? PS.Save.boardScope('all') : 'device';
       const top = PS.Save.board().slice(0, 5);
       const day = this.dailyInfo();
@@ -375,6 +380,74 @@
         }).join('')}</tbody></table>`;
     },
 
+    /** the codex's five shelves: what each holds, and how much of it has been found */
+    codexShelves() {
+      const cx = PS.Save.data.codex, S = PS.Skills.DEFS, E = PS.Enemies.DEFS;
+      const evoIds = Object.keys(S).filter((id) => S[id].evo);
+      const foeIds = Object.keys(E).concat(PS.Bosses.DEFS.map((b) => b.id));
+      return [
+        { id: 'relics', name: 'Relics', ids: Object.keys(D.RELICS), has: (id) => !!cx.relics[id] },
+        { id: 'evos', name: 'Evolutions', ids: evoIds, has: (id) => !!cx.evos[id] },
+        { id: 'rx', name: 'Reactions', ids: Object.keys(D.REACTIONS), has: (k) => !!cx.rx[D.REACTIONS[k].name] },
+        { id: 'pacts', name: 'Pacts', ids: Object.keys(D.PACTS), has: (id) => !!cx.pacts[id] },
+        { id: 'foes', name: 'Bestiary', ids: foeIds, has: (id) => cx.foes[id] > 0 },
+      ];
+    },
+    codexCount() {
+      let done = 0, total = 0;
+      for (const s of this.codexShelves()) { total += s.ids.length; done += s.ids.filter(s.has).length; }
+      return { done, total };
+    },
+    renderCodex() {
+      const cx = PS.Save.data.codex, shelves = this.codexShelves(), n = this.codexCount();
+      const sh = shelves.find((s) => s.id === codexTab) || shelves[0];
+      $('codexScope').textContent = `${n.done} of ${n.total} found`;
+      $('codexTabs').innerHTML = shelves.map((s) => `<button class="tab${s === sh ? ' sel' : ''}" data-tab="${s.id}">${s.name} <small>${s.ids.filter(s.has).length}/${s.ids.length}</small></button>`).join('');
+      $('codexTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { codexTab = b.dataset.tab; this.renderCodex(); }));
+      const entry = (known, color, icon, name, sub, text, extra) => `<li class="cx${known ? '' : ' unknown'}" style="--c:${known ? color : '#6d6690'}">
+        <span class="cx-ico">${typeof icon === 'string' && icon[0] === '<' ? icon : ico(known ? icon : 'lock', 24)}</span>
+        <span class="cx-text"><b>${known ? esc(name) : '???'}</b>${sub ? `<small>${sub}</small>` : ''}<span>${text}</span></span>${extra || ''}</li>`;
+      let html = '', hint = '';
+      if (sh.id === 'relics') {
+        hint = 'Relics turn up in chests, on elites and bosses, and in sealed breaches. A relic is recorded once you have held it.';
+        html = [0, 1, 2, 3, 4].map((t) => {
+          const r = D.RARITY[t], ids = sh.ids.filter((id) => D.RELICS[id].tier === t);
+          return `<h3 style="color:${r.color}">${r.name} <small>${ids.filter(sh.has).length} / ${ids.length}</small></h3><ul class="cx-list">${ids.map((id) => {
+            const d = D.RELICS[id], k = sh.has(id);
+            return entry(k, r.color, d.icon, d.name, d.max > 1 && d.max < 99 ? `Stacks ${d.max} times` : d.max >= 99 ? 'Stacks without limit' : 'One only', k ? esc(d.desc) : 'Not found yet.');
+          }).join('')}</ul>`;
+        }).join('');
+      } else if (sh.id === 'evos') {
+        hint = 'A skill at level 6 evolves when you hold its tome. The tome is always shown; the evolution is recorded once you have awakened it.';
+        html = D.ELEMENT_IDS.map((el) => {
+          const ids = sh.ids.filter((id) => PS.Skills.DEFS[id].el === el), e = D.ELEMENTS[el];
+          return `<h3 style="color:${e.color}">${ico(e.icon, 16)} ${e.name}</h3><ul class="cx-list">${ids.map((id) => {
+            const d = PS.Skills.DEFS[id], k = sh.has(id);
+            return entry(k, e.color, d.icon, d.evo.name, `${esc(d.name)} + ${esc(D.TOMES[d.evo.tome].name)}`, k ? esc(d.evo.desc) : esc(d.desc));
+          }).join('')}</ul>`;
+        }).join('');
+      } else if (sh.id === 'rx') {
+        hint = 'Hit one enemy with two different elements within 4 seconds and the pair reacts. The pair is always shown; what it does is recorded once you set it off.';
+        html = `<ul class="cx-list">${sh.ids.map((key) => {
+          const r = D.REACTIONS[key], k = sh.has(key);
+          const pair = `<span class="rx-els">${r.els.map((e) => `<i style="--c:${D.ELEMENTS[e].color}">${ico(D.ELEMENTS[e].icon, 13)}</i>`).join('')}</span>`;
+          return entry(k, D.ELEMENTS[r.els[1]].color, pair, r.name, r.els.map((e) => D.ELEMENTS[e].name).join(' and '), k ? esc(r.text) : 'Not set off yet.');
+        }).join('')}</ul>`;
+      } else if (sh.id === 'pacts') {
+        hint = 'Dark altars offer pacts. A pact is recorded once you have struck it and finished the run.';
+        html = `<ul class="cx-list">${sh.ids.map((id) => {
+          const d = D.PACTS[id], k = sh.has(id);
+          return entry(k, '#ff5a7a', d.icon, d.name, '', k ? `${esc(d.gift)} <em class="cx-price">${esc(d.price)}</em>` : 'Not struck yet.');
+        }).join('')}</ul>`;
+      } else {
+        hint = 'Everything you have slain, across every run.';
+        const E = PS.Enemies.DEFS, B = PS.Bosses.DEFS;
+        const row = (id, name, sub, note, color) => { const k = sh.has(id); return entry(k, color, 'skull', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
+        html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color)).join('')}</ul>
+          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`, b.color)).join('')}</ul>`;
+      }
+      $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
+    },
     renderFeats() {
       const have = PS.Save.data.feats, F = PS.Feats, s = F.summary();
       $('featsScope').innerHTML = `${s.done} of ${s.total} earned` + (s.left ? `, ${ico('essence', 13)} ${U.fmtNum(s.left)} Essence still to claim` : '');
