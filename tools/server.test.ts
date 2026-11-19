@@ -176,12 +176,15 @@ describe('daily rift', () => {
     expect(Daily.spec('2026-01-01')).toEqual(Daily.spec('2026-01-01'));
     expect(Daily.valid('2026-02-30')).toBe(false);
     expect(Daily.valid('2026-2-3')).toBe(false);
-    // every class appears once in each block of four days, every mutator once in each block of eight
-    const day0 = Math.ceil(Date.parse('2026-01-01T00:00:00Z') / 86400000 / 8) * 8;
-    const specs = Array.from({ length: 8 }, (_, i) => Daily.spec(Daily.dateOf((day0 + i) * 86400000)));
-    expect(new Set(specs.slice(0, 4).map((x) => x.cls)).size).toBe(4);
-    expect(new Set(specs.slice(4).map((x) => x.cls)).size).toBe(4);
-    expect(new Set(specs.map((x) => x.mutator)).size).toBe(8);
+    // every class appears once in each block of as many days as there are classes, and likewise every mutator
+    const base = Math.floor(Date.parse('2026-01-01T00:00:00Z') / 86400000);
+    for (const [list, key] of [[Daily.CLASSES, 'cls'], [Daily.MUTATORS, 'mutator']] as const) {
+      const n = list.length, day0 = Math.ceil(base / n) * n;
+      for (const block of [0, 1]) {
+        const got = Array.from({ length: n }, (_, i) => Daily.spec(Daily.dateOf((day0 + block * n + i) * 86400000))[key]);
+        expect(new Set(got).size).toBe(n);
+      }
+    }
   });
   test('seeded streams repeat, and differ from each other', () => {
     RNG.seed('abc');
