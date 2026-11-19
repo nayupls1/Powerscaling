@@ -433,11 +433,12 @@
         if (!seen(r, rad, view)) continue;
         ctx.strokeStyle = r.color;
         if (echo || r.w >= 6) {
-          ctx.globalAlpha = (1 - t) * 0.25;
+          ctx.globalAlpha = (1 - t) * 0.16;
           ctx.lineWidth = r.w * 3.2 * (1 - t) + 2;
           ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.93, 0, TAU); ctx.stroke();
         }
-        ctx.globalAlpha = (1 - t) * 0.95;
+        // shock rings are the hero's own and harmless: kept light, so the solid red discs of the rift stand out against them
+        ctx.globalAlpha = (1 - t) * 0.62;
         ctx.lineWidth = r.w * (1 - t) + 1;
         ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, TAU); ctx.stroke();
       }
