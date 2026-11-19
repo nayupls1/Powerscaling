@@ -21,41 +21,45 @@
   const tiles = [], SPR = {}, glows = {};
   const RES_STEPS = [1, 0.85, 0.7, 0.6, 0.5];
   const auto = { ema: 16, slow: 0, fast: 0, cool: 0, ceil: 1, raisedAt: -1e9 };
+  let shakeT = 0;
 
   function mk(w, h) {
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     return c;
   }
-  function glow(color) {
-    let g = glows[color];
+  /** a soft disc of light; hot gives it a white heart, for fireballs */
+  function glow(color, hot) {
+    const key = hot ? color + '!' : color;
+    let g = glows[key];
     if (g) return g;
     g = mk(64, 64);
     const c = g.getContext('2d');
     const gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, color);
-    gr.addColorStop(0.35, color);
+    gr.addColorStop(0, hot ? '#ffffff' : color);
+    if (hot) gr.addColorStop(0.2, '#ffffff');
+    gr.addColorStop(hot ? 0.5 : 0.35, color);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     c.globalAlpha = 0.9;
     c.fillStyle = gr;
     c.fillRect(0, 0, 64, 64);
-    glows[color] = g;
+    glows[key] = g;
     return g;
   }
   /* Soft glows are the biggest fill cost late in a run: dozens of zone, aura and projectile glows, each hundreds of pixels
      wide. Magnifying the 64px gradient that far takes the slow filtered path, so big glows use a copy cached at their
      on-screen size (radius steps of ~2.5%) and are blitted 1:1 on whole device pixels, about three times cheaper. */
   const sized = new Map();
-  function drawGlow(x, y, r, color, alpha) {
+  function drawGlow(x, y, r, color, alpha, hot) {
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
     const px = r * scale;
-    if (px < 40 || px > 480) { ctx.drawImage(glow(color), x - r, y - r, r * 2, r * 2); return; }
-    const q = Math.round(Math.log(px) * 40), key = color + q;
+    if (px < 40 || px > 480) { ctx.drawImage(glow(color, hot), x - r, y - r, r * 2, r * 2); return; }
+    const q = Math.round(Math.log(px) * 40), key = (hot ? '!' : '') + color + q;
     let g = sized.get(key);
     if (!g) {
       const R = Math.round(Math.exp(q / 40));
       g = mk(R * 2, R * 2);
-      g.getContext('2d').drawImage(glow(color), 0, 0, R * 2, R * 2);
+      g.getContext('2d').drawImage(glow(color, hot), 0, 0, R * 2, R * 2);
       if (sized.size > 200) sized.delete(sized.keys().next().value); // oldest first; the working set is small
       sized.set(key, g);
     }
@@ -64,6 +68,8 @@
     ctx.drawImage(g, Math.round((x - camL) * scale - h), Math.round((y - camT) * scale - h));
     worldTf();
   }
+  /** what the effects layer (js/fx.js) needs from the renderer; the camera fields are refreshed every frame */
+  const fxApi = { glow: drawGlow, world: worldTf, scale: 1, camL: 0, camT: 0, w: 0, h: 0, lap: null };
   /** glow in raw canvas pixels (screen space), for the menu backdrop */
   function drawGlowPx(x, y, r, color, alpha) {
     ctx.globalAlpha = alpha;
@@ -326,62 +332,112 @@
   }
 
   /* ------------------------------------------------------------------ layers */
+  /* Lingering zones are discs a few hundred pixels across, and some builds keep dozens down at once. Filling and outlining
+     each one was two path draws the size of its bounding square. Instead each kind is painted once per on-screen size
+     (a body that deepens toward the rim, then the rim) and blitted 1:1, which is cheaper and no longer flat. */
+  const ZONE_STYLE = {
+    poison:   { rgb: '95,184,46',   a0: 0.06, a1: 0.22, rim: '#b8f078', ra: 0.55 },
+    fire:     { rgb: '255,106,42',  a0: 0.2,  a1: 0.07, rim: '#ff9a4d', ra: 0.55 },
+    blizzard: { rgb: '159,230,255', a0: 0.04, a1: 0.15, rim: '#e8f9ff', ra: 0.4 },
+    arrows:   { rgb: '241,231,207', a0: 0.02, a1: 0.11, rim: '#f1e7cf', ra: 0.6 },
+  };
+  const zoneSpr = new Map();
+  let zonePx = 0; // pixels held by the cache, which is trimmed oldest first
+  function drawZoneDisc(kind, x, y, r, alpha) {
+    const st = ZONE_STYLE[kind], px = r * scale;
+    ctx.globalAlpha = alpha;
+    if (px < 14 || px > 420) {
+      // too small to matter or too big to cache: the plain way
+      ctx.fillStyle = `rgba(${st.rgb},${(st.a0 + st.a1) / 2})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+      ctx.globalAlpha = alpha * st.ra;
+      ctx.strokeStyle = st.rim; ctx.lineWidth = 2; ctx.stroke();
+      return;
+    }
+    const q = Math.round(Math.log(px) * 40), key = kind + q;
+    let c = zoneSpr.get(key);
+    if (!c) {
+      const R = Math.round(Math.exp(q / 40)), n = (R + 2) * 2, m = n / 2, lw = Math.max(1.5, 2 * scale);
+      c = mk(n, n);
+      const g = c.getContext('2d'), gr = g.createRadialGradient(m, m, 0, m, m, R);
+      gr.addColorStop(0, `rgba(${st.rgb},${st.a0})`);
+      gr.addColorStop(0.7, `rgba(${st.rgb},${st.a0 * 0.6 + st.a1 * 0.4})`);
+      gr.addColorStop(1, `rgba(${st.rgb},${st.a1})`);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(m, m, R, 0, TAU); g.fill();
+      g.globalAlpha = st.ra; g.strokeStyle = st.rim; g.lineWidth = lw;
+      g.beginPath(); g.arc(m, m, R - lw / 2, 0, TAU); g.stroke();
+      zoneSpr.set(key, c);
+      zonePx += n * n;
+      while (zonePx > 5e6 && zoneSpr.size > 1) {
+        const old = zoneSpr.keys().next().value;
+        zonePx -= zoneSpr.get(old).width ** 2;
+        zoneSpr.delete(old);
+      }
+    }
+    const h = c.width / 2;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(c, Math.round((x - camL) * scale - h), Math.round((y - camT) * scale - h));
+    worldTf();
+  }
   function drawZones(G) {
     const t = G.time;
-    let riftGlows = 8;
+    let riftGlows = 8, embers = 3;
     for (const z of G.zones) {
       if (!visible(z.x, z.y, z.r + 20)) continue;
       const fade = Math.min(1, z.life / 0.4, z.age / 0.2);
       const k = z.kind;
       if (k === 'poison' || k === 'pool') {
-        ctx.globalAlpha = 0.13 * fade;
-        ctx.fillStyle = '#5fb82e';
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
+        drawZoneDisc('poison', z.x, z.y, z.r, fade);
+        // bubbles wandering the pool
         ctx.globalAlpha = 0.5 * fade;
-        ctx.strokeStyle = '#b8f078'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.94 + 0.04 * Math.sin(t * 5 + z.x)), 0, TAU); ctx.stroke();
         ctx.fillStyle = '#c8ff8a';
         for (let i = 0; i < 3; i++) {
           const a = t * 0.9 + i * 2.1 + z.y, d = z.r * (0.25 + 0.2 * i);
           ctx.beginPath(); ctx.arc(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, 3 + Math.sin(t * 4 + i) * 1.5, 0, TAU); ctx.fill();
         }
       } else if (k === 'fire') {
-        ctx.globalCompositeOperation = 'lighter';
-        drawGlow(z.x, z.y, z.r * 1.15, '#ff6a2a', 0.3 * fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 0.5 * fade;
-        ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
+        drawZoneDisc('fire', z.x, z.y, z.r, fade * (0.8 + 0.2 * Math.sin(t * 13 + z.x)));
+        // embers lift off the flames; a few a frame across every fire on screen
+        if (embers > 0 && Math.random() < 0.35) {
+          embers--;
+          const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * z.r * 0.85;
+          PS.FX.ember(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, Math.random() < 0.5 ? '#ff9a4d' : '#ffd08a');
+        }
       } else if (k === 'blizzard') {
-        ctx.globalAlpha = 0.09 * fade;
-        ctx.fillStyle = '#9fe6ff';
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.7 * fade;
-        ctx.strokeStyle = '#e8f9ff'; ctx.lineWidth = 2;
-        ctx.setLineDash([10, 12]); ctx.lineDashOffset = -t * 40;
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
-        ctx.setLineDash([]);
+        drawZoneDisc('blizzard', z.x, z.y, z.r, fade);
+        // the wind: three short arcs running round the rim, and snow driven across
+        ctx.globalAlpha = 0.75 * fade;
+        ctx.strokeStyle = '#e8f9ff'; ctx.lineWidth = 2.5;
+        for (let i = 0; i < 3; i++) {
+          const a = t * 1.6 + (i * TAU) / 3;
+          ctx.beginPath(); ctx.arc(z.x, z.y, z.r - 5, a, a + 0.5); ctx.stroke();
+        }
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 8; i++) {
+          const ph = (t * 0.8 + i * 0.37) % 1, a = i * 2.4 + Math.floor(t * 0.8 + i * 0.37) * 1.7, d = z.r * (0.15 + 0.7 * U.hash2(i, 3));
+          ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.75 * fade;
+          ctx.fillRect(z.x + Math.cos(a) * d + (ph - 0.5) * 70, z.y + Math.sin(a) * d + (ph - 0.5) * 40, 2.5, 2.5);
+        }
       } else if (k === 'rift' || k === 'implode') {
         ctx.globalAlpha = 0.4 * fade;
         ctx.fillStyle = '#12061f';
         ctx.beginPath(); ctx.arc(z.x, z.y, z.r * 0.45, 0, TAU); ctx.fill();
         // a rift glow covers the whole zone and implosions stack by the dozen: only a few long-lived rifts get one
-        ctx.globalCompositeOperation = 'lighter';
-        if (k === 'rift' && riftGlows-- > 0) drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.22 * fade);
-        ctx.strokeStyle = '#dba6ff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.8 * fade;
+        if (k === 'rift' && riftGlows-- > 0) {
+          ctx.globalCompositeOperation = 'lighter';
+          drawGlow(z.x, z.y, z.r, '#7a2fd6', 0.22 * fade);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+        // the arms are bright lines: the ordinary blend shows them the same for half the cost of adding them
+        ctx.strokeStyle = '#dba6ff'; ctx.lineWidth = 3; ctx.globalAlpha = 0.85 * fade;
         for (let i = 0; i < 3; i++) {
           const a = -t * 4 + (i * TAU) / 3, rr = z.r * (0.35 + 0.22 * i);
           ctx.beginPath(); ctx.arc(z.x, z.y, rr, a, a + 1.6); ctx.stroke();
         }
-        ctx.globalCompositeOperation = 'source-over';
       } else if (k === 'arrows') {
-        ctx.globalAlpha = 0.07 * fade;
-        ctx.fillStyle = '#f1e7cf';
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.7 * fade;
-        ctx.strokeStyle = '#f1e7cf'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
-        ctx.lineWidth = 2.5;
+        drawZoneDisc('arrows', z.x, z.y, z.r, fade);
+        ctx.strokeStyle = '#f1e7cf'; ctx.lineWidth = 2.5;
         for (let i = 0; i < 9; i++) {
           const ph = (t * 3.5 + i * 0.37) % 1;
           const a = i * 2.4 + Math.floor(t * 3.5 + i * 0.37) * 1.3, d = z.r * (0.15 + 0.8 * U.hash2(i, Math.floor(t * 3.5 + i * 0.37)));
@@ -398,8 +454,7 @@
     for (const z of G.zones) {
       if (z.kind !== 'ball' || !visible(z.x, z.y, z.r)) continue;
       const fade = Math.min(1, z.life / 0.4);
-      drawGlow(z.x, z.y, 46, '#ffe14d', 0.7 * fade);
-      drawGlow(z.x, z.y, 20, '#ffffff', fade);
+      drawGlow(z.x, z.y, 46, '#ffe14d', 0.9 * fade, true);
       ctx.globalAlpha = 0.25 * fade;
       ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
@@ -517,24 +572,54 @@
   }
 
   const GEM_COL = ['#5db4ff', '#6fe08a', '#c77dff', '#ffb43d'];
+  /* Gems and coins lie about by the hundred. Each tier is painted once at the screen's scale (a cut stone with a dark
+     edge, so it reads over fire as well as over flagstones) and blitted on whole pixels. */
+  const pickSpr = [];
+  let pickScale = 0;
+  function pickSprite(i) {
+    if (pickScale !== scale) { pickSpr.length = 0; pickScale = scale; }
+    let c = pickSpr[i];
+    if (c) return c;
+    const half = Math.ceil(13 * scale) + 1;
+    c = pickSpr[i] = mk(half * 2, half * 2);
+    const g = c.getContext('2d');
+    g.setTransform(scale, 0, 0, scale, half, half);
+    if (i < 4) {
+      const s = 5 + i * 1.6, w = s * 0.72;
+      const stone = (k) => { g.beginPath(); g.moveTo(0, -s * k); g.lineTo(w * k, 0); g.lineTo(0, s * k); g.lineTo(-w * k, 0); g.closePath(); };
+      g.fillStyle = 'rgba(10,6,22,0.6)'; stone(1.28); g.fill();
+      g.fillStyle = GEM_COL[i]; stone(1); g.fill();
+      // the lit upper facets, and the lower right one in shade
+      g.fillStyle = 'rgba(255,255,255,0.65)';
+      g.beginPath(); g.moveTo(0, -s); g.lineTo(s * 0.3, -s * 0.1); g.lineTo(-s * 0.3, -s * 0.1); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(10,6,22,0.22)';
+      g.beginPath(); g.moveTo(0, s); g.lineTo(w, 0); g.lineTo(s * 0.3, -s * 0.1); g.lineTo(0, s * 0.25); g.closePath(); g.fill();
+    } else {
+      g.fillStyle = 'rgba(10,6,22,0.55)'; g.beginPath(); g.arc(0, 0, 7.6, 0, TAU); g.fill();
+      g.fillStyle = '#ffcf5c'; g.beginPath(); g.arc(0, 0, 6, 0, TAU); g.fill();
+      g.strokeStyle = '#a8731a'; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = '#fff3c4'; g.fillRect(-1, -3, 2, 6);
+    }
+    return c;
+  }
   function drawPickups(G) {
-    const t = G.time;
-    for (const k of G.pickups) {
+    const t = G.time, list = G.pickups;
+    let rest = 0;
+    ctx.globalAlpha = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < list.length; i++) {
+      const k = list[i], xp = k.kind === 'xp';
+      if (!xp && k.kind !== 'gold') { rest++; continue; }
       if (!visible(k.x, k.y, 30)) continue;
+      const c = pickSprite(xp ? (k.val < 3 ? 0 : k.val < 12 ? 1 : k.val < 60 ? 2 : 3) : 4), h = c.width / 2;
+      ctx.drawImage(c, Math.round((k.x - camL) * scale - h), Math.round((k.y + Math.sin(t * 4 + k.x * 0.05) * 2 - camT) * scale - h));
+    }
+    worldTf();
+    if (!rest) return;
+    for (const k of list) {
+      if (k.kind === 'xp' || k.kind === 'gold' || !visible(k.x, k.y, 30)) continue;
       const bob = Math.sin(t * 4 + k.x * 0.05) * 2;
-      if (k.kind === 'xp') {
-        const tier = k.val < 3 ? 0 : k.val < 12 ? 1 : k.val < 60 ? 2 : 3;
-        const s = 5 + tier * 1.6;
-        ctx.fillStyle = GEM_COL[tier];
-        ctx.beginPath(); ctx.moveTo(k.x, k.y - s + bob); ctx.lineTo(k.x + s * 0.72, k.y + bob); ctx.lineTo(k.x, k.y + s + bob); ctx.lineTo(k.x - s * 0.72, k.y + bob); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.beginPath(); ctx.moveTo(k.x, k.y - s + bob); ctx.lineTo(k.x + s * 0.3, k.y - s * 0.1 + bob); ctx.lineTo(k.x - s * 0.3, k.y - s * 0.1 + bob); ctx.closePath(); ctx.fill();
-      } else if (k.kind === 'gold') {
-        ctx.fillStyle = '#ffcf5c';
-        ctx.beginPath(); ctx.arc(k.x, k.y + bob, 6, 0, TAU); ctx.fill();
-        ctx.strokeStyle = '#a8731a'; ctx.lineWidth = 1.5; ctx.stroke();
-        ctx.fillStyle = '#fff3c4'; ctx.fillRect(k.x - 1, k.y - 3 + bob, 2, 6);
-      } else if (k.kind === 'chest' || k.kind === 'bosschest') {
+      if (k.kind === 'chest' || k.kind === 'bosschest') {
         const boss = k.kind === 'bosschest';
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(k.x, k.y, boss ? 90 : 60, boss ? '#c06bff' : '#ffcf5c', 0.5 + 0.15 * Math.sin(t * 5));
@@ -600,7 +685,7 @@
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!visible(e.x, e.y, e.r * 2)) continue;
-      if (e.burnT > 0 && Math.random() < 0.12) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y - e.r * 0.5, '#ff9a4d');
+      if (e.burnT > 0 && Math.random() < 0.12) PS.FX.ember(e.x + U.frand(-e.r, e.r), e.y - e.r * 0.3, '#ff9a4d');
       if (e.poisStacks > 0 && Math.random() < 0.06) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y - e.r * 0.5, '#8fe04a');
       if (e.shockT > 0 && Math.random() < 0.05) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y + U.frand(-e.r, e.r), '#ffe14d');
       if (e.chillT > 0 && e.freezeT <= 0) {
@@ -638,6 +723,24 @@
     }
   }
 
+  function drawCorpses(G) {
+    // the freshly dead: their last pose in white, swelling as it fades
+    const dead = PS.FX.corpses, N = M.FRAMES;
+    if (dead.length) {
+      for (let i = 0; i < dead.length; i++) {
+        const c = dead[i], spr = SPR[c.spr];
+        if (!spr || !visible(c.x, c.y, 80)) continue;
+        const k = c.life / c.max, grow = c.sc * (1.3 - 0.3 * k);
+        ctx.globalAlpha = k * 0.85;
+        spriteTf(c.x, c.y, c.ang, grow, grow);
+        ctx.drawImage(tinted(spr.frames[((c.t * spr.rate + c.wob) * N | 0) % N], 'white'), spr.x, spr.y, spr.w, spr.h);
+      }
+    }
+    ctx.globalAlpha = 1;
+    worldTf();
+    if (PS.FX.fallen) drawFallen(G.time);
+  }
+
   /** bosses are drawn live: one on screen at a time, and it deserves smooth motion at full resolution.
       The art is repainted every other frame (30 poses a second is plenty) and blitted on the frames between. */
   const bossPaint = { id: 0, frame: -9, scale: 0 };
@@ -656,6 +759,27 @@
     if (fresh) { bossPaint.id = e.id; bossPaint.frame = frame; bossPaint.scale = scale; }
     drawLive('boss', e.x, e.y, e.ang, sc * (1 + breathe), sc * (1 - breathe), 2.25, alpha, fresh ? (g) => M.enemy(g, def.sprite, ph, def.color, lw, e.bs) : null);
     M.tint(null, 0);
+  }
+
+  /** a boss that has just died: its silhouette, painted once in near-white, swells and burns away over the blasts */
+  function drawFallen(t) {
+    const f = PS.FX.fallen, e = f.e, def = e.def;
+    if (!f.painted || f.scale !== scale) {
+      f.painted = true; f.scale = scale;
+      M.tint('#ffffff', 0.82);
+      drawLive('fallen', f.x, f.y, e.ang, e.r, e.r, 2.25, 0, (g) => M.enemy(g, def.sprite, t * (M.RATE[def.sprite] || 1), def.color, M.ink(e.r), e.bs));
+      M.tint(null, 0);
+    }
+    const k = f.life / f.max, grow = 1 + 0.4 * (1 - k) * (1 - k);
+    const R = Math.ceil(2.25 * e.r * scale) + 2, n = R * 2;
+    const px = (f.x - camL) * scale, py = (f.y - camT) * scale;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = k * k;
+    ctx.drawImage(scratch.fallen.cv, 0, 0, n, n, px - R * grow, py - R * grow, n * grow, n * grow);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    worldTf();
   }
 
   function drawMinions(G) {
@@ -795,16 +919,38 @@
     }
   }
 
+  // a streak behind the slim, fast shots (the fat ones already carry a glow and shed sparks): half-width in world units,
+  // and a colour where the shot's own is too pale
+  const TRAILS = { arrow: { w: 2.2 }, bolt: { w: 3 }, missile: { w: 3 }, shard: { w: 2.6, col: '#6fd8ff' } };
   function drawProjs(G) {
     const list = G.projs;
+    // trails first, in the ordinary blend: a long diagonal sliver is cheap there and costly as added light
+    if (list.length < 160) { // past that the screen is all shots anyway
+      let lastCol = '';
+      ctx.globalAlpha = 0.4;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i], tr = TRAILS[p.kind];
+        if (!tr || !visible(p.x, p.y, 40)) continue;
+        const sp = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (sp < 60) continue;
+        const w = (tr.w * p.size) / sp, len = (Math.min(56, Math.max(18, sp * 0.085)) * p.size) / sp, col = tr.col || p.color;
+        if (col !== lastCol) { ctx.fillStyle = col; lastCol = col; }
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.vy * w, p.y + p.vx * w);
+        ctx.lineTo(p.x + p.vy * w, p.y - p.vx * w);
+        ctx.lineTo(p.x - p.vx * len, p.y - p.vy * len);
+        ctx.fill();
+      }
+    }
     // glows in one additive pass
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < list.length; i++) {
       const p = list[i];
       if (!visible(p.x, p.y, 40)) continue;
       const k = p.kind;
-      if (k === 'fireball') { drawGlow(p.x, p.y, 26 * p.size, '#ff5a1f', 0.85); drawGlow(p.x, p.y, 12 * p.size, '#ffe9a8', 1); }
-      else if (k === 'reflect') { drawGlow(p.x, p.y, 22, '#8fd0ff', 0.95); drawGlow(p.x, p.y, 9, '#ffffff', 1); }
+      // one sprite with its white heart built in, where there used to be a glow and a core on top of it
+      if (k === 'fireball') drawGlow(p.x, p.y, 26 * p.size, '#ff5a1f', 1, true);
+      else if (k === 'reflect') drawGlow(p.x, p.y, 22, '#8fd0ff', 1, true);
       else if (k === 'bolt' || k === 'missile') { drawGlow(p.x, p.y, 16, p.color, 0.9); }
       else if (k === 'spore') { drawGlow(p.x, p.y, 15, '#8fe04a', 0.8); }
       else if (k === 'shard') { drawGlow(p.x, p.y, 15, '#6fd8ff', 0.55); }
@@ -883,26 +1029,79 @@
         // falling rock
         const fy = s.y - (1 - t) * 520, fx = s.x + (1 - t) * 170;
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(fx, fy, 30 + s.r * 0.18, '#ff5a1f', 0.9);
-        drawGlow(fx, fy, 14 + s.r * 0.08, '#fff3c4', 1);
+        drawGlow(fx, fy, 30 + s.r * 0.18, '#ff5a1f', 1, true);
         ctx.globalCompositeOperation = 'source-over';
       }
     }
     ctx.globalAlpha = 1;
   }
 
+  /* Enemy bullets are the one thing on screen that must never be lost, and bosses fire them by the hundred. Each colour
+     and size is painted once (dark rim, body, white core, and a halo of its own light) and then blitted on whole pixels:
+     one draw a bullet where there were three path fills. */
+  const bulletSpr = new Map();
+  function bulletSprite(color, r) {
+    const px = Math.max(2, Math.round(r * scale)), key = color + px;
+    let c = bulletSpr.get(key);
+    if (c) return c;
+    const half = Math.ceil(px * 2.5) + 1, rim = Math.max(1.5, 2.5 * scale);
+    c = mk(half * 2, half * 2);
+    const g = c.getContext('2d');
+    g.globalAlpha = 0.6;
+    g.drawImage(glow(color), 0, 0, half * 2, half * 2);
+    g.globalAlpha = 1;
+    g.fillStyle = 'rgba(12,4,18,0.85)';
+    g.beginPath(); g.arc(half, half, px + rim, 0, TAU); g.fill();
+    g.fillStyle = color;
+    g.beginPath(); g.arc(half, half, px, 0, TAU); g.fill();
+    g.fillStyle = '#ffffff';
+    g.beginPath(); g.arc(half, half, px * 0.45, 0, TAU); g.fill();
+    if (bulletSpr.size > 48) bulletSpr.clear(); // a resize leaves the old sizes behind
+    bulletSpr.set(key, c);
+    return c;
+  }
   function drawEBullets(G) {
     const list = G.eprojs;
+    if (!list.length) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (let i = 0; i < list.length; i++) {
       const b = list[i];
-      if (!visible(b.x, b.y, 20)) continue;
-      ctx.fillStyle = 'rgba(12,4,18,0.85)';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 2.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = b.color;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.45, 0, TAU); ctx.fill();
+      if (!visible(b.x, b.y, 24)) continue;
+      const c = bulletSprite(b.color, b.r), h = c.width / 2;
+      ctx.drawImage(c, Math.round((b.x - camL) * scale - h), Math.round((b.y - camT) * scale - h));
     }
+    worldTf();
+  }
+
+  /* Drifting motes over the field: dust, embers or snow by biome. Stateless (each one's place is a function of time),
+     wrapped around the view, and drawn as pixel-snapped squares in device space, so the whole layer is a few dozen fills. */
+  const MOTES = [
+    { col: '#b9a8ff', vx: 7, vy: -10, n: 26, sz: 2.1 },   // Ashen Threshold: violet dust
+    { col: '#ff9a4d', vx: 16, vy: -48, n: 34, sz: 2.3 },  // Cinder Wastes: embers rising
+    { col: '#dff6ff', vx: -38, vy: 56, n: 40, sz: 2.1 },  // Frozen Deep: snow on the wind
+    { col: '#d08bff', vx: -9, vy: -18, n: 30, sz: 2.5 },  // The Abyss: spores
+    { col: '#ffe08a', vx: 11, vy: -13, n: 30, sz: 2.1 },  // Beyond the Rift: gold dust
+  ];
+  function drawMotes(G) {
+    if (Render.detail() < 0.8) return;
+    const m = MOTES[G.biome || 0], t = G.time;
+    const tw = view.x1 - view.x0 + 60, th = view.y1 - view.y0 + 60;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = m.col;
+    for (let i = 0; i < m.n; i++) {
+      // nearer motes are bigger and slide past faster than the ground
+      const near = 1 + U.hash2(i, 21) * 0.5;
+      let x = U.hash2(i, 11) * tw + (m.vx * t + Math.sin(t * 0.7 + i * 1.9) * 16) * near - camL * near;
+      let y = U.hash2(i, 17) * th + m.vy * t * near - camT * near;
+      x = ((x % tw) + tw) % tw - 30; y = ((y % th) + th) % th - 30;
+      ctx.globalAlpha = 0.14 + 0.3 * (0.5 + 0.5 * Math.sin(t * (1.4 + U.hash2(i, 5) * 2) + i));
+      const z = Math.max(1, Math.round(m.sz * near * scale));
+      ctx.fillRect((x * scale) | 0, (y * scale) | 0, z, z);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    worldTf();
   }
 
   /* ------------------------------------------------------------------ screen-space overlays */
@@ -1042,7 +1241,10 @@
       G.cam.x += (tx - G.cam.x) * k;
       G.cam.y += (ty - G.cam.y) * k;
       const sh = PS.Game.state === 'play' ? G.shake : 0; // no jitter behind menus and cards
-      const sx = sh ? (Math.random() - 0.5) * sh * 2 : 0, sy = sh ? (Math.random() - 0.5) * sh * 2 : 0;
+      // a few sines out of step with each other: a rattle the eye can follow, where fresh noise every frame only blurs
+      shakeT += G.rdt;
+      const sx = sh ? (Math.sin(shakeT * 71) * 0.62 + Math.sin(shakeT * 113 + 1.7) * 0.38) * sh : 0;
+      const sy = sh ? (Math.sin(shakeT * 83 + 0.9) * 0.62 + Math.sin(shakeT * 127 + 4.1) * 0.38) * sh : 0;
       const vw = W / scale, vh = H / scale;
       G.viewW = vw; G.viewH = vh;
       camL = G.cam.x - vw / 2 + sx; camT = G.cam.y - vh / 2 + sy;
@@ -1058,8 +1260,10 @@
         prof[name] = (prof[name] || 0) + t1 - t0;
         t0 = t1;
       };
+      fxApi.scale = scale; fxApi.camL = camL; fxApi.camT = camT; fxApi.w = W; fxApi.h = H; fxApi.lap = prof ? lap : null;
       drawGround(G); lap('ground');
       worldTf();
+      PS.FX.drawDecals(ctx, view, fxApi); lap('decals');
       drawZones(G);
       lap('zones');
       drawHazards(G);
@@ -1067,12 +1271,14 @@
       drawPickups(G); lap('pickups');
       drawMinions(G);
       drawEnemies(G); lap('enemies');
+      drawCorpses(G); lap('corpses');
       worldTf();
       drawStrikes(G);
       drawOrbits(G);
       drawProjs(G);
       drawBallZones(G); lap('projs');
-      PS.FX.draw(ctx, view); lap('fx');
+      PS.FX.draw(ctx, view, fxApi);
+      drawMotes(G); lap('fx:parts');
       drawPlayer(G); // above the effects so you never lose yourself in your own fireworks
       drawEBullets(G); lap('player+bullets');
       PS.FX.drawNums(ctx); lap('nums');

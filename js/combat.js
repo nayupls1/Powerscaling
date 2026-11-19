@@ -559,7 +559,7 @@
         if (pr.el === 'fire') PS.Audio.play('explode', { vol: 0.3 });
       } else {
         C.damage(e, pr.dmg, o);
-        PS.FX.hitSpark(pr.x, pr.y, pr.color);
+        PS.FX.hitSpark(pr.x, pr.y, pr.color, pr.spin ? undefined : pr.rot);
       }
       if (pr.onHit) pr.onHit(pr, e, wasBurning);
       if (pr.boomerang) return;

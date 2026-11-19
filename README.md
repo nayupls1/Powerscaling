@@ -96,14 +96,14 @@ js/enemies.js     enemy roster, AI and elite affixes
 js/bosses.js      boss fights
 js/director.js    difficulty curves, spawning, drops, chests, shrines
 js/rewards.js     reward card generation
-js/fx.js          particles, damage numbers, screen shake
+js/fx.js          effects: particles, explosions, bolts, scorch marks, damage numbers, screen shake
 js/models.js      character art: the horde, bosses, heroes and minions
 js/render.js      canvas renderer
 js/input.js       keyboard, mouse, touch, gamepad
 js/ui.js          menus, HUD, cards, pause and results screens
 js/game.js        main loop, run lifecycle, scoring
 js/bot.js         autoplayer used by the playtest tools
-tools/            headless playtest scripts, server tests
+tools/            headless playtest scripts, model and effect sheets, server tests
 ```
 
 ## Server
@@ -187,7 +187,7 @@ node tools/perf.js pyromancer 300,540,780   # checkpoints in seconds: after the 
 node tools/perf.js reaper 780 --json --frames=120
 ```
 
-The numbers come from headless Chromium's software rasterizer, so compare runs with each other rather than with a real GPU. The run is seeded (`--seed=1` by default), so two profiles of the same class and checkpoints see the same fight.
+The numbers come from headless Chromium's software rasterizer, so compare runs with each other rather than with a real GPU. The run is seeded (`--seed=1` by default), so two profiles of the same class and checkpoints see the same fight. The effects are split into `decals`, `corpses`, `fx:glow`, `fx:lines` and `fx:parts`.
 
 `tools/models.js` draws every character model with the real renderer, one per labelled cell, and writes a PNG. Run it before and after an art change to compare:
 
@@ -200,6 +200,22 @@ node tools/models.js --root=../other-checkout       # draw another checkout's mo
 
 The art itself is vector code in `js/models.js`, drawn facing +x in units of the model's collision radius, with a looping phase for its walk cycle. The horde and the Reaper's minions are cached as animation frames (8 per cycle, supersampled 2x, or 3x on dense screens), so a model can be as detailed as it likes at no per-frame cost. The hero and the boss are drawn live, into a scratch canvas that is then blitted: keep gradient fills off the main canvas, where a single one slows Chromium's software rasterizer for the rest of the session.
 
-The **Graphics** setting picks the render resolution. *Auto* (the default) starts at the device's pixel ratio, steps the canvas resolution down while frames run below about 45 fps, and climbs back after several seconds of headroom; *Sharp* never lowers it, and *Fast* renders at 70% with fewer particles.
+`tools/fx.js` is the same idea for effects. It sets each one off on an empty field with the real renderer and lays its life out as a strip of frames, one effect per row:
+
+```sh
+node tools/fx.js --out=fx.png                               # every effect
+node tools/fx.js --only=explosion,death,bolt --cell=320     # a few rows, larger
+node tools/fx.js --root=../other-checkout --out=before.png  # another checkout's effects, for a before/after pair
+```
+
+Effects live in `js/fx.js`, with the renderer's half (death flashes, trails, motes, the boss burning away) in `js/render.js`. They draw only from `Math.random`, so they cannot disturb a seeded run. Three rules keep them cheap, each one measured with `tools/perf.js`:
+
+- **Blend mode times bounding box is the cost.** In the software rasterizer an additive (`lighter`) stroke or fill costs nearly twice a plain one, and a thin ring or a long diagonal sliver costs as much as its whole bounding square. So only soft light is added; every line (shock rings, bolts, slashes, trails) is drawn bright in the ordinary blend, where it looks the same.
+- **Soft light is a cached sprite that holds its size and only fades.** A fireball, a flare or a scorch mark is one 1:1 blit from one cache entry; a glow that grew every frame would mint a new sprite for each size.
+- **Particles are flat typed arrays, drawn in device pixels**: dots as squares on whole pixels (half the cost of anti-aliased ones), sparks as tapered triangles along their velocity.
+
+Effects also thin themselves out as the screen fills: single-hit flashes and ring echoes only show while few are in flight, every list has a cap, and blasts on top of each other share one scorch mark.
+
+The **Graphics** setting picks the render resolution. *Auto* (the default) starts at the device's pixel ratio, steps the canvas resolution down while frames run below about 45 fps, and climbs back after several seconds of headroom; *Sharp* never lowers it, and *Fast* renders at 70% with fewer particles. Once resolution has been given up, the purely decorative layers (scorch marks, drifting motes) go too.
 
 Appending `?bot=1` to the page URL lets you watch the bot play.

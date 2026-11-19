@@ -225,6 +225,7 @@
       PS.Audio.play('bossWarn');
       PS.Audio.music('boss');
       PS.FX.shake(6);
+      PS.FX.portal(e.x, e.y, e.r * 3.5, def.color);
       return e;
     },
     update(e, dt, sp, dx, dy, d) {
@@ -246,6 +247,7 @@
         bs.rage = true;
         e.flash = 0.4;
         PS.FX.ring(e.x, e.y, 260, def.color, 0.5);
+        PS.FX.rays(e.x, e.y, 300, def.color, 8, 0.6);
         PS.UI.toast(def.name + ' is enraged', 'skull');
       }
       if (def.final && !bs.phase2 && e.hp < e.maxHp * 0.5) {
