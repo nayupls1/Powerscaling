@@ -21,7 +21,10 @@
   <div id="hud" class="hud" hidden>
     <div class="xpbar"><div class="xpbar-fill" id="xpFill"></div></div>
     <div class="hud-top">
-      <div class="hud-level"><span id="hudLevel">1</span><small>level</small></div>
+      <div class="hud-left">
+        <div class="hud-level"><span id="hudLevel">1</span><small>level</small></div>
+        <div class="clock-mode" id="hudMode" hidden></div>
+      </div>
       <div class="hud-clock">
         <div class="clock-time" id="hudTime">00:00</div>
         <div class="clock-next" id="hudNext"></div>
@@ -72,6 +75,7 @@
       </div>
       <nav class="mainnav" aria-label="Main menu">
         <button class="btn btn-primary btn-enter" id="navPlay">Enter the rift</button>
+        <button class="nav-row" id="navDaily"><span>Daily rift</span><span class="pill pill-daily" id="navDailyPill"></span></button>
         <button class="nav-row" id="navTree"><span>Skill tree</span><span class="pill" id="navEssence"></span></button>
         <button class="nav-row" id="navBoard"><span>Leaderboard</span></button>
         <button class="nav-row" id="navHelp"><span>How to play</span></button>
@@ -88,6 +92,15 @@
       </header>
       <div class="class-grid" id="classGrid"></div>
       <div class="class-detail" id="classDetail"></div>
+    </section>
+
+    <section class="screen" id="scrDaily" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Daily rift</h2>
+        <span class="board-scope" id="dailyDate"></span>
+      </header>
+      <div class="class-detail" id="dailyBody"></div>
     </section>
 
     <section class="screen" id="scrTree" hidden>
@@ -172,6 +185,7 @@
 
   <div class="tooltip" id="tooltip" hidden></div>
 
+  <script src="js/seed.js"></script>
   <script src="js/util.js"></script>
   <script src="js/save.js"></script>
   <script src="js/audio.js"></script>

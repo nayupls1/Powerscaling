@@ -75,7 +75,7 @@
       if (load > 0.45 && Math.random() < load) return;
       const txt = dmg >= 10000 ? U.fmtNum(dmg) : String(Math.max(1, Math.round(dmg)));
       nums.push({
-        x: x + U.rand(-10, 10), y: y + U.rand(-6, 6), vx: U.rand(-18, 18), vy: dot ? -45 : -95, text: crit ? txt + '!' : txt,
+        x: x + U.frand(-10, 10), y: y + U.frand(-6, 6), vx: U.frand(-18, 18), vy: dot ? -45 : -95, text: crit ? txt + '!' : txt,
         color: crit ? '#fff06b' : (EL_COL[el] || '#ffffff'), life: dot ? 0.5 : crit ? 0.85 : 0.6, max: dot ? 0.5 : crit ? 0.85 : 0.6,
         size: dot ? 12 : crit ? 20 : 15, crit,
       });
@@ -83,7 +83,7 @@
     text(x, y, text, color) {
       nums.push({ x, y, vx: 0, vy: -70, text, color: color || '#fff', life: 1, max: 1, size: 15, crit: false, label: true });
     },
-    spark(x, y, color) { part(x, y, U.rand(-30, 30), U.rand(-30, 30), 0.3, 3, color, 2); },
+    spark(x, y, color) { part(x, y, U.frand(-30, 30), U.frand(-30, 30), 0.3, 3, color, 2); },
     hitSpark(x, y, color) { burst(x, y, 3, color, 160, 0.22, 3); },
     puff(x, y, color, n) { burst(x, y, n, color, 120, 0.5, 5); },
     death(e) {
@@ -117,7 +117,7 @@
     },
     spikes(x, y, r, color) {
       booms.push({ x, y, r, life: 0.3, max: 0.3, color, spike: true, rot: Math.random() * TAU });
-      for (let i = 0; i < 3; i++) part(x + U.rand(-r, r) * 0.5, y, U.rand(-40, 40), U.rand(-200, -80), 0.4, 4, color, 1, 500);
+      for (let i = 0; i < 3; i++) part(x + U.frand(-r, r) * 0.5, y, U.frand(-40, 40), U.frand(-200, -80), 0.4, 4, color, 1, 500);
     },
     bolt(x1, y1, x2, y2, color, w) {
       if (bolts.length > 90) return;
@@ -126,7 +126,7 @@
       const nx = -dy / d, ny = dx / d;
       const pts = [x1, y1];
       for (let i = 1; i < segs; i++) {
-        const t = i / segs, off = U.rand(-1, 1) * Math.min(18, d * 0.12);
+        const t = i / segs, off = U.frand(-1, 1) * Math.min(18, d * 0.12);
         pts.push(x1 + dx * t + nx * off, y1 + dy * t + ny * off);
       }
       pts.push(x2, y2);
@@ -141,8 +141,8 @@
     },
     dashBurst(x, y, ang, color) {
       for (let i = 0; i < 8; i++) {
-        const a = ang + Math.PI + U.rand(-0.6, 0.6);
-        part(x, y, Math.cos(a) * U.rand(80, 260), Math.sin(a) * U.rand(80, 260), 0.35, 4, color, 3);
+        const a = ang + Math.PI + U.frand(-0.6, 0.6);
+        part(x, y, Math.cos(a) * U.frand(80, 260), Math.sin(a) * U.frand(80, 260), 0.35, 4, color, 3);
       }
     },
     ghost(p) {
@@ -159,7 +159,7 @@
       rings.push({ x: p.x, y: p.y, r: 220, life: 0.5, max: 0.5, color: '#ffe9a8', w: 6 });
       for (let i = 0; i < 28; i++) {
         const a = (i / 28) * TAU;
-        part(p.x + Math.cos(a) * 20, p.y + Math.sin(a) * 20, Math.cos(a) * 60, -U.rand(120, 300), 0.8, 4, i % 2 ? '#ffe9a8' : '#ffffff', 1.5);
+        part(p.x + Math.cos(a) * 20, p.y + Math.sin(a) * 20, Math.cos(a) * 60, -U.frand(120, 300), 0.8, 4, i % 2 ? '#ffe9a8' : '#ffffff', 1.5);
       }
     },
     shake(n) {

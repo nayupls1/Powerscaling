@@ -717,9 +717,9 @@
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!visible(e.x, e.y, e.r * 2)) continue;
-      if (e.burnT > 0 && Math.random() < 0.12) PS.FX.spark(e.x + U.rand(-e.r, e.r), e.y - e.r * 0.5, '#ff9a4d');
-      if (e.poisStacks > 0 && Math.random() < 0.06) PS.FX.spark(e.x + U.rand(-e.r, e.r), e.y - e.r * 0.5, '#8fe04a');
-      if (e.shockT > 0 && Math.random() < 0.05) PS.FX.spark(e.x + U.rand(-e.r, e.r), e.y + U.rand(-e.r, e.r), '#ffe14d');
+      if (e.burnT > 0 && Math.random() < 0.12) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y - e.r * 0.5, '#ff9a4d');
+      if (e.poisStacks > 0 && Math.random() < 0.06) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y - e.r * 0.5, '#8fe04a');
+      if (e.shockT > 0 && Math.random() < 0.05) PS.FX.spark(e.x + U.frand(-e.r, e.r), e.y + U.frand(-e.r, e.r), '#ffe14d');
       if (e.chillT > 0 && e.freezeT <= 0) {
         ctx.globalAlpha = 0.35; ctx.fillStyle = '#9fe6ff';
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.9, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
@@ -728,10 +728,29 @@
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5, t * 3, t * 3 + 4.2); ctx.stroke();
       }
-      if (e.elite && e.hp < e.maxHp) {
+      if (e.exposeT > 0) {
+        ctx.strokeStyle = '#c06bff'; ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 8, -t * 2, -t * 2 + TAU); ctx.stroke(); ctx.setLineDash([]);
+      }
+      if (e.elite) {
         const w = e.r * 2.2, f = Math.max(0, e.hp / e.maxHp);
-        ctx.fillStyle = 'rgba(12,8,28,0.8)'; ctx.fillRect(e.x - w / 2 - 1, e.y - e.r - 13, w + 2, 6);
-        ctx.fillStyle = '#ffcf5c'; ctx.fillRect(e.x - w / 2, e.y - e.r - 12, w * f, 4);
+        if (e.hp < e.maxHp || e.shieldMax > 0) {
+          ctx.fillStyle = 'rgba(12,8,28,0.8)'; ctx.fillRect(e.x - w / 2 - 1, e.y - e.r - 13, w + 2, 6);
+          ctx.fillStyle = '#ffcf5c'; ctx.fillRect(e.x - w / 2, e.y - e.r - 12, w * f, 4);
+        }
+        if (e.shield > 0) {
+          // the Shielded barrier: its own bar above the health bar, and a ring that thins as it breaks
+          ctx.fillStyle = '#7fc8ff'; ctx.fillRect(e.x - w / 2, e.y - e.r - 17, w * (e.shield / e.shieldMax), 3);
+          ctx.strokeStyle = '#7fc8ff'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.35 + 0.45 * (e.shield / e.shieldMax);
+          ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 6, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+        }
+        if (e.affixes) {
+          // the affix name over the elite, in the first affix's colour
+          ctx.font = '700 11px "Hanken Grotesk", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          const label = e.affixes.map((id) => PS.Data.AFFIXES[id].name).join(' ');
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,8,28,0.85)'; ctx.strokeText(label, e.x, e.y - e.r - 22);
+          ctx.fillStyle = PS.Data.AFFIXES[e.affixes[0]].color; ctx.fillText(label, e.x, e.y - e.r - 22);
+        }
       }
     }
   }

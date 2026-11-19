@@ -29,17 +29,91 @@
   DEFS.slime.onDeath = function (e) {
     const sp = e.def.split;
     for (let i = 0; i < sp.n; i++) {
-      const a = (i * TAU) / sp.n + Math.random();
+      const a = (i * TAU) / sp.n + U.rnd();
       const c = E.spawn(sp.into, e.x + Math.cos(a) * 12, e.y + Math.sin(a) * 12);
       if (c) { c.kx = Math.cos(a) * 160; c.ky = Math.sin(a) * 160; c.spawnT = 0; }
     }
+  };
+
+  /*
+   * Elite affixes. Hooks: spawn(e) once, update(e, dt, G, p, d) every frame the elite is not frozen (d = distance to the
+   * hero), death(e). The Shielded barrier itself is spent in Combat.damage. Names and blurbs are in Data.AFFIXES.
+   */
+  const AFFIX = {
+    shielded: {
+      spawn(e) { e.shieldMax = e.shield = e.maxHp * 0.35; e.shieldAt = -99; },
+      // any damage, a burn included, stops the barrier regrowing for four seconds
+      update(e, dt, G) { if (e.shield < e.shieldMax && G.time - e.shieldAt > 4) e.shield = Math.min(e.shieldMax, e.shield + e.shieldMax * 0.3 * dt); },
+    },
+    volatile: {
+      death(e) {
+        // telegraphed like a bloater, then a ring of bullets: back off, or Ward it back
+        const x = e.x, y = e.y, dmg = 9 * PS.Director.dmgMult();
+        C.hazard({ kind: 'circle', x, y, r: e.r * 2.2, delay: 0.55, dmg: dmg * 1.4, color: '#ff8a4d',
+          onLand() { const off = U.rnd() * TAU; for (let i = 0; i < 14; i++) C.ebullet({ x, y, ang: off + (i * TAU) / 14, speed: 170, dmg, r: 7, color: '#ff8a4d', life: 4 }); } });
+      },
+    },
+    blinking: {
+      spawn(e) { e.afT = 4; },
+      update(e, dt, G, p, d) {
+        e.afT -= dt;
+        if (e.afT > 0 || d < 240) return;
+        e.afT = 6;
+        PS.FX.puff(e.x, e.y, '#c06bff', 12);
+        const a = U.rnd() * TAU;
+        e.x = p.x + Math.cos(a) * 150; e.y = p.y + Math.sin(a) * 150; e.kx = 0; e.ky = 0;
+        e.spawnT = 0.6; // fades in, harmless for a beat: the blink is a threat, not a free hit
+        PS.FX.puff(e.x, e.y, '#c06bff', 12);
+        PS.Audio.play('void', { vol: 0.35, pitch: 1.4 });
+      },
+    },
+    mending: {
+      spawn(e) { e.afT = 1.5; },
+      update(e, dt, G) {
+        e.afT -= dt;
+        if (e.afT > 0) return;
+        e.afT = 1.5;
+        let n = 0;
+        G.grid.query(e.x, e.y, 200, (o) => { if (!o.big && o.hp < o.maxHp) { o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.15); n++; } });
+        if (n) PS.FX.ring(e.x, e.y, 200, '#7dffa0', 0.3);
+      },
+    },
+    molten: {
+      spawn(e) { e.afT = 1.5; },
+      update(e, dt, G, p, d) {
+        e.afT -= dt;
+        if (e.afT > 0 || d > 560) return;
+        e.afT = 1.3;
+        C.hazard({ kind: 'circle', x: e.x, y: e.y, r: 58, delay: 0.9, dmg: e.dmg * 0.7, color: '#ff5a3d' });
+      },
+    },
+    brooding: {
+      spawn(e) { e.afT = 5; },
+      update(e, dt, G, p, d) {
+        e.afT -= dt;
+        if (e.afT > 0 || d > 700 || G.enemies.length > 280) return;
+        e.afT = 7;
+        for (let i = 0; i < 3; i++) {
+          const a = (i * TAU) / 3 + U.rnd();
+          const c = E.spawn('slimelet', e.x + Math.cos(a) * (e.r + 8), e.y + Math.sin(a) * (e.r + 8));
+          c.kx = Math.cos(a) * 150; c.ky = Math.sin(a) * 150;
+        }
+        PS.FX.puff(e.x, e.y, '#b6ff5a', 8);
+      },
+    },
+    frenzied: {
+      spawn(e) { e.speed *= 1.25; },
+      update(e) { e.rage = e.hp < e.maxHp * 0.5; },
+    },
   };
 
   let nextId = 1;
 
   const E = {
     DEFS,
-    /** opts: { elite, hpMult, boss } */
+    /** ids restart with every run: they decide strafe directions and update parity, so a seeded run needs them stable */
+    reset() { nextId = 1; },
+    /** opts: { elite, hpMult, boss, noAffix, affixes } (affixes: a fixed list of ids, for tools) */
     spawn(typeId, x, y, opts) {
       const G = PS.G, def = DEFS[typeId] || typeId; // bosses pass a def object
       opts = opts || {};
@@ -51,14 +125,29 @@
       if (opts.elite) { hp *= (7 + Dr.minutes() * 0.2) * Math.min(1, Math.sqrt(30 / def.hp)); r *= 1.45; dmg *= 1.4; mass *= 3.5; xp *= 12; }
       const e = {
         id: nextId++, def, x, y, r, hp, maxHp: hp, dmg, speed: def.spd * Dr.speedMult(), xp, mass,
-        score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, braceT: 0, ang: 0, t: Math.random() * 3, state: 0, st: 0,
+        score: Math.max(1, Math.round(xp)), kx: 0, ky: 0, flash: 0, flashAt: 0, braceT: 0, ang: 0, t: U.rnd() * 3, state: 0, st: 0,
         burnT: 0, burnDps: 0, poisT: 0, poisStacks: 0, poisDps: 0, bleedT: 0, bleedDps: 0,
-        chillT: 0, freezeT: 0, freezeImm: 0, shockT: 0, markT: 0, dotT: Math.random() * 0.25, dotAcc: 0, dotEl: null, dotShow: 0,
+        chillT: 0, freezeT: 0, freezeImm: 0, shockT: 0, markT: 0, dotT: U.rnd() * 0.25, dotAcc: 0, dotEl: null, dotShow: 0,
         icd: {}, elite: !!opts.elite, boss: !!def.boss, big: !!opts.elite || !!def.boss, taken: def.taken || 1,
-        spawnT: 0.35, wob: Math.random() * TAU, dead: false, dx: 0, dy: 0, tx: 0, ty: 0,
+        spawnT: 0.35, wob: U.rnd() * TAU, dead: false, dx: 0, dy: 0, tx: 0, ty: 0,
+        tagEl: null, tagT: 0, rxAt: 0, exposeT: 0, // reactions: the element last hit with, and the reaction cooldown
+        shield: 0, shieldMax: 0, marchT: 0, mdx: 0, mdy: 0, rage: false, affixes: null, label: def.name,
       };
+      if (opts.elite) {
+        const want = opts.noAffix ? 0 : opts.affixes ? opts.affixes.length : Dr.affixCount();
+        if (want > 0) {
+          // drawn from the event stream, so everyone on the same seed meets the same elites
+          e.affixes = opts.affixes || U.shuffle(PS.Data.AFFIX_IDS.slice(), PS.RNG.event).slice(0, want);
+          for (const id of e.affixes) if (AFFIX[id].spawn) AFFIX[id].spawn(e);
+          e.label = e.affixes.map((id) => PS.Data.AFFIXES[id].name).join(' ') + ' ' + def.name;
+        }
+      }
       G.enemies.push(e);
       return e;
+    },
+    /** called by Combat.kill for elites */
+    affixDeath(e) {
+      for (const id of e.affixes) if (AFFIX[id].death) AFFIX[id].death(e);
     },
 
     update(dt) {
@@ -80,6 +169,7 @@
         // ---- status timers and damage-over-time
         if (e.shockT > 0) e.shockT -= dt;
         if (e.markT > 0) e.markT -= dt;
+        if (e.exposeT > 0) e.exposeT -= dt;
         if (e.chillT > 0) e.chillT -= dt;
         if (e.freezeImm > 0) e.freezeImm -= dt;
         if (e.burnT > 0) { e.burnT -= dt; if (e.burnT <= 0) e.burnDps = 0; }
@@ -120,8 +210,16 @@
         } else {
           let sp = e.speed;
           if (e.chillT > 0) sp *= 1 - (e.boss ? slowAmt * 0.4 : slowAmt);
+          if (e.rage) sp *= 1.35;
           e.t += dt;
+          if (e.affixes) for (let k = 0; k < e.affixes.length; k++) { const af = AFFIX[e.affixes[k]]; if (af.update) af.update(e, dt, G, p, d); }
           if (e.boss) PS.Bosses.update(e, dt, sp, dx, dy, d);
+          else if (e.marchT > 0) {
+            // part of a wall: straight ahead, whatever the hero does
+            e.marchT -= dt;
+            e.x += e.mdx * sp * 1.6 * dt; e.y += e.mdy * sp * 1.6 * dt;
+            e.ang = Math.atan2(e.mdy, e.mdx);
+          }
           else AI[e.def.ai](e, dt, sp, dx, dy, d, p);
         }
 
@@ -183,7 +281,7 @@
       }
       e.st -= dt;
       if (e.st <= 0 && d < 390 && Math.abs(dx) < PS.G.viewW * 0.5 - 10 && Math.abs(dy) < PS.G.viewH * 0.5 - 10) {
-        e.st = def.shotCd * (0.8 + Math.random() * 0.4);
+        e.st = def.shotCd * (0.8 + U.rnd() * 0.4);
         e.flash = 0.1;
         C.hazard({ kind: 'circle', x: p.x, y: p.y, r: def.blast.r * (e.elite ? 1.3 : 1), delay: 1.1, dmg: def.blast.dmg * PS.Director.dmgMult(), color: '#ffa53d', owner: e });
         PS.FX.bolt(e.x, e.y, e.x + (p.x - e.x) * 0.25, e.y + (p.y - e.y) * 0.25 - 60, '#ffa53d');
@@ -220,7 +318,7 @@
       }
       e.st -= dt;
       if (e.st <= 0 && d < def.range + 120 && d < 620) {
-        e.st = def.shotCd * (0.8 + Math.random() * 0.4);
+        e.st = def.shotCd * (0.8 + U.rnd() * 0.4);
         const a = Math.atan2(dy, dx);
         const n = def.burst || 1;
         const weak = e.poisStacks > 0 && p.stats.f.pandemic ? 0.75 : 1;
@@ -248,7 +346,7 @@
         if (e.st <= 0) { e.state = 3; e.st = 0.9; }
       } else {
         e.st -= dt;
-        if (e.st <= 0) { e.state = 0; e.st = 1.2 + Math.random(); }
+        if (e.st <= 0) { e.state = 0; e.st = 1.2 + U.rnd(); }
       }
     },
   };

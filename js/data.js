@@ -37,7 +37,7 @@
       total += w;
       return w;
     });
-    let roll = Math.random() * total;
+    let roll = PS.RNG.loot() * total;
     for (let i = 0; i < ws.length; i++) {
       roll -= ws[i];
       if (roll <= 0) return i;
@@ -223,4 +223,104 @@
   };
   /** cost of buying the next rank of a node */
   D.metaCost = (n, rank) => Math.round(n.cost * (1 + 0.55 * rank));
+
+  /* ---------- Reactions: hit one enemy with two different elements within a few seconds ---------- */
+  // keyed by the two element ids in alphabetical order; the effects live in Combat.react
+  D.REACTIONS = {
+    'fire+frost':  { id: 'thermal',   name: 'Thermal Shock', text: 'Heat meets cold and bursts, damaging everything around the target.' },
+    'fire+steel':  { id: 'sear',      name: 'Sear',          text: 'Molten metal opens a deep wound: the target Bleeds heavily.' },
+    'fire+storm':  { id: 'plasma',    name: 'Plasma Arc',    text: 'A plasma arc leaps to 3 more enemies and sets them alight.' },
+    'fire+venom':  { id: 'combust',   name: 'Combust',       text: 'The poison ignites and explodes, harder for every stack of Poison.' },
+    'fire+void':   { id: 'backdraft', name: 'Backdraft',     text: 'Enemies are sucked toward the target, then scorched.' },
+    'frost+steel': { id: 'icebreak',  name: 'Icebreaker',    text: 'A crushing blow, twice as hard on frozen enemies. Finishes off anything below 20% health.' },
+    'frost+storm': { id: 'supercon',  name: 'Superconduct',  text: 'The target and the enemies beside it are stunned.' },
+    'frost+venom': { id: 'creep',     name: 'Creeping Frost', text: 'Chill and Poison spread to everything nearby.' },
+    'frost+void':  { id: 'entropy',   name: 'Entropy',       text: 'The target is Exposed: it takes 20% more damage for 4 seconds.' },
+    'steel+storm': { id: 'rod',       name: 'Lightning Rod', text: 'A thunderbolt strikes the target for a guaranteed critical hit.' },
+    'steel+venom': { id: 'fester',    name: 'Fester',        text: 'The wound festers: 3 stacks of Poison and a Bleed.' },
+    'steel+void':  { id: 'sunder',    name: 'Sunder',        text: 'A shockwave tears outward, damaging and hurling back everything near the target.' },
+    'storm+venom': { id: 'caustic',   name: 'Caustic Arc',   text: 'Lightning carries the target\'s Poison to 3 enemies nearby.' },
+    'storm+void':  { id: 'ion',       name: 'Ion Storm',     text: 'Nearby enemies are dragged to the target and Shocked.' },
+    'venom+void':  { id: 'wither',    name: 'Wither',        text: 'The target loses 5% of its max health (far less for elites and bosses).' },
+  };
+  for (const k in D.REACTIONS) { const r = D.REACTIONS[k]; r.key = k; r.els = k.split('+'); }
+  D.reaction = (a, b) => (a === b ? null : D.REACTIONS[a < b ? a + '+' + b : b + '+' + a] || null);
+  /** reactions between `el` and each element in `others` */
+  D.reactionsWith = (el, others) => others.filter((o) => o !== el).map((o) => D.reaction(el, o)).filter(Boolean);
+
+  /* ---------- Elite affixes: every elite carries at least one. Behaviour lives in enemies.js ---------- */
+  D.AFFIXES = {
+    shielded: { name: 'Shielded', color: '#7fc8ff', text: 'A barrier soaks up damage and regrows if you let up.' },
+    volatile: { name: 'Volatile', color: '#ff8a4d', text: 'Bursts into a ring of bullets when it dies.' },
+    blinking: { name: 'Blinking', color: '#c06bff', text: 'Teleports next to you.' },
+    mending:  { name: 'Mending',  color: '#7dffa0', text: 'Heals the horde around it.' },
+    molten:   { name: 'Molten',   color: '#ff5a3d', text: 'Leaves erupting ground in its wake.' },
+    brooding: { name: 'Brooding', color: '#b6ff5a', text: 'Keeps spawning lesser enemies.' },
+    frenzied: { name: 'Frenzied', color: '#ffd35c', text: 'Faster, and faster still when wounded.' },
+  };
+  D.AFFIX_IDS = Object.keys(D.AFFIXES);
+
+  /* ---------- Run rules: every knob a Rift Depth or a daily mutator can turn ---------- */
+  D.baseRules = () => ({
+    hp: 1, dmg: 1, speed: 1,          // the horde: health, damage, movement
+    bossHp: 1, bossRage: 0.4,         // bosses: health, and the share of health at which they enrage
+    eliteN: 1, eliteEvery: 1, affixes: 1, hordeEvery: 1,
+    chestCost: 1, heal: 1, xp: 1,     // heal covers pickups, tonics and the level-up breather
+    pDmg: 1, pHp: 1, pSpeed: 1, dashCd: 1, noWard: false, startRelics: 0, // the hero
+    react: 1,                         // reactions: how often they may trigger and how hard they hit
+    score: 1, essence: 1,
+  });
+
+  /*
+   * Rift Depths: beating the Rift Lord at your deepest unlocked depth opens the next. Each depth keeps every modifier
+   * above it, and the rift itself hardens a little with every step (DEPTH_HP, DEPTH_DMG) so the ladder climbs evenly
+   * instead of only at the modifiers that touch raw numbers. Measured with the bot and the full skill tree
+   * (tools/curve.js --tree=full --depth=N): the careless player model wins about four runs in five at depth 0, three
+   * in five at depth 6 and none at depth 10, where the careful one still wins most of the time.
+   */
+  D.DEPTH_HP = 1.06;   // horde health per depth, compounding
+  D.DEPTH_DMG = 1.03;  // enemy damage per depth, compounding
+  D.DEPTHS = [
+    { name: 'Thick Hides',     icon: 'armor',     text: 'The horde has 15% more health.',                      apply: (r) => { r.hp *= 1.15; } },
+    { name: 'Sharpened Claws', icon: 'fang',      text: 'Enemies hit 15% harder.',                             apply: (r) => { r.dmg *= 1.15; } },
+    { name: 'Twin Elites',     icon: 'skull',     text: 'Elites arrive in pairs.',                             apply: (r) => { r.eliteN += 1; } },
+    { name: 'Quickening',      icon: 'boot',      text: 'Enemies move 8% faster.',                             apply: (r) => { r.speed *= 1.08; } },
+    { name: 'Lean Pickings',   icon: 'coin',      text: 'Chests cost 40% more and healing is 25% weaker.',     apply: (r) => { r.chestCost *= 1.4; r.heal *= 0.75; } },
+    { name: 'Short Fuse',      icon: 'bomb',      text: 'Bosses enrage at 65% health instead of 40%.',         apply: (r) => { r.bossRage = 0.65; } },
+    { name: 'Restless',        icon: 'ghost',     text: 'Hordes arrive 30% more often.',                       apply: (r) => { r.hordeEvery *= 0.77; } },
+    { name: 'Twisted Elites',  icon: 'mask',      text: 'Elites carry one more affix.',                        apply: (r) => { r.affixes += 1; } },
+    { name: 'Titans',          icon: 'mountain',  text: 'Bosses have 40% more health.',                        apply: (r) => { r.bossHp *= 1.4; } },
+    { name: 'The Abyss Stares Back', icon: 'eye', text: 'The horde has 25% more health and hits 15% harder.',  apply: (r) => { r.hp *= 1.25; r.dmg *= 1.15; } },
+  ];
+  D.DEPTH_MAX = D.DEPTHS.length;
+  D.depthScore = (depth) => 1 + 0.15 * depth;   // mirrored in server.ts (scoreBounds)
+  D.depthEssence = (depth) => 1 + 0.1 * depth;
+
+  /* Daily mutators: one per day, picked by PS.Daily.spec (the id list there must match these keys) */
+  D.MUTATORS = {
+    glass:       { name: 'Glass Rift',     icon: 'target',    text: 'You deal 40% more damage, with 35% less health.',                 apply: (r) => { r.pDmg *= 1.4; r.pHp *= 0.65; } },
+    restless:    { name: 'Restless Dead',  icon: 'ghost',     text: 'Hordes arrive twice as often.',                                   apply: (r) => { r.hordeEvery *= 0.5; } },
+    parade:      { name: 'Elite Parade',   icon: 'skull',     text: 'Elites arrive twice as often and carry one more affix.',          apply: (r) => { r.eliteEvery *= 0.5; r.affixes += 1; } },
+    quicksilver: { name: 'Quicksilver',    icon: 'wings',     text: 'You and every enemy move 20% faster.',                            apply: (r) => { r.pSpeed *= 1.2; r.speed *= 1.2; } },
+    flux:        { name: 'Elemental Flux', icon: 'spark',     text: 'Reactions trigger twice as often and hit twice as hard.',         apply: (r) => { r.react *= 2; } },
+    hoard:       { name: 'Dragon\'s Due',  icon: 'chest',     text: 'Start with 2 relics. Chests cost twice as much.',                 apply: (r) => { r.startRelics += 2; r.chestCost *= 2; } },
+    openguard:   { name: 'Open Guard',     icon: 'dash',      text: 'No Ward. Your dash recharges 40% faster.',                        apply: (r) => { r.noWard = true; r.dashCd *= 0.6; } },
+    scholar:     { name: 'Scholar\'s Rift', icon: 'book',     text: '40% more experience, but the horde has 25% more health.',         apply: (r) => { r.xp *= 1.4; r.hp *= 1.25; } },
+  };
+  for (const id in D.MUTATORS) D.MUTATORS[id].id = id;
+
+  /** the rules for a run at this depth, with this mutator (either may be absent) */
+  D.rules = function (depth, mutator) {
+    const r = D.baseRules();
+    depth = Math.max(0, Math.min(D.DEPTH_MAX, depth | 0));
+    for (let i = 0; i < depth; i++) D.DEPTHS[i].apply(r);
+    r.hp *= Math.pow(D.DEPTH_HP, depth);
+    r.dmg *= Math.pow(D.DEPTH_DMG, depth);
+    if (mutator && D.MUTATORS[mutator]) D.MUTATORS[mutator].apply(r);
+    r.depth = depth;
+    r.mutator = mutator && D.MUTATORS[mutator] ? mutator : null;
+    r.score = D.depthScore(depth);
+    r.essence = D.depthEssence(depth);
+    return r;
+  };
 })();

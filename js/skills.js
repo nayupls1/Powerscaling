@@ -271,7 +271,7 @@
       evo: { name: 'Hive Swarm', tome: 'fortune', desc: 'Spores bounce to two more enemies.', mod: { dmg: 4 } },
       fire(inst, s, p) {
         if (!C.nearest(p.x, p.y, 520)) return false;
-        const base = Math.random() * TAU, ev = inst.evolved;
+        const base = U.rnd() * TAU, ev = inst.evolved;
         for (let i = 0; i < s.count; i++) {
           C.proj({ x: p.x, y: p.y, ang: base + (i * TAU) / s.count, speed: s.speed, dmg: s.dmg, el: 'venom', src: inst.name, r: 6, life: 2.6, kind: 'spore', color: EL.venom.color, homing: 6.5, accel: 160, pierce: s.pierce, bounce: ev ? 2 : 0, opts: { poison: 2 } });
         }
@@ -488,7 +488,7 @@
             x: p.x + Math.cos(p.aim) * 14, y: p.y + Math.sin(p.aim) * 14, ang: p.aim + off, speed: s.speed * (big ? 0.8 : 1), dmg, el: 'fire', src: inst.name,
             r: 8 * size, size, life: 1.1, kind: 'fireball', color: EL.fire.color, explode: r, knock: big ? 200 : 70, trail: '#ff9a4d', cut: true,
             onHit: f.hotStreak ? (pr, e, wasBurning) => {
-              if (wasBurning && Math.random() < 0.3) {
+              if (wasBurning && U.rnd() < 0.3) {
                 PS.FX.explosion(e.x, e.y, r * 1.3, '#ffd06b');
                 C.aoe(e.x, e.y, r * 1.3, dmg, { el: 'fire', src: 'Hot Streak', noProc: true });
               }
@@ -617,7 +617,7 @@
       if (def.fire(inst, cur, p) === false) { inst.cd = 0.15; return; }
       inst.cd = Math.max(inst.cd + cd, cd * 0.5);
       const echo = p.stats.f.echo;
-      if (echo && Math.random() < echo) inst.echoT = Math.min(0.14, cd * 0.5);
+      if (echo && U.rnd() < echo) inst.echoT = Math.min(0.14, cd * 0.5);
     },
     /** human text for what levelling this skill to `level` adds */
     upText(def, level) {

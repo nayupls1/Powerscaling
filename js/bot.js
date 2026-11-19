@@ -7,6 +7,8 @@
   const PRIORITY = { evolve: 100, talent: 90, relic: 50, boon: 50, skill: 40, skillup: 34, tome: 28, over: 12, heal: 2, gold: 1 };
 
   const Bot = {
+    /** forget the steering carried over from the last run, so a seeded run replays exactly */
+    reset() { Bot.sx = 0; Bot.sy = 0; },
     /** writes movement/aim/dash/ability decisions into G.ctrl */
     drive(G) {
       const p = G.player, c = G.ctrl, cfg = G.bot;
@@ -19,8 +21,8 @@
         // a distracted human: slow to react, sometimes blind to danger, drifts a little
         c.dash = false; c.ability = false; c.ward = false;
         if (G.time < (cfg.until || 0)) return;
-        cfg.until = G.time + 0.22 + Math.random() * 0.25;
-        cfg.blind = Math.random() < 0.45;
+        cfg.until = G.time + 0.22 + U.rnd() * 0.25;
+        cfg.blind = U.rnd() < 0.45;
       }
       let fx = 0, fy = 0;
       let nearest = null, nd = 1e9, close = 0;
@@ -119,14 +121,14 @@
       // raise the Ward when bullets are about to land or the crowd is on top of us
       let incoming = 0;
       for (const b of G.eprojs) if (U.dist2(b.x, b.y, p.x, p.y) < 110 * 110) incoming++;
-      c.ward = p.wardCd <= 0 && (incoming >= 2 || close >= 5) && (!cfg.sloppy || Math.random() < 0.35);
+      c.ward = p.wardCd <= 0 && (incoming >= 2 || close >= 5) && (!cfg.sloppy || U.rnd() < 0.35);
       if (cfg.sloppy) {
-        const a = Math.random() * 6.283, n = 0.35;
+        const a = U.rnd() * 6.283, n = 0.35;
         c.mx += Math.cos(a) * n; c.my += Math.sin(a) * n;
         const m = Math.hypot(c.mx, c.my) || 1;
         c.mx /= m; c.my /= m;
-        c.dash = ((danger && Math.random() < 0.5) || (close >= 4 && Math.random() < 0.5)) && p.dashCharges > 0;
-        c.ability = p.abilityCd <= 0 && (close >= 2 || !!G.boss) && Math.random() < 0.6;
+        c.dash = ((danger && U.rnd() < 0.5) || (close >= 4 && U.rnd() < 0.5)) && p.dashCharges > 0;
+        c.ability = p.abilityCd <= 0 && (close >= 2 || !!G.boss) && U.rnd() < 0.6;
         return;
       }
       c.dash = (danger || close >= 5 || (p.hp < p.stats.maxHp * 0.35 && close >= 2)) && p.dashCharges > 0 && !cfg.noDash;
@@ -136,7 +138,7 @@
     /** choose a card index for a reward spec */
     pick(spec, G) {
       const p = G.player, cfg = G.bot || {};
-      if (cfg.random || (cfg.sloppy && Math.random() < 0.3)) return (Math.random() * spec.cards.length) | 0;
+      if (cfg.random || (cfg.sloppy && U.rnd() < 0.3)) return (U.rnd() * spec.cards.length) | 0;
       let best = 0, bs = -1e9;
       spec.cards.forEach((card, i) => {
         let s = PRIORITY[card.type] || 0;
@@ -157,7 +159,7 @@
         if (cfg.want && cfg.want.includes(card.id)) s += card.type === 'skill' || card.type === 'evolve' ? 120 : card.type === 'skillup' ? 40 : 0;
         if (cfg.wantTomes && card.type === 'tome' && cfg.wantTomes.includes(card.id)) s += 30;
         if (card.type === 'heal' && p.hp < p.stats.maxHp * 0.4) s += 40;
-        s += Math.random() * 4;
+        s += U.rnd() * 4;
         if (s > bs) { bs = s; best = i; }
       });
       return best;

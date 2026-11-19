@@ -3,15 +3,20 @@
   'use strict';
   const PS = (window.PS = window.PS || {});
   const TAU = Math.PI * 2;
+  const RNG = PS.RNG;
 
+  // Everything random in the simulation draws from the run's seeded stream (see seed.js). The helpers that take an
+  // optional `rng` are also used with RNG.loot and RNG.event; frand is for effects that must never touch a seeded run.
   const U = {
     TAU,
+    rnd: () => RNG.sim(),
+    frand: (a, b) => a + Math.random() * (b - a),
     clamp: (v, a, b) => (v < a ? a : v > b ? b : v),
     lerp: (a, b, t) => a + (b - a) * t,
-    rand: (a = 1, b) => (b === undefined ? Math.random() * a : a + Math.random() * (b - a)),
-    randInt: (a, b) => a + Math.floor(Math.random() * (b - a + 1)),
-    chance: (p) => Math.random() < p,
-    pick: (arr) => arr[(Math.random() * arr.length) | 0],
+    rand: (a = 1, b) => (b === undefined ? RNG.sim() * a : a + RNG.sim() * (b - a)),
+    randInt: (a, b) => a + Math.floor(RNG.sim() * (b - a + 1)),
+    chance: (p) => RNG.sim() < p,
+    pick: (arr, rng) => arr[((rng || RNG.sim)() * arr.length) | 0],
     sign: (v) => (v < 0 ? -1 : 1),
     dist2: (ax, ay, bx, by) => {
       const dx = ax - bx, dy = ay - by;
@@ -30,18 +35,19 @@
       const d = U.angDiff(a, b);
       return Math.abs(d) <= maxStep ? b : a + Math.sign(d) * maxStep;
     },
-    shuffle: (arr) => {
+    shuffle: (arr, rng) => {
+      rng = rng || RNG.sim;
       for (let i = arr.length - 1; i > 0; i--) {
-        const j = (Math.random() * (i + 1)) | 0;
+        const j = (rng() * (i + 1)) | 0;
         const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
       }
       return arr;
     },
     /** items: [{w: weight, ...}] */
-    weighted: (items) => {
+    weighted: (items, rng) => {
       let total = 0;
       for (let i = 0; i < items.length; i++) total += items[i].w;
-      let r = Math.random() * total;
+      let r = (rng || RNG.sim)() * total;
       for (let i = 0; i < items.length; i++) {
         r -= items[i].w;
         if (r <= 0) return items[i];

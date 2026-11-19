@@ -3,6 +3,7 @@
   'use strict';
   const PS = (window.PS = window.PS || {});
   const U = PS.U, TAU = U.TAU;
+  const EV = () => PS.RNG.event(); // the run's script (hordes, elites) has its own seeded stream: see seed.js
 
   const MAX_ENEMIES = 300;
   const MAX_GEMS = 340;
@@ -18,6 +19,9 @@
    */
   const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17], [9, 23.5], [10.5, 33], [12, 46]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
+  // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
+  // still describes the game: with it, the bot's results match what they were before reactions existed.
+  const REACTION_OFFSET = 1.05;
 
   // from: minute the type first appears, w: weight once established
   const TABLE = [
@@ -53,6 +57,7 @@
       this.eliteT = 60;
       this.hordeT = HORDE_FIRST;
       this.hordeN = 0;
+      this.lastHorde = '';
       this.bossIdx = 0;
       this.endlessBossT = 0;
       this.chestT = 6;
@@ -68,15 +73,17 @@
     endless() { return this.victory ? Math.max(0, PS.G.time - this.victoryAt) / 60 : 0; },
     hpMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(1.75, o);
+      return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(1.75, o) * REACTION_OFFSET * PS.G.rules.hp;
     },
     /** bosses slain so far, capped at the four scripted ones (overtime has its own ramp) */
     depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.72 + 0.13 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o);
+      return (0.72 + 0.13 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
     },
-    speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012); },
+    speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
+    /** seconds between hordes */
+    hordeGap() { return HORDE_EVERY * PS.G.rules.hordeEvery; },
     xpMult() { return 1 + this.endless() * 0.1; },
     /**
      * The horde breathes in a cycle anchored on the hordes: a lull right after one breaks, then a surge that builds
@@ -85,7 +92,7 @@
     pressure() {
       // the opening eases in: the first cycle starts only once the first horde has broken
       if (this.hordeN === 0) return 0.75 + 0.25 * U.clamp(PS.G.time / HORDE_FIRST, 0, 1);
-      const ph = U.clamp(1 - this.hordeT / HORDE_EVERY, 0, 1); // 0 just after a horde, 1 as the next one is due
+      const ph = U.clamp(1 - this.hordeT / this.hordeGap(), 0, 1); // 0 just after a horde, 1 as the next one is due
       const amp = Math.min(0.3, 0.06 + 0.045 * this.minutes()); // gentle swells while the kit is small, full swings later
       return 1 + amp * Math.sin(TAU * (ph - 0.5));
     },
@@ -101,7 +108,7 @@
     /** a point just off-screen around the player */
     ringPos(extra) {
       const G = PS.G, p = G.player;
-      const a = Math.random() * TAU;
+      const a = U.rnd() * TAU;
       const rx = G.viewW * 0.5 + 70 + (extra || 0), ry = G.viewH * 0.5 + 70 + (extra || 0);
       // rectangle-ish ring so spawns hug the screen edge on wide displays
       const c = Math.cos(a), s = Math.sin(a);
@@ -118,7 +125,7 @@
         ws.push(w);
         total += w;
       }
-      let r = Math.random() * total;
+      let r = U.rnd() * total;
       for (let i = 0; i < ws.length; i++) {
         r -= ws[i];
         if (r <= 0) return TABLE[i].id;
@@ -170,7 +177,7 @@
         PS.Combat.hazard({ kind: 'circle', x: p.x, y: p.y, r: 80, delay: 1.2, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
         const extra = tm > 6 ? 2 : 1;
         for (let i = 0; i < extra; i++) {
-          const a = Math.random() * TAU, d = U.rand(130, 280);
+          const a = U.rnd() * TAU, d = U.rand(130, 280);
           PS.Combat.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, delay: 1.2 + i * 0.15, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
         }
         PS.Audio.play('telegraph', { vol: 0.35, pitch: 0.7 });
@@ -180,20 +187,26 @@
       // ---- elites
       this.eliteT -= dt;
       if (this.eliteT <= 0 && !bossHold) {
-        this.eliteT = Math.max(50, 75 - this.minutes() * 1.2);
-        const pos = this.ringPos();
+        const R = G.rules;
+        this.eliteT = Math.max(50, 75 - this.minutes() * 1.2) * R.eliteEvery;
         const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith'].filter((id) => {
           const row = TABLE.find((r) => r.id === id);
           return this.minutes() >= row.from;
         });
-        PS.Enemies.spawn(U.pick(pool), pos.x, pos.y, { elite: true });
-        PS.UI.toast('An elite has entered the rift', 'skull');
+        let first = null;
+        for (let i = 0; i < R.eliteN; i++) {
+          const pos = this.ringPos();
+          const e = PS.Enemies.spawn(U.pick(pool, EV), pos.x, pos.y, { elite: true });
+          first = first || e;
+        }
+        PS.UI.toast(R.eliteN > 1 ? 'Elites have entered the rift' : `${first.label} has entered the rift`, 'skull');
+        PS.UI.tip('affix', 'Elites carry affixes. Their name says what to expect', 'skull');
       }
 
       // ---- hordes
       this.hordeT -= dt;
       if (this.hordeT <= 0 && !bossHold) {
-        this.hordeT = HORDE_EVERY;
+        this.hordeT = this.hordeGap();
         this.horde(this.hordeN++);
       }
 
@@ -209,8 +222,8 @@
           } else if (pr.kind === 'shrine' && U.dist2(pr.x, pr.y, p.x, p.y) > 2400 * 2400) pr.dead = true;
         }
         if (near < 2) {
-          const a = Math.random() * TAU, d = U.rand(520, 860);
-          G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: Math.random() * 6 });
+          const a = U.rnd() * TAU, d = U.rand(520, 860);
+          G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: U.rnd() * 6 });
         }
         U.compact(G.props);
       }
@@ -218,7 +231,7 @@
       if (this.shrineT <= 0) {
         this.shrineT = 75;
         if (G.props.filter((x) => x.kind === 'shrine').length < 2) {
-          const a = Math.random() * TAU, d = U.rand(560, 820);
+          const a = U.rnd() * TAU, d = U.rand(560, 820);
           G.props.push({ kind: 'shrine', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, dead: false, t: 0, charge: 0, bob: 0 });
           PS.UI.toast('A shrine has appeared', 'spark');
         }
@@ -227,29 +240,66 @@
       this.updatePickups(dt);
     },
 
-    horde(n) {
+    /** how many elite affixes the rift hands out right now */
+    affixCount() { return Math.min(3, PS.G.rules.affixes + (this.victory ? 1 : 0)); },
+
+    /** a loose line of enemies charging in from direction `a` */
+    stampede(a, count, type, hpMult) {
+      const G = PS.G, p = G.player;
+      const rad = Math.max(G.viewW, G.viewH) * 0.5 + 80;
+      const cx = p.x + Math.cos(a) * rad, cy = p.y + Math.sin(a) * rad;
+      for (let i = 0; i < count; i++) {
+        const off = (i - count / 2) * 26;
+        PS.Enemies.spawn(type, cx - Math.sin(a) * off + U.rand(-30, 30), cy + Math.cos(a) * off + U.rand(-30, 30), { hpMult });
+      }
+    },
+    /**
+     * The first two hordes are always the ring and the stampede, so a new player meets them in a fixed order.
+     * After that the rift picks from all four patterns, never the same one twice running. (force: a pattern, for tools.)
+     */
+    horde(n, force) {
       const G = PS.G, p = G.player, t = this.minutes();
-      if (n % 2 === 0) {
-        // closing ring
+      const kinds = ['ring', 'stampede', 'pincer', 'wall'];
+      const kind = force || (n < 2 ? kinds[n] : U.pick(kinds.filter((k) => k !== this.lastHorde), EV));
+      this.lastHorde = kind;
+      if (kind === 'ring') {
         const count = Math.min(60, Math.round(22 + t * 4));
-        const type = t > 4 && Math.random() < 0.4 ? 'slimelet' : 'bat';
+        const type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
         const rad = Math.max(G.viewW, G.viewH) * 0.5 + 60;
         for (let i = 0; i < count; i++) {
           const a = (i * TAU) / count;
           PS.Enemies.spawn(type, p.x + Math.cos(a) * rad, p.y + Math.sin(a) * rad, { hpMult: 1.3 });
         }
         PS.UI.toast('The swarm closes in', 'ghost');
-      } else {
-        // stampede from one side
-        const count = Math.min(50, Math.round(16 + t * 3.5));
-        const a = Math.random() * TAU, type = t > 3.5 ? 'hound' : 'imp';
-        const rad = Math.max(G.viewW, G.viewH) * 0.5 + 80;
-        const cx = p.x + Math.cos(a) * rad, cy = p.y + Math.sin(a) * rad;
-        for (let i = 0; i < count; i++) {
-          const off = (i - count / 2) * 26;
-          PS.Enemies.spawn(type, cx - Math.sin(a) * off + U.rand(-30, 30), cy + Math.cos(a) * off + U.rand(-30, 30), { hpMult: 1.2 });
-        }
+      } else if (kind === 'stampede') {
+        this.stampede(EV() * TAU, Math.min(50, Math.round(16 + t * 3.5)), t > 3.5 ? 'hound' : 'imp', 1.2);
         PS.UI.toast('A stampede approaches', 'paw');
+      } else if (kind === 'pincer') {
+        // two smaller stampedes from opposite sides: whichever way you run, you run into one
+        const a = EV() * TAU, count = Math.min(32, Math.round(11 + t * 2.3)), type = t > 3.5 ? 'hound' : 'imp';
+        this.stampede(a, count, type, 1.2);
+        this.stampede(a + Math.PI, count, type, 1.2);
+        PS.UI.toast('The horde closes from both sides', 'swords');
+      } else {
+        // a wall that marches across the whole screen with one gap in it: find the gap, dash through, or cut a hole
+        const horiz = EV() < 0.5, dir = EV() < 0.5 ? 1 : -1;
+        const span = (horiz ? G.viewH : G.viewW) + 260, dist = (horiz ? G.viewW : G.viewH) * 0.5 + 70;
+        const count = Math.min(60, Math.floor(span / 30)), step = span / count;
+        const gapAt = (0.25 + EV() * 0.5) * span, gapW = 200;
+        const type = t > 8.5 ? 'knight' : t > 4.5 ? 'hound' : 'imp';
+        const rows = t > 7 ? 2 : 1;
+        for (let row = 0; row < rows; row++) {
+          for (let i = 0; i < count; i++) {
+            const off = (i + 0.5) * step;
+            if (Math.abs(off - gapAt) < gapW / 2) continue;
+            const along = off - span / 2, back = dist + row * 44;
+            const e = PS.Enemies.spawn(type, horiz ? p.x - dir * back : p.x + along, horiz ? p.y + along : p.y - dir * back, { hpMult: type === 'knight' ? 0.6 : 1.3 });
+            // march straight across before turning on the hero, so the gap stays a gap
+            e.mdx = horiz ? dir : 0; e.mdy = horiz ? 0 : dir;
+            e.marchT = (back * 2 + 160) / (e.speed * 1.6);
+          }
+        }
+        PS.UI.toast('A wall of the horde sweeps in. Find the gap', 'shield');
       }
       PS.Audio.play('bossWarn', { vol: 0.35, pitch: 1.3 });
     },
@@ -269,12 +319,12 @@
       if (e.elite) {
         for (let i = 0; i < 4; i++) this.pickup('gold', e.x + U.rand(-30, 30), e.y + U.rand(-30, 30), Math.round((5 + t) * s.gold));
         this.pickup('chest', e.x, e.y, 0);
-        if (Math.random() < 0.35) this.pickup('heal', e.x + 24, e.y, 0);
+        if (U.rnd() < 0.35) this.pickup('heal', e.x + 24, e.y, 0);
         return;
       }
-      const r = Math.random();
+      const r = U.rnd();
       // kill counts already climb with the horde, so a coin barely grows with time: gold, and the chests it buys, stay an event
-      if (r < 0.05) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + Math.random() * 2 + t * 0.05) * s.gold)));
+      if (r < 0.05) this.pickup('gold', e.x, e.y, Math.max(1, Math.round((1 + U.rnd() * 2 + t * 0.05) * s.gold)));
       // rare drops are rate-limited: kill counts late in a run would otherwise rain them
       else if (r < 0.0535) { if (G.time > this.healAt) { this.healAt = G.time + 14; this.pickup('heal', e.x, e.y, 0); } }
       else if (r < 0.0545) { if (G.time > this.magnetAt) { this.magnetAt = G.time + 45; this.pickup('magnet', e.x, e.y, 0); } }
@@ -301,7 +351,7 @@
       G.pickups.push({ kind: 'xp', x: x + U.rand(-6, 6), y: y + U.rand(-6, 6), val, r: 6, vx: U.rand(-40, 40), vy: U.rand(-40, 40), pull: false, dead: false, age: 0 });
     },
     pickup(kind, x, y, val) {
-      const a = Math.random() * TAU, sp = U.rand(40, 120);
+      const a = U.rnd() * TAU, sp = U.rand(40, 120);
       PS.G.pickups.push({ kind, x, y, val, r: kind === 'chest' || kind === 'bosschest' ? 20 : 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, pull: false, dead: false, age: 0 });
     },
     updatePickups(dt) {
@@ -350,7 +400,7 @@
           PS.Audio.play('gold', { vol: 0.4 });
           break;
         case 'heal':
-          p.heal(p.stats.maxHp * 0.3);
+          p.heal(p.stats.maxHp * 0.3 * G.rules.heal);
           PS.Audio.play('heal');
           break;
         case 'magnet':
@@ -378,7 +428,7 @@
     /* ------------------------------------------------------------ map props */
     chestPrice() {
       const disc = PS.G.player.stats.f.discount || 0;
-      return Math.round(this.chestCost * (1 - disc));
+      return Math.round(this.chestCost * (1 - disc) * PS.G.rules.chestCost);
     },
     updateProps(dt) {
       const G = PS.G, p = G.player;

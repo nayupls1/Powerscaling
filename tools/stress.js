@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /* Exercise every code path at once: each class with all talents, every relic at max stacks and every skill (evolved),
-   run for a few minutes and fail on any page error or non-finite number. Usage: node tools/stress.js [minutes] */
+   every reaction, every elite affix and every horde pattern, under a different daily mutator each pass and at Rift Depth
+   10 on every second one. Runs for a few minutes and fails on any page error or non-finite number.
+   Usage: node tools/stress.js [minutes] */
 const path = require('path');
 const { chromium } = require('playwright');
 (async () => {
@@ -12,12 +14,14 @@ const { chromium } = require('playwright');
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
+  let pass = 0;
   for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper']) {
     for (const half of [0, 1]) {
-      const res = await page.evaluate(async ({ cls, half, minutes }) => {
+      const res = await page.evaluate(async ({ cls, half, minutes, pass }) => {
         PS.Save.data.unlocked.reaper = true;
         for (const n of PS.Data.META) PS.Save.data.tree[n.id] = n.max;
-        PS.Game.start(cls, { bot: {} });
+        const mutator = Object.keys(PS.Data.MUTATORS)[pass % Object.keys(PS.Data.MUTATORS).length];
+        PS.Game.start(cls, { bot: {}, seed: 'stress' + pass, depth: half ? PS.Data.DEPTH_MAX : 0, mutator });
         PS.Game.state = 'sim';
         const G = PS.G, p = G.player;
         p.talents = [3, 3, 3];
@@ -29,12 +33,23 @@ const { chromium } = require('playwright');
         p.skills[0].level = PS.Skills.MAX_LEVEL; PS.Skills.rebuild(p.skills[0]);
         p.recalc(); p.hp = p.stats.maxHp;
         G.time = 170; // jump straight to the first boss
-        let n = 0, bad = null;
+        let n = 0, bad = null, rxN = 0;
         const limit = G.time + minutes * 60;
+        const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall'], rx = Object.values(PS.Data.REACTIONS);
         const spawnAt = [200, 260, 320];
         while (G.time < limit && !G.over) {
           PS.Bot.drive(G); PS.Game.step(1 / 60);
           if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(4 - spawnAt.length, 0); spawnAt.shift(); }
+          if (n % 240 === 0) {
+            // every elite affix in turn (two at a time), every horde pattern, and every reaction on whatever is nearest
+            const k = n / 240, pos = PS.Director.ringPos(-200);
+            PS.Enemies.spawn('hound', pos.x, pos.y, { elite: true, affixes: [affixes[k % affixes.length], affixes[(k + 3) % affixes.length]] });
+            if (k % 4 === 0) PS.Director.horde(9, hordes[(k / 4) % hordes.length]);
+            for (let i = 0; i < 3; i++) {
+              const t = PS.Combat.nearest(p.x, p.y, 700);
+              if (t) { PS.Combat.react(t, rx[rxN++ % rx.length]); }
+            }
+          }
           if (n % 600 === 0) {
             p.hurt(5); // exercise on-hurt hooks
             if (!isFinite(p.hp) || !isFinite(p.x) || !isFinite(p.dm) || !isFinite(G.dmgTotal)) { bad = 'player NaN'; break; }
@@ -44,12 +59,12 @@ const { chromium } = require('playwright');
           }
           if (++n % 3000 === 0) await new Promise((r) => setTimeout(r, 0));
         }
-        const out = { cls, half, t: Math.round(G.time), over: G.over, bad, kills: G.kills, bosses: G.bossesKilled, hp: Math.round(p.hp), sources: Object.keys(G.dmgBy).length,
+        const out = { cls, half, mutator, depth: G.depth, rx: Object.keys(G.reactions).length, t: Math.round(G.time), over: G.over, bad, kills: G.kills, bosses: G.bossesKilled, hp: Math.round(p.hp), sources: Object.keys(G.dmgBy).length,
           arrays: [G.enemies.length, G.projs.length, G.zones.length, G.minions.length, G.pickups.length, G.hazards.length, G.eprojs.length].join('/') };
         if (!G.over) PS.Game.endRun(true);
         PS.Game.state = 'menu'; PS.G = null;
         return out;
-      }, { cls, half, minutes });
+      }, { cls, half, minutes, pass: pass++ });
       console.log(JSON.stringify(res));
       if (res.bad) process.exitCode = 1;
     }
