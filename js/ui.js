@@ -172,6 +172,7 @@
           </dl>` : `<p class="muted">No runs yet. The first boss arrives at 3:00. Last that long and the Reaper is yours.</p>`}
           ${affordable ? `<p class="hint">${ico('essence', 14)} You can afford a skill tree upgrade.</p>` : ''}
         </div>
+        ${this.nextGoals()}
         ${top.length ? `<div class="side-card">
           <div class="board-head"><h3>Top runs</h3><span class="scope ${scope}">${scope === 'global' ? 'Everyone' : 'This device'}</span></div>
           <ol class="mini-board">${top.map((r) => {
@@ -179,6 +180,18 @@
             return `<li class="${r.mine ? 'mine' : ''}"><span>${esc(r.name)}<small style="--c:${c ? c.color : ''}">${c ? c.name : ''}</small></span><b>${U.fmtNum(r.score)}</b></li>`;
           }).join('')}</ol>
         </div>` : ''}`;
+    },
+
+    /** a short list of the nearest things to aim for: a class to unlock, the next depth, the cheapest feats left */
+    nextGoals() {
+      const d = PS.Save.data, goals = [];
+      const lockedCls = D.CLASS_IDS.find((id) => !d.unlocked[id]);
+      if (lockedCls) goals.push({ icon: CLASS_ICON[lockedCls], color: D.CLASSES[lockedCls].color, name: D.CLASSES[lockedCls].name, text: D.CLASSES[lockedCls].unlock.text.replace(/ to unlock$/, '') });
+      if (d.stats.wins > 0 && d.depth.max < D.DEPTH_MAX) goals.push({ icon: 'vortex', color: '#9b6bff', name: 'Rift Depth ' + (d.depth.max + 1), text: `Slay the Rift Lord at depth ${d.depth.max}` });
+      const left = PS.Feats.LIST.filter((f) => !d.feats[f.id] && !f.rush && f.group !== 'depth').sort((a, b) => a.essence - b.essence);
+      for (const f of left) { if (goals.length >= 3) break; goals.push({ icon: 'trophy', color: '#f0b94a', name: f.name, text: f.text + ' +' + f.essence + ' Essence' }); }
+      if (!goals.length) return '';
+      return `<div class="side-card"><h3>What's next</h3><ul class="goals">${goals.slice(0, 3).map((g) => `<li style="--c:${g.color}">${ico(g.icon, 16)}<span><b>${esc(g.name)}</b><small>${esc(g.text)}</small></span></li>`).join('')}</ul></div>`;
     },
 
     renderClasses() {
