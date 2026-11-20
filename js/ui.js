@@ -603,7 +603,7 @@
           <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle, and a forge lets you pick one of your skills to level up.</p>
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it and beat its trial before the timer burns down, and it leaves a relic: slay its spawn, kill its champion, or hold the ring.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
-          <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
+          <p><b style="color:#ff5a72">Red is the rift's.</b> Every bullet, circle, beam and shockwave that can hurt you is drawn in the same red; the circles have a dashed rim and flash white just before they land. Anything in another colour is yours, and harmless to you.</p>
           <p>Once you have slain the Rift Lord, the class screen offers a boss rush: all five bosses back to back, with a burst of levels to spend before each. It is scored on speed and kept off the leaderboard.</p>
           <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has two bosses of its own.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>

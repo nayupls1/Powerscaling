@@ -1305,10 +1305,12 @@
     const list = G.eprojs;
     if (!list.length) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // every hostile bullet wears the danger colour, whoever fired it; a bullet the hero has turned is drawn elsewhere, in blue
+    const col = Render.dangerColor();
     for (let i = 0; i < list.length; i++) {
       const b = list[i];
       if (!visible(b.x, b.y, 24)) continue;
-      const c = bulletSprite(b.color, b.r), h = c.width / 2;
+      const c = bulletSprite(col, b.r), h = c.width / 2;
       ctx.drawImage(c, Math.round((b.x - camL) * scale - h), Math.round((b.y - camT) * scale - h));
     }
     worldTf();
