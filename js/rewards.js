@@ -199,7 +199,7 @@
 
     /* ------------------------------------------------------------ the merchant: one of three offers, for gold */
     shopChoices(p) {
-      const S = PS.Skills, t = PS.Director.minutes(), k = 1 + 0.07 * t; // prices rise with the run, as purses do
+      const S = PS.Skills, t = PS.Director.minutes(), k = (1 + 0.07 * t) * (p.stats.f.ledger ? 0.67 : 1); // prices rise with the run, as purses do
       const offers = [
         () => Object.assign(R.card(p, 'heal', null, 0), { cost: Math.round(25 * k) }),
         () => ({ type: 'reroll', id: null, tier: 1, icon: 'dice', title: 'Loaded Die', tag: 'Supplies', desc: 'One more reroll.', el: null, lines: [], cost: Math.round(35 * k) }),

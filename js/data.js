@@ -197,6 +197,7 @@
     secondskin: { name: 'Second Skin',     icon: 'armor',   tier: 1, max: 2, desc: 'After you are hit, gain 25 armor for 5 seconds.', apply: (s, n, p) => { s.f.secondSkin = n; if (p.skinT > 0) s.armor += 25 * n; }, dynamic: true },
     kindling:   { name: 'Kindling',        icon: 'nova',    tier: 1, max: 3, desc: 'Every level you gain sets off a blast around you.', apply: (s, n) => { s.f.kindling = (s.f.kindling || 0) + n; } },
     gemeater:   { name: 'Gem Eater',       icon: 'gem',     tier: 1, max: 2, desc: 'Every 60 gems you collect restore 4% of your health.', apply: (s, n) => { s.f.gemEater = (s.f.gemEater || 0) + n; } },
+    ledger:     { name: 'Merchant\'s Ledger', icon: 'book',  tier: 1, max: 1, desc: 'The merchant charges a third less, and stays twice as long.', apply: (s) => { s.f.ledger = 1; } },
     // rare
     chainspark: { name: 'Arc Coil',        icon: 'chain',   tier: 2, max: 4, desc: 'Hits have a 6% chance to chain lightning to nearby enemies.', apply: (s, n) => { s.f.chainProc = (s.f.chainProc || 0) + 0.06 * n; } },
     volatile:   { name: 'Volatile Ichor',  icon: 'bomb',    tier: 2, max: 4, desc: 'Slain enemies have a 12% chance to explode.', apply: (s, n) => { s.f.corpseBoom = (s.f.corpseBoom || 0) + 0.12 * n; } },
@@ -211,6 +212,8 @@
     executioner: { name: 'Headsman\'s Axe', icon: 'cleave',  tier: 2, max: 2, desc: 'Enemies below 25% health take 35% more damage.', apply: (s, n) => { s.f.execute = (s.f.execute || 0) + 0.35 * n; } },
     stopwatch:  { name: 'Frozen Stopwatch', icon: 'timer',  tier: 2, max: 1, desc: 'Dashing chills every enemy around where you set off, and freezes the lesser ones for a moment.', apply: (s) => { s.f.dashChill = 1; } },
     warbanner:  { name: 'War Banner',      icon: 'swords',  tier: 2, max: 1, desc: '+4% damage for every elite and boss you slay from now on, up to +60%.', apply: (s, n, p) => { s.dmg += Math.min(0.6, 0.04 * (p.trophies || 0)); }, dynamic: true },
+    riftkey:    { name: 'Rift Key',        icon: 'key',     tier: 2, max: 1, desc: 'A sealed breach offers one more relic to choose from, and breaches give 4 more seconds.', apply: (s) => { s.f.riftKey = 1; } },
+    tidecaller: { name: 'Tidecaller',      icon: 'moon',    tier: 2, max: 1, desc: 'Rift tides last half again as long, and come a little sooner.', apply: (s) => { s.f.tideCaller = 1; } },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },
@@ -220,6 +223,7 @@
     twinsouls:  { name: 'Twin Souls',      icon: 'multishot', tier: 3, max: 2, desc: '+1 projectile on every skill that fires projectiles.', apply: (s, n) => { s.proj += n; } },
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
     stillwater: { name: 'Still Water',     icon: 'wave',    tier: 3, max: 1, desc: '+5% damage for every 10 seconds since you were last hit, up to +35%. Being hit resets it.', apply: (s, n, p) => { s.dmg += Math.min(0.35, 0.05 * Math.floor((p.calmT || 0) / 10)); }, dynamic: true },
+    oathstone:  { name: 'Oathstone',       icon: 'blood',   tier: 3, max: 1, desc: '+6% damage and +6% attack speed for every pact you hold.', apply: (s, n, p) => { const k = (p.pacts || []).length; s.dmg += 0.06 * k; s.atkSpd += 0.06 * k; }, dynamic: true },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },

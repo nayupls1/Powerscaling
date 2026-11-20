@@ -284,7 +284,7 @@
         this.merchantT = 200;
         if (!G.props.some((x) => x.kind === 'merchant')) {
           const a = U.rnd() * TAU, d = U.rand(480, 700);
-          G.props.push({ kind: 'merchant', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 60, dead: false, t: 0, charge: 0, bob: 0, life: 75 });
+          G.props.push({ kind: 'merchant', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 60, dead: false, t: 0, charge: 0, bob: 0, life: p.stats.f.ledger ? 150 : 75 });
           PS.UI.toast('A merchant has set up shop. She will not stay long', 'coin');
           PS.UI.tip('merchant', 'The merchant sells one thing for gold: stand in her circle to see her wares', 'coin');
         }
@@ -323,7 +323,8 @@
           this.tideT = 150 + SD() * 60;
           const T = PS.Data.TIDES, ids = Object.keys(T).filter((id) => id !== this.lastTide);
           const td = T[U.pick(ids, SD)];
-          this.tide = td; this.tideLeft = td.dur; this.lastTide = td.id;
+          this.tide = td; this.tideLeft = td.dur * (p.stats.f.tideCaller ? 1.5 : 1); this.lastTide = td.id;
+          if (p.stats.f.tideCaller) this.tideT *= 0.8;
           note('tide', td.id);
           G.tides++;
           PS.UI.banner(td.name, td.text, 3);
@@ -417,6 +418,7 @@
           b.need = Math.min(80, Math.round(14 + t * 5.5)); b.left = b.total = 24;
           PS.UI.toast(`The breach wakes. Slay ${b.need} of its spawn`, 'rift');
         }
+        if (G.player.stats.f.riftKey) { b.left += 4; b.total += 4; }
         PS.FX.ring(b.x, b.y, b.r, '#c06bff', 0.5);
         PS.FX.shake(5);
         PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
@@ -711,7 +713,7 @@
           PS.Game.openChest(3, 2);
           break;
         case 'breachchest':
-          PS.Game.openChest(2, 1);
+          PS.Game.openChest(2 + (p.stats.f.riftKey ? 1 : 0), 1);
           break;
       }
     },
