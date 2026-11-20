@@ -542,7 +542,7 @@
     ctx.globalAlpha = 1;
   }
 
-  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'] };
+  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'] };
 
   function drawProps(G) {
     const p = G.player, t = G.time;
@@ -571,6 +571,33 @@
         ctx.strokeText(cost + ' gold', pr.x, pr.y - 34);
         ctx.fillStyle = can ? '#ffd35c' : '#ff8a8a';
         ctx.fillText(cost + ' gold', pr.x, pr.y - 34);
+      } else if (pr.kind === 'forge') {
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
+        ctx.setLineDash([8, 10]); ctx.lineDashOffset = t * 20;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.9; ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y - 8, 60, '#ff9a3d', 0.4 + 0.18 * Math.sin(t * 6));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 15, 26, 8, 0, 0, TAU); ctx.fill();
+        // an anvil: foot, waist, and a face with a horn to one side
+        ctx.fillStyle = '#3a3448';
+        ctx.beginPath(); ctx.roundRect(pr.x - 18, pr.y + 4, 36, 11, 3); ctx.fill();
+        ctx.fillStyle = '#4c455e';
+        ctx.fillRect(pr.x - 9, pr.y - 8, 18, 13);
+        ctx.fillStyle = '#6b6384';
+        ctx.beginPath(); ctx.moveTo(pr.x - 20, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 30, pr.y - 14); ctx.lineTo(pr.x + 16, pr.y - 8); ctx.lineTo(pr.x - 20, pr.y - 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2; ctx.stroke();
+        // the work on it, glowing
+        ctx.fillStyle = '#ffd08a';
+        ctx.fillRect(pr.x - 10, pr.y - 24 - Math.sin(t * 6) * 0.6, 16, 4);
       } else if (pr.kind === 'altar') {
         ctx.globalAlpha = 0.55;
         ctx.strokeStyle = '#f3d9c8'; ctx.lineWidth = 2;

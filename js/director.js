@@ -70,6 +70,7 @@
       this.chestT = 6;
       this.shrineT = 40;
       this.altarT = 165;   // dark altars: a pact with a price
+      this.forgeT = 210;   // forges: a level for a skill of your choosing
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
@@ -269,6 +270,16 @@
           G.props.push({ kind: 'altar', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 64, dead: false, t: 0, charge: 0, bob: 0 });
           PS.UI.toast('A dark altar has risen', 'blood');
           PS.UI.tip('altar', 'Altars offer pacts: a strong gift with a lasting price', 'blood');
+        }
+      }
+      this.forgeT -= dt;
+      if (this.forgeT <= 0 && !bossAlive) {
+        this.forgeT = 190;
+        if (!G.props.some((x) => x.kind === 'forge') && p.skills.length > 1) {
+          const a = U.rnd() * TAU, d = U.rand(560, 820);
+          G.props.push({ kind: 'forge', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 66, dead: false, t: 0, charge: 0, bob: 0 });
+          PS.UI.toast('A rift forge has kindled', 'anvil');
+          PS.UI.tip('forge', 'A forge levels up one skill of your choosing: stand in its circle', 'anvil');
         }
       }
       this.breachT -= dt;
@@ -723,6 +734,16 @@
           }
         } else if (pr.kind === 'breach') {
           this.updateBreach(pr, dt, d2 < pr.r * pr.r);
+        } else if (pr.kind === 'forge') {
+          if (d2 < pr.r * pr.r) {
+            pr.charge += dt / 2.2;
+            if (pr.charge >= 1) {
+              pr.dead = true;
+              PS.FX.ring(pr.x, pr.y, 160, '#ffb061', 0.5);
+              PS.Audio.play('shrine', { pitch: 1.3 });
+              PS.G.queue.push({ kind: 'forge' });
+            }
+          } else pr.charge = Math.max(0, pr.charge - dt * 0.5);
         } else if (pr.kind === 'altar') {
           if (d2 < pr.r * pr.r) {
             pr.charge += dt / 2.2;

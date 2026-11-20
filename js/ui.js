@@ -600,7 +600,7 @@
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
-          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle, and a forge lets you pick one of your skills to level up.</p>
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it and beat its trial before the timer burns down, and it leaves a relic: slay its spawn, kill its champion, or hold the ring.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every circle, beam and shockwave that can hurt you is drawn in the same red with a dashed rim, and flashes white just before it lands. Anything in another colour is yours, and harmless to you.</p>
@@ -1290,9 +1290,8 @@
     onKey(code) {
       const st = PS.Game.state;
       if (st === 'choice' && curSpec) {
-        if (code === 'Digit1' || code === 'Numpad1') this.pickCard(0);
-        else if (code === 'Digit2' || code === 'Numpad2') this.pickCard(1);
-        else if (code === 'Digit3' || code === 'Numpad3') this.pickCard(2);
+        const dg = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+        if (dg) this.pickCard(+dg[1] - 1); // a forge can lay out one card per skill
         else if (code === 'KeyR' && curSpec.kind === 'level') this.rerollCards();
         else if (code === 'KeyB' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'over' && code === 'Enter' && (!document.activeElement || document.activeElement === document.body)) {

@@ -49,6 +49,7 @@ const { chromium } = require('playwright');
             PS.Enemies.spawn('hound', pos.x, pos.y, { elite: true, affixes: [affixes[k % affixes.length], affixes[(k + 3) % affixes.length]] });
             if (k % 5 === 0) { const q = PS.Director.ringPos(-300), h = PS.Enemies.spawn('hoarder', q.x, q.y); h.life = k % 10 ? 15 : 0.5; h.dripAt = h.maxHp * 0.8; }
             for (const id of ['toad', 'toad', 'warder']) { const q = PS.Director.ringPos(-260); PS.Enemies.spawn(id, q.x, q.y, { elite: id === 'warder' && k % 3 === 0 }); }
+            if (k % 7 === 2) { G.queue.push({ kind: 'forge' }); G.queue.push({ kind: 'altar' }); }
             if (k % 4 === 0) PS.Director.horde(9, hordes[(k / 4) % hordes.length]);
             // a breach under the hero's feet, so it wakes at once
             if (k % 6 === 1 && !PS.Director.breach) G.props.push({ kind: 'breach', mode: ['swarm', 'champion', 'hold'][(k / 6 | 0) % 3], x: p.x, y: p.y, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });

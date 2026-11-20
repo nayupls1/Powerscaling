@@ -186,6 +186,17 @@
       });
     },
 
+    /* ------------------------------------------------------------ the forge: a level for a skill you choose */
+    forgeChoices(p) {
+      const S = PS.Skills;
+      // every skill is on the table: a level while it has one to gain, an overcharge after (an evolution still needs its tome)
+      return p.skills.map((inst) => {
+        const c = R.card(p, inst.level < S.MAX_LEVEL ? 'skillup' : 'over', inst.id, p.stats.luck);
+        c.tier = Math.max(c.tier, 1);
+        return c;
+      });
+    },
+
     /* ------------------------------------------------------------ altar pacts */
     pactChoices(p) {
       const ids = U.shuffle(Object.keys(D.PACTS).filter((id) => !p.pacts.includes(id)), LOOT).slice(0, 3);
