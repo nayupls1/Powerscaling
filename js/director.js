@@ -264,7 +264,8 @@
       }
       // a dark altar now and then, and a breach to fight over; neither while a boss holds the field
       if (this.quietT > 0) this.quietT -= dt;
-      const quiet = bossAlive || this.quietT > 0;
+      // map events wait out a boss fight, but only its first 75 seconds: a fight that drags on is when a forge or a merchant helps most
+      const quiet = bossHold || this.quietT > 0;
       this.altarT -= dt;
       if (this.altarT <= 0 && !quiet) {
         this.quietT = 9;
