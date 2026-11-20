@@ -199,7 +199,7 @@ With `--seed`, each run gets its own seed derived from it, so two reports with t
 node tools/stress.js 3
 ```
 
-`tools/check.sh` runs the three checks worth running before a commit (the stress pass, the seed check and the server tests) and prints one line each:
+`tools/check.sh` runs the checks worth running before a commit (the stress pass, the seed check, the README's counts against the game's data, and the server tests) and prints one line each:
 
 ```sh
 tools/check.sh
