@@ -613,15 +613,14 @@
           <h3>Controls</h3>
           <ul class="keys">
             <li>${k('W')}${k('A')}${k('S')}${k('D')}<span>Move</span></li>
-            <li>${k('Mouse')}<span>Aim your attack. It fires on its own, or on click if you turn auto-attack off.</span></li>
+            <li>${k('Auto')}<span>Your attacks aim and fire on their own. Your job is to stay alive and pick your build.</span></li>
             <li>${k('Space')}<span>Dash. Nothing can hurt you mid-dash. The bar under your hero fills as the next one recharges.</span></li>
             <li>${k('Shift')} or ${k('F')}<span>Ward. A shield pulse that reflects bullets and staggers the crowd.</span></li>
             <li>${k('Q')} or ${k('Right click')}<span>Class ability</span></li>
-            <li>${k('T')}<span>Toggle auto-aim</span></li>
             <li>${k('Esc')}<span>Pause and inspect your build</span></li>
             <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
           </ul>
-          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus up and down walk the list, left and right change tabs, A confirms and B goes back.</p>
+          <p class="muted">Touch screens get a movement stick. On a gamepad: left stick moves, A dashes, B wards, X uses your ability, Start pauses; in menus up and down walk the list, left and right change tabs, A confirms and B goes back.</p>
         </div>
         <div class="help-col">
           <h3>The run</h3>
@@ -675,8 +674,6 @@
         <label class="set-row"><span><b>Name</b><small>Shown on the leaderboard</small></span><input type="text" maxlength="14" value="${esc(d.name)}" placeholder="Wanderer" data-name></label>
         ${sl('sfx', 'Sound effects')}
         ${sl('music', 'Music')}
-        ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
-        ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
         <div class="set-row"><span><b>Calmer screen</b><small>One switch for a quieter fight: subtle own effects, numbers for critical hits only, no screen shake or flashes. Each can still be set on its own below</small></span><button class="btn btn-small" data-calm type="button">${s.subtleFx && !s.shake && s.flash === false && s.dmgNums === 'crits' ? 'Restore defaults' : 'Make it calmer'}</button></div>
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
@@ -743,12 +740,6 @@
       this.renderSettings($('ovSettingsBody'));
       $('ovSettings').hidden = false;
     },
-    toggleAutoAim() {
-      const s = PS.Save.data.settings;
-      s.autoAim = !s.autoAim;
-      PS.Save.save();
-      this.toast(s.autoAim ? 'Auto-aim on' : 'Auto-aim off', 'crosshair');
-    },
 
     /* ================================================================ HUD */
     startRun() {
@@ -777,7 +768,7 @@
       if (!PS.Save.data.seenTutorial) {
         PS.Save.data.seenTutorial = true;
         PS.Save.save();
-        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move, mouse to aim, Space to dash, Shift to ward off bullets, Q for your ability.', 5.5);
+        this.banner('Survive', PS.Input.touch ? 'Drag to move. Your attacks aim themselves.' : 'WASD to move. Your attacks aim themselves. Space to dash, Shift to ward off bullets, Q for your ability.', 5.5);
       }
     },
     updateHud(dt) {
@@ -948,7 +939,7 @@
     rerollCards() {
       if (PS.Game.reroll(curSpec)) { PS.Audio.play('uiClick'); this.renderCards(); }
     },
-    /** mouse clicks need a longer settle time and must not be part of a click burst, so attack spam never takes a card */
+    /** mouse clicks need a longer settle time and must not be part of a click burst, so rapid clicking never takes a card */
     clickGuard() { return performance.now() - choiceAt < 600 || PS.Input.spamClick(); },
     pickCard(i, viaMouse) {
       if (PS.Game.state !== 'choice' || !curSpec || performance.now() - choiceAt < 350) return;

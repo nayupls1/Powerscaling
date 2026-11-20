@@ -23,15 +23,13 @@ bun start                     # then open http://localhost:3000
 | Input | Action |
 | --- | --- |
 | `W` `A` `S` `D` / arrows | Move |
-| Mouse | Aim. Attacks fire on their own, or on click/hold with auto-attack off |
 | `Space` | Dash, invulnerable while dashing |
 | `Shift` / `F` / middle click | Ward: a shield pulse that reflects bullets and staggers the crowd |
 | `Q` / `E` / right click | Class ability |
-| `T` | Toggle auto-aim |
 | `1` `2` `3` | Pick a reward card (`R` reroll, `B` banish) |
 | `Esc` / `P` | Pause and inspect your build |
 
-Touch screens get a floating movement stick with auto-aim, and gamepads are supported (left stick move, right stick aim, A/LB dash, B/Y ward, X/RB ability).
+Attacks aim and fire on their own: you move, dodge and pick your build. Touch screens get a floating movement stick, and gamepads are supported (left stick move, A/LB dash, B/Y ward, X/RB ability).
 
 With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a small health bar and one segment per dash charge ride under the hero, each segment filling as its charge comes back, so a fight never sends your eyes to a corner. The bars under the hero can be switched off in Settings (Hero bars).
 
@@ -148,7 +146,7 @@ Only `index.html`, `css/`, `js/` and a favicon are served. Nothing else in the r
 **Identity.** There are no accounts. When the game first reaches a server it creates a random player id and secret token and keeps them in local storage (`powerscaling.id.v1`, separate from the save, so *Reset progress* keeps the same player). The server stores only a SHA-256 of the token. The first write for an id claims it, and every later request must present the same token as `Authorization: Bearer <token>`. Settings shows this as a code under *Play on another device* (`PS.Save.syncCode()` returns `id.token`); pasting it on another device (`PS.Save.useSyncCode(code)`) links that device to the same profile. The server copy replaces the device's progress; its settings and local runs stay.
 
 **Sync.** Local storage stays the source of truth while playing, and every save is synchronous. Each `save()` bumps `updatedAt` in the save, writes local storage at once and sends a debounced `PUT` (800 ms). Unsent changes are flushed with a `keepalive` request when the tab is hidden or closed. On load the client pulls the server copy:
-- If the server copy is newer than what was loaded, it is adopted and a `ps:sync` event fires. Settings stay local, because volume and aim preferences belong to the device.
+- If the server copy is newer than what was loaded, it is adopted and a `ps:sync` event fires. Settings stay local, because volume and display preferences belong to the device.
 - If the local copy is newer, or the server has none, it is pushed.
 
 The server applies last write wins, but refuses a write older than the copy it holds (`409`). This can be a late request or a stale tab, and the client then pulls and adopts the newer copy. Progress made in that stale copy is lost, and a device whose clock runs far ahead wins conflicts. When the server is unreachable, the game carries on locally and syncs again on the next save. A finished run that cannot be posted stays on the local board only.

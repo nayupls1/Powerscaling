@@ -9,12 +9,12 @@
   const Bot = {
     /** forget the steering carried over from the last run, so a seeded run replays exactly */
     reset() { Bot.sx = 0; Bot.sy = 0; },
-    /** writes movement/aim/dash/ability decisions into G.ctrl */
+    /** writes movement/dash/ability decisions into G.ctrl */
     drive(G) {
       const p = G.player, c = G.ctrl, cfg = G.bot;
       if (cfg.afkAt !== undefined && G.time >= cfg.afkAt) {
         // idle test: hands off the controls entirely — a healthy difficulty curve should kill this quickly
-        c.mx = 0; c.my = 0; c.dash = false; c.ability = false; c.ward = false; c.autoAim = true; c.fire = true;
+        c.mx = 0; c.my = 0; c.dash = false; c.ability = false; c.ward = false;
         return;
       }
       if (cfg.sloppy) {
@@ -121,8 +121,6 @@
       c.mx = sl > 0.2 ? Bot.sx / sl : 0;
       c.my = sl > 0.2 ? Bot.sy / sl : 0;
 
-      c.autoAim = true;
-      c.fire = true;
       // raise the Ward when bullets are about to land or the crowd is on top of us
       let incoming = 0;
       for (const b of G.eprojs) if (U.dist2(b.x, b.y, p.x, p.y) < 110 * 110) incoming++;

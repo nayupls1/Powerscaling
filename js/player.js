@@ -189,20 +189,15 @@
 
       // aim
       this.auraR = 0; this.miasmaR = 0;
-      const autoAim = ctrl.autoAim;
-      let target = null;
-      if (autoAim) {
-        target = C.nearest(this.x, this.y, 520);
-        if (target) { this.aimX = target.x; this.aimY = target.y; }
-        else if (this.moving) { this.aimX = this.x + ctrl.mx * 200; this.aimY = this.y + ctrl.my * 200; }
-      } else {
-        this.aimX = ctrl.aimX; this.aimY = ctrl.aimY;
-      }
+      // attacks always aim themselves at the nearest enemy; with nothing in range the hero faces the way they walk
+      const target = C.nearest(this.x, this.y, 520);
+      if (target) { this.aimX = target.x; this.aimY = target.y; }
+      else if (this.moving) { this.aimX = this.x + ctrl.mx * 200; this.aimY = this.y + ctrl.my * 200; }
       const want = Math.atan2(this.aimY - this.y, this.aimX - this.x);
-      this.aim = autoAim ? U.turnTo(this.aim, want, 14 * dt) : want;
+      this.aim = U.turnTo(this.aim, want, 14 * dt);
       if (Math.abs(Math.cos(this.aim)) > 0.2) this.face = Math.cos(this.aim) > 0 ? 1 : -1;
-      // auto-aim holds fire with nothing in range; manual attack only swings on a click or hold
-      this.wantFire = ctrl.fire && (!autoAim || !!target);
+      // and hold fire with nothing in range
+      this.wantFire = !!target;
 
       // dash
       if (ctrl.dash && this.dashT <= 0 && this.dashCharges > 0) {
@@ -305,17 +300,11 @@
       });
     }
 
-    /** where an aimed ability lands */
+    /** where an aimed ability lands: the thickest of the crowd, else just ahead */
     abilityPoint() {
-      const G = PS.G;
-      if (G.ctrl.autoAim) {
-        const e = C.clusterPoint(430);
-        if (e) return { x: e.x, y: e.y };
-        return { x: this.x + Math.cos(this.aim) * 160, y: this.y + Math.sin(this.aim) * 160 };
-      }
-      const dx = this.aimX - this.x, dy = this.aimY - this.y, d = Math.hypot(dx, dy) || 1;
-      const k = Math.min(1, 460 / d);
-      return { x: this.x + dx * k, y: this.y + dy * k };
+      const e = C.clusterPoint(430);
+      if (e) return { x: e.x, y: e.y };
+      return { x: this.x + Math.cos(this.aim) * 160, y: this.y + Math.sin(this.aim) * 160 };
     }
 
     /* ------------------------------------------------------------ health */
