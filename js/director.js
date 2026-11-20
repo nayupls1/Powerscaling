@@ -209,7 +209,7 @@
         this.tremorX = p.x; this.tremorY = p.y;
         this.tremorT = Math.max(3, 8.5 - tm * 0.42) * (bossAlive ? 1.5 : 1) * Math.max(0.3, Math.pow(0.65, this.linger)) * (G.rules.tremorEvery || 1);
         PS.Combat.hazard({ kind: 'circle', x: p.x, y: p.y, r: 80, delay: 1.2, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });
-        const extra = 1; // one stray beside the one under your feet: more than that is clutter, not pressure
+        const extra = PS.Combat.pendingBlasts() >= 3 ? 0 : 1; // one stray beside the one under your feet, unless the floor is already busy
         for (let i = 0; i < extra; i++) {
           const a = U.rnd() * TAU, d = U.rand(130, 280);
           PS.Combat.hazard({ kind: 'circle', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 70, delay: 1.2 + i * 0.15, dmg: 0, pct: 0.15, color: '#b98cff', tremor: true });

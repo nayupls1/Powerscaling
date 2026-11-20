@@ -841,6 +841,19 @@
 
     /* ------------------------------------------------------------------ enemy hazards (telegraphed) */
     /** kinds: circle {x,y,r,delay,dmg} | beam {x,y,ang,len,w,delay,dur,dmg,rot} | ring {x,y,speed,maxR,dmg,thick} */
+    /**
+     * How many blasts that are not a boss's are still coming down around the hero. The horde's shellers check it before
+     * adding another: each of their marks is fair, but five at once from five sources is a wall, not a pattern to read.
+     */
+    pendingBlasts() {
+      const G = PS.G, p = G.player;
+      let n = 0;
+      for (const h of G.hazards) {
+        if (h.kind !== 'circle' || h.hitDone || h.dead || (h.owner && h.owner.boss)) continue;
+        if (U.dist2(h.x, h.y, p.x, p.y) < 280 * 280) n++;
+      }
+      return n;
+    },
     hazard(o) {
       const h = Object.assign({ t: 0, dead: false, delay: 0.8, dur: 0.25, hitDone: false, rad: 0, thick: 16, color: '#ff4d6d' }, o);
       PS.G.hazards.push(h);

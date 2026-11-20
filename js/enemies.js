@@ -340,6 +340,7 @@
         e.y += (dx / d) * sp * 0.4 * dir * dt;
       }
       e.st -= dt;
+      if (e.st <= 0 && C.pendingBlasts() >= 3) e.st = 0.5; // the floor is busy: hold the shot a moment
       if (e.st <= 0 && d < 390 && Math.abs(dx) < PS.G.viewW * 0.5 - 10 && Math.abs(dy) < PS.G.viewH * 0.5 - 10) {
         e.st = def.shotCd * (0.8 + U.rnd() * 0.4);
         e.flash = 0.1;
@@ -378,7 +379,7 @@
         moveTo(e, dx, dy, d, sp, dt);
         e.st -= dt;
         // only a couple may be in the air at once: a screen of landing marks is noise, not a threat to read
-        if (e.st <= 0 && d < L.range && d > 70 && leaps < (PS.Director.minutes() > 9 ? 3 : 2)) {
+        if (e.st <= 0 && d < L.range && d > 70 && leaps < (PS.Director.minutes() > 9 ? 3 : 2) && C.pendingBlasts() < 3) {
           leaps++;
           e.state = 1; e.st = 0.65;
           e.tx = p.x; e.ty = p.y; e.dx = e.x; e.dy = e.y;
