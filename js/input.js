@@ -5,8 +5,8 @@
 
   const keys = new Set();
   const I = {
-    mouseX: 0, mouseY: 0, mouseDown: false, touch: false, pad: false,
-    dashQ: false, abilityQ: false, wardQ: false, fireBuf: 0, lastDown: -1e9, prevDown: -1e9,
+    touch: false, pad: false,
+    dashQ: false, abilityQ: false, wardQ: false, lastDown: -1e9, prevDown: -1e9,
     stick: { id: null, ox: 0, oy: 0, x: 0, y: 0 },
 
     init(canvas) {
@@ -18,7 +18,6 @@
           if (k === 'Space') { this.dashQ = true; e.preventDefault(); }
           if ((k === 'ShiftLeft' || k === 'ShiftRight' || k === 'KeyF') && !e.repeat) this.wardQ = true;
           if (k === 'KeyQ' || k === 'KeyE') this.abilityQ = true;
-          if (k === 'KeyT') PS.UI.toggleAutoAim();
           if (k.startsWith('Arrow')) e.preventDefault();
         }
         if (!e.repeat && (k === 'Escape' || k === 'KeyP')) PS.UI.onEscape(k === 'Escape'); // only Esc itself walks away from an offer
@@ -26,22 +25,20 @@
         keys.add(k);
       });
       window.addEventListener('keyup', (e) => keys.delete(e.code));
-      window.addEventListener('blur', () => { keys.clear(); this.mouseDown = false; if (PS.Game.state === 'play') PS.Game.pause(); });
+      window.addEventListener('blur', () => { keys.clear(); if (PS.Game.state === 'play') PS.Game.pause(); });
       document.addEventListener('visibilitychange', () => { if (document.hidden && PS.Game.state === 'play') PS.Game.pause(); });
 
-      // Mouse is tracked on the whole window while a run is live, so the HUD never swallows aim or clicks.
+      // Clicks are read on the whole window while a run is live, so the HUD never swallows them.
       const live = () => PS.Game.state === 'play';
       const isControl = (t) => !!(t && t.closest && t.closest('button, input, a, select, textarea, [data-clickable]'));
       window.addEventListener('mousemove', (e) => {
-        this.mouseX = e.clientX; this.mouseY = e.clientY; this.pad = false;
+        this.pad = false;
         if (this.touch && e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents && (e.movementX || e.movementY)) this.setTouch(false);
       });
-      // every press is timestamped (in all game states) so menus can tell a deliberate click from attack spam
+      // every press is timestamped (in all game states) so menus can tell a deliberate click from rapid clicking
       window.addEventListener('mousedown', () => { this.prevDown = this.lastDown; this.lastDown = performance.now(); }, true);
       window.addEventListener('mousedown', (e) => {
         if (!live() || isControl(e.target)) return;
-        this.mouseX = e.clientX; this.mouseY = e.clientY;
-        if (e.button === 0) { this.mouseDown = true; this.fireBuf = 0.3; } // a quick click still queues one attack
         if (e.button === 1) this.wardQ = true;
         if (e.button === 2) this.abilityQ = true;
         // rapid clicking must never select text, start a drag or move focus
@@ -50,7 +47,6 @@
         const sel = window.getSelection && window.getSelection();
         if (sel && sel.rangeCount) sel.removeAllRanges();
       });
-      window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouseDown = false; });
       window.addEventListener('contextmenu', (e) => { if (live() || e.target === canvas) e.preventDefault(); });
       window.addEventListener('auxclick', (e) => { if (live()) e.preventDefault(); });
       document.addEventListener('selectstart', (e) => { if (!isControl(e.target)) e.preventDefault(); });
@@ -138,7 +134,7 @@
       }
     },
 
-    /** true when the current click is part of a rapid burst (someone hammering the attack button) rather than a deliberate press */
+    /** true when the current click is part of a rapid burst rather than a deliberate press */
     spamClick() { return this.lastDown - this.prevDown < 320; },
 
     /** fill the control object the simulation reads */
@@ -148,40 +144,18 @@
       if (keys.has('KeyS') || keys.has('ArrowDown')) my += 1;
       if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
       if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-      const set = PS.Save.data.settings;
-      let autoAim = set.autoAim || this.touch;
-      // manual attack: holding fires continuously, and each click is remembered briefly so spam-clicking never drops a swing
-      if (this.fireBuf > 0) this.fireBuf -= G.rdt;
-      const manual = !set.autoFire && !this.touch && !this.pad;
-      let fire = !manual || this.mouseDown || this.fireBuf > 0;
-      ctrl.manual = manual;
-      let padAim = false;
 
-      // gamepad sticks (buttons are handled in pollPad, which runs in every game state)
+      // gamepad stick (buttons are handled in pollPad, which runs in every game state)
       const gp = this.gp;
       if (gp) {
-        const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0, rx = gp.axes[2] || 0, ry = gp.axes[3] || 0;
+        const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0;
         if (Math.hypot(lx, ly) > 0.22) { mx = lx; my = ly; this.pad = true; }
-        if (Math.hypot(rx, ry) > 0.35) {
-          const p = G.player;
-          ctrl.aimX = p.x + rx * 220; ctrl.aimY = p.y + ry * 220;
-          padAim = true; fire = true; this.pad = true;
-        }
       }
       if (this.touch && this.stick.id !== null) { mx = this.stick.x; my = this.stick.y; }
       const l = Math.hypot(mx, my);
       if (l > 1) { mx /= l; my /= l; }
       else if (l < 0.15) { mx = 0; my = 0; }
       ctrl.mx = mx; ctrl.my = my;
-      // on a gamepad, attacks auto-aim unless the right stick is held
-      if (padAim) autoAim = false;
-      else if (this.pad && !this.touch) autoAim = true;
-      if (!padAim && !autoAim) {
-        const w = PS.Render.toWorld(this.mouseX, this.mouseY);
-        ctrl.aimX = w.x; ctrl.aimY = w.y;
-      }
-      ctrl.autoAim = autoAim;
-      ctrl.fire = fire;
       ctrl.dash = this.dashQ;
       ctrl.ability = this.abilityQ;
       ctrl.ward = this.wardQ;
@@ -189,7 +163,7 @@
       this.abilityQ = false;
       this.wardQ = false;
     },
-    clear() { this.dashQ = false; this.abilityQ = false; this.wardQ = false; this.fireBuf = 0; this.mouseDown = false; },
+    clear() { this.dashQ = false; this.abilityQ = false; this.wardQ = false; },
   };
 
   PS.Input = I;

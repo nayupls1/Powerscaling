@@ -1525,9 +1525,8 @@
     },
     draw(G) {
       const p = G.player;
-      // camera: follow with a little look-ahead toward the aim point, plus shake
-      const lookX = U.clamp((p.aimX - p.x) * 0.12, -70, 70), lookY = U.clamp((p.aimY - p.y) * 0.12, -50, 50);
-      const tx = p.x + (G.ctrl && G.ctrl.autoAim ? 0 : lookX), ty = p.y + (G.ctrl && G.ctrl.autoAim ? 0 : lookY);
+      // camera: follow the hero, plus shake
+      const tx = p.x, ty = p.y;
       const k = Math.min(1, G.rdt * 7);
       G.cam.x += (tx - G.cam.x) * k;
       G.cam.y += (ty - G.cam.y) * k;
