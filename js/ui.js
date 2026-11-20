@@ -1065,6 +1065,7 @@
           <h2>${title}</h2>
           <p>${sub}</p>
         </header>
+        ${!r.won && !res.retired && !G.relaxed && !G.rush && !G.daily && d.stats.bosses === 0 && d.stats.runs >= 2 ? `<p class="hint over-tip">${ico('feather', 14)} The first boss is the wall most heroes hit. Essence from every run buys permanent upgrades in the skill tree, and the class screen has a Relaxed switch for a gentler rift.</p>` : ''}
         <div class="over-score">
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-tags">
