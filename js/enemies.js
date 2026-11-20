@@ -164,7 +164,8 @@
   const E = {
     DEFS,
     /** ids restart with every run: they decide strafe directions and update parity, so a seeded run needs them stable */
-    reset() { nextId = 1; },
+    reset() { nextId = 1; E.warders = 0; },
+    warders: 0, // Warders alive, counted each frame: the director keeps them few
     /** opts: { elite, hpMult, boss, noAffix, affixes } (affixes: a fixed list of ids, for tools) */
     spawn(typeId, x, y, opts) {
       const G = PS.G, def = DEFS[typeId] || typeId; // bosses pass a def object
@@ -210,6 +211,8 @@
       const poisMul = s.statusDmg * (aff.venom >= 2 ? 1.5 : 1);
       const venom6 = aff.venom >= 6;
       leaps = 0;
+      E.warders = 0;
+      for (let i = 0; i < list.length; i++) if (list[i].def.ward && !list[i].dead) E.warders++;
       const tideSpeed = PS.Director.tideOf('speed', 1);
       for (const h of G.hazards) if (h.leap && !h.dead) leaps++;
       const pandemic = !!f.pandemic;

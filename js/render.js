@@ -805,6 +805,17 @@
     ctx.globalAlpha = 1;
   }
 
+  /** a ring of n small square dots, turning slowly: the cheap way to show a reach */
+  function dotRing(x, y, r, color, n, turn) {
+    if (!visible(x, y, r + 4)) return;
+    ctx.fillStyle = color; ctx.globalAlpha = 0.55;
+    for (let i = 0; i < n; i++) {
+      const a = turn + (i * TAU) / n;
+      ctx.fillRect(x + Math.cos(a) * r - 1.5, y + Math.sin(a) * r - 1.5, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function drawEnemies(G) {
     const list = G.enemies, t = G.time;
     // shadows first
@@ -863,19 +874,18 @@
         ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 7, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, e.life / 15)); ctx.stroke(); ctx.globalAlpha = 1;
       }
+      // Reach rings and ward marks are drawn as a few square dots, not dashed arcs: in the software rasterizer a thin ring
+      // costs as much as its whole bounding square, and a warder can mark half the horde.
       if (e.affixes && (e.affixes.includes('warding') || e.affixes.includes('grasping'))) {
         const gr = e.affixes.includes('grasping');
-        ctx.globalAlpha = 0.45; ctx.strokeStyle = gr ? '#ff7ad9' : '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * (gr ? 26 : 12);
-        ctx.beginPath(); ctx.arc(e.x, e.y, gr ? 330 : 150, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        dotRing(e.x, e.y, gr ? 330 : 150, gr ? '#ff7ad9' : '#bff3ff', gr ? 44 : 28, t * (gr ? 0.08 : 0.06));
       }
       if (e.def.ward) {
-        // the Warder's reach: pale, thin and dotted, nothing like the red of a blast
-        ctx.globalAlpha = 0.5; ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 9]); ctx.lineDashOffset = t * 12;
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.def.ward.r * (e.elite ? 1.3 : 1), 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        dotRing(e.x, e.y, e.def.ward.r * (e.elite ? 1.3 : 1), '#bff3ff', 28, t * 0.06);
       } else if (e.wardT > t) {
-        // warded: a pale bracket over the enemy
-        ctx.strokeStyle = '#bff3ff'; ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
-        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, -2.3, -0.84); ctx.stroke(); ctx.globalAlpha = 1;
+        // warded: a pale bar over the enemy
+        ctx.fillStyle = '#bff3ff'; ctx.globalAlpha = 0.85;
+        ctx.fillRect(e.x - 5, e.y - e.r - 7, 10, 2.5); ctx.globalAlpha = 1;
       }
       if (e.markT > 0) {
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;

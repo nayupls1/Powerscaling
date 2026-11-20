@@ -22,7 +22,7 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17.6], [9, 25.6], [10.5, 37], [12, 52]];
+  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17.2], [9, 24.5], [10.5, 35], [12, 49]];
   const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
   // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
   // still describes the game: with it, the bot's results match what they were before reactions existed.
@@ -150,7 +150,11 @@
       let r = U.rnd() * total;
       for (let i = 0; i < ws.length; i++) {
         r -= ws[i];
-        if (r <= 0) return TABLE[i].id;
+        if (r <= 0) {
+          // Warders hang back and die last, so left alone they pile up until half the horde is shielded: two at a time, three late
+          if (TABLE[i].id === 'warder' && PS.Enemies.warders >= (t > 10 ? 3 : 2)) return 'imp';
+          return TABLE[i].id;
+        }
       }
       return 'imp';
     },
