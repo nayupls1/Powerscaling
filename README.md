@@ -214,7 +214,7 @@ node tools/determinism.js 5
 `tools/overtime.js` plays the careful bot with the full tree for up to 30 minutes on a few seeds and fails if any run is still alive: overtime is meant to end every run, and a build that outlasts it means something is feeding the hero as fast as the horde grows.
 
 ```sh
-node tools/overtime.js                      # ranger, pyromancer and frostwarden on two seeds
+node tools/overtime.js                      # ranger, pyromancer, frostwarden and plaguebearer on two seeds
 node tools/overtime.js reaper --seeds=a,b,c
 ```
 

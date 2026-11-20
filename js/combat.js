@@ -68,7 +68,10 @@
           dmg *= s.critMult;
         }
       }
-      if (o.minBossPct && e.boss) dmg = Math.max(dmg, e.maxHp * o.minBossPct);
+      // A floor in boss health (a reflected bullet's) lifts the hit itself, never what the hit sets off: statuses and procs
+      // are sized from the hit as it was, or their strength would climb with the boss's health and spread to the horde.
+      let lift = 1;
+      if (o.minBossPct && e.boss) { const floor = e.maxHp * o.minBossPct; if (floor > dmg && dmg > 0) { lift = floor / dmg; dmg = floor; } }
       let m = 1;
       if (e.shockT > 0) m += (aff.storm >= 2 ? 0.30 : 0.15) + (s.f.staticShock ? 0.15 : 0);
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
@@ -115,9 +118,9 @@
         e.dotEl = o.el;
       } else {
         PS.FX.dmgNum(e.x, e.y - e.r, dmg, crit, o.el);
-        if (!o.noStatus) C.applyElement(e, o.el, dmg, o, crit);
+        if (!o.noStatus) C.applyElement(e, o.el, dmg / lift, o, crit);
         if (!o.noProc) {
-          C.procs(e, dmg, o, crit);
+          C.procs(e, dmg / lift, o, crit);
           if (o.el && e.hp > 0) C.tag(e, o.el);
         }
         if (crit) PS.Audio.play('crit', { vol: 0.5 });

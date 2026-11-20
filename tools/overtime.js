@@ -17,7 +17,7 @@ const { chromium } = require('playwright');
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
-  const classes = pos[0] ? pos[0].split(',') : ['ranger', 'pyromancer', 'frostwarden'];
+  const classes = pos[0] ? pos[0].split(',') : ['ranger', 'pyromancer', 'frostwarden', 'plaguebearer'];
   let bad = 0;
   for (const cls of classes) {
     for (const seed of seeds) {
