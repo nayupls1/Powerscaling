@@ -200,6 +200,8 @@
     /** a short list of the nearest things to aim for: a class to unlock, the next depth, the cheapest feats left */
     nextGoals() {
       const d = PS.Save.data, goals = [];
+      // three runs in and no boss down yet: say that there is a gentler way in
+      if (d.stats.runs >= 3 && d.stats.bosses === 0 && !d.relaxed) goals.push({ icon: 'feather', color: '#9fe6ff', name: 'Finding it rough?', text: 'Switch on Relaxed on the class screen for a gentler rift' });
       const lockedCls = D.CLASS_IDS.find((id) => !d.unlocked[id]);
       if (lockedCls) goals.push({ icon: CLASS_ICON[lockedCls], color: D.CLASSES[lockedCls].color, name: D.CLASSES[lockedCls].name, text: D.CLASSES[lockedCls].unlock.text.replace(/ to unlock$/, '') });
       if (d.stats.wins > 0 && d.depth.max < D.DEPTH_MAX) goals.push({ icon: 'vortex', color: '#9b6bff', name: 'Rift Depth ' + (d.depth.max + 1), text: `Slay the Rift Lord at depth ${d.depth.max}` });
