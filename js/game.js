@@ -416,6 +416,12 @@
       }
       if (!G.bot) { PS.Feats.check(G); G.result.feats = G.feats.slice(); } // again, now that mastery has moved
       if (!G.bot) {
+        const L = d.life, add = (k, v) => { L[k] = (L[k] || 0) + (isFinite(v) ? v : 0); };
+        add('time', Math.floor(G.time)); add('dmg', Math.round(G.dmgTotal)); add('taken', Math.round(G.dmgTaken)); add('gold', G.goldEarned);
+        add('breaches', G.breaches); add('hoarders', G.hoarders); add('pacts', G.pactsStruck); add('forged', G.forged); add('bought', G.bought);
+        add('deflected', G.deflected); add('levels', p.level - 1); add('relics', p.relicOrder.reduce((n, id) => n + p.relics[id], 0));
+        let rx = 0; for (const k in G.reactions) rx += G.reactions[k];
+        add('reactions', rx); add('elites', G.elitesSlain || 0);
         d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
           seed: G.seed, daily: G.daily || '', rush: !!G.rush, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
         if (d.history.length > 30) d.history.length = 30;

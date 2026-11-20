@@ -464,7 +464,15 @@
       const d = PS.Save.data, rows = d.history;
       $('boardScope').textContent = 'Your last ' + (rows.length || '') + ' runs on this device';
       $('boardScope').classList.remove('global');
-      const seedBox = `<form class="seed-form" id="seedForm"><label for="seedIn">Play a seed</label>
+      const L = d.life, st = d.stats, hrs = (L.time || 0) / 3600;
+      const tally = [
+        ['Time in the rift', hrs >= 1 ? hrs.toFixed(1) + ' h' : Math.round((L.time || 0) / 60) + ' min'], ['Runs', st.runs], ['Rift Lords slain', st.wins], ['Bosses slain', st.bosses],
+        ['Enemies slain', U.fmtNum(st.kills)], ['Elites slain', U.fmtNum(L.elites || 0)], ['Damage dealt', U.fmtNum(L.dmg || 0)], ['Gold earned', U.fmtNum(L.gold || 0)],
+        ['Reactions set off', U.fmtNum(L.reactions || 0)], ['Bullets deflected', U.fmtNum(L.deflected || 0)], ['Breaches sealed', L.breaches || 0], ['Hoarders caught', L.hoarders || 0],
+        ['Pacts struck', L.pacts || 0], ['Relics held', U.fmtNum(L.relics || 0)], ['Levels gained', U.fmtNum(L.levels || 0)], ['Essence earned', U.fmtNum(d.essenceTotal)],
+      ];
+      const lifeBox = st.runs ? `<dl class="life">${tally.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '';
+      const seedBox = lifeBox + `<form class="seed-form" id="seedForm"><label for="seedIn">Play a seed</label>
           <input id="seedIn" type="text" maxlength="40" placeholder="Paste a seed from a friend's run" autocomplete="off">
           <select id="seedCls" aria-label="Class">${D.CLASS_IDS.filter((id) => d.unlocked[id]).map((id) => `<option value="${id}"${id === selClass ? ' selected' : ''}>${D.CLASSES[id].name}</option>`).join('')}</select>
           <button class="btn btn-small" type="submit">Play</button></form>`;
