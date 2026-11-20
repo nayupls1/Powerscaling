@@ -324,7 +324,7 @@
       // ---- rift tides: every few minutes the rules bend for a short spell (never during a boss)
       if (this.tide) {
         this.tideLeft -= dt;
-        if (this.tideLeft <= 0) { PS.UI.toast(this.tide.name + ' passes', this.tide.icon); this.tide = null; }
+        if (this.tideLeft <= 0) this.tide = null; // no notice: the countdown under the clock and the glow at the screen's edge already say so
       } else {
         this.tideT -= dt;
         if (this.tideT <= 0 && !quiet && this.quietT <= 0) {
