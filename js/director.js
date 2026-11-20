@@ -98,12 +98,18 @@
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       // the first two acts climb as they always did; the extra bite comes late, when the build can answer it
-      return (0.72 + 0.13 * t + 0.045 * Math.max(0, t - 6)) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
+      return (0.72 + 0.13 * t + 0.045 * Math.max(0, t - 6)) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o + 0.07 * o * o) * PS.G.rules.dmg; // overtime bites harder every minute: nothing is meant to outlast it
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
     /** seconds between hordes */
     hordeGap() { return HORDE_EVERY * PS.G.rules.hordeEvery; },
     xpMult() { return 1 + this.endless() * 0.1; },
+    /**
+     * Overtime is meant to end the run. Altars, forges, the merchant, breaches and Hoarders come three times as rarely
+     * there (and chests stop being free): left at their usual pace they fed the hero relics and levels as fast as the
+     * horde grew, and a full-tree build stopped dying. Measured with a 30-minute bot run on one seed.
+     */
+    lean() { return this.victory ? 3 : 1; },
     /** what the tide in force does to a number (speed, xp, gold, haste), or `none` */
     tideOf(key, none) { return this.tide && this.tide[key] !== undefined ? this.tide[key] : none; },
     /**
@@ -253,7 +259,7 @@
         if (near < 2) {
           const a = U.rnd() * TAU, d = U.rand(520, 860);
           // now and then a chest that asks no gold: an elite stands guard inside it
-          const cursed = this.minutes() > 2.5 && G.time > this.guardedAt && U.rnd() < 0.22 && !G.props.some((x) => x.cursed);
+          const cursed = this.minutes() > 2.5 && !this.victory && G.time > this.guardedAt && U.rnd() < 0.22 && !G.props.some((x) => x.cursed);
           G.props.push({ kind: 'chest', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 26, dead: false, t: 0, bob: U.rnd() * 6, cursed });
         }
         U.compact(G.props);
@@ -274,7 +280,7 @@
       this.altarT -= dt;
       if (this.altarT <= 0 && !quiet) {
         this.quietT = 9;
-        this.altarT = 150;
+        this.altarT = 150 * this.lean();
         if (!G.props.some((x) => x.kind === 'altar') && p.pacts.length < Object.keys(PS.Data.PACTS).length) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
           G.props.push({ kind: 'altar', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 64, dead: false, t: 0, charge: 0, bob: 0 });
@@ -285,7 +291,7 @@
       this.merchantT -= dt;
       if (this.merchantT <= 0 && !quiet && this.quietT <= 0) {
         this.quietT = 9;
-        this.merchantT = 200;
+        this.merchantT = 200 * this.lean();
         if (!G.props.some((x) => x.kind === 'merchant')) {
           const a = U.rnd() * TAU, d = U.rand(480, 700);
           G.props.push({ kind: 'merchant', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 60, dead: false, t: 0, charge: 0, bob: 0, life: p.stats.f.ledger ? 150 : 75 });
@@ -296,7 +302,7 @@
       this.forgeT -= dt;
       if (this.forgeT <= 0 && !quiet && this.quietT <= 0) {
         this.quietT = 9;
-        this.forgeT = 190;
+        this.forgeT = 190 * this.lean();
         if (!G.props.some((x) => x.kind === 'forge') && p.skills.length > 1) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
           G.props.push({ kind: 'forge', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 66, dead: false, t: 0, charge: 0, bob: 0 });
@@ -307,7 +313,7 @@
       this.breachT -= dt;
       if (this.breachT <= 0 && !quiet && this.quietT <= 0) {
         this.quietT = 9;
-        this.breachT = (G.sigilBreach ? 58 : 115) * G.rules.breachEvery;
+        this.breachT = (G.sigilBreach ? 58 : 115) * G.rules.breachEvery * this.lean();
         if (!G.props.some((x) => x.kind === 'breach')) {
           const a = U.rnd() * TAU, d = U.rand(520, 760);
           G.props.push({ kind: 'breach', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
@@ -344,7 +350,7 @@
       this.hoarderT -= dt;
       if (this.hoarderT <= 0 && !quiet && this.quietT <= 0) {
         this.quietT = 9;
-        this.hoarderT = (150 + PS.RNG.side('hoarder' + this.hoarderN++)() * 60) * G.rules.hoarderEvery;
+        this.hoarderT = (150 + PS.RNG.side('hoarder' + this.hoarderN++)() * 60) * G.rules.hoarderEvery * this.lean();
         const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
         const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;
         const e = PS.Enemies.spawn('hoarder', x, y, { hpMult: 5 });
@@ -372,7 +378,7 @@
       if (!b) return;
       this.breach = null;
       b.dead = true;
-      this.breachT = Math.max(this.breachT, (PS.G.sigilBreach ? 35 : 70) * PS.G.rules.breachEvery);
+      this.breachT = Math.max(this.breachT, (PS.G.sigilBreach ? 35 : 70) * PS.G.rules.breachEvery * this.lean());
       if (won) {
         G.breaches++;
         G.score += b.mode === 'swarm' ? 400 + 40 * b.need : 500; // kept small where few kills back it: server.ts budgets score per kill
@@ -423,7 +429,7 @@
           b.need = Math.min(80, Math.round(14 + t * 5.5)); b.left = b.total = 24;
           PS.UI.toast(`The breach wakes. Slay ${b.need} of its spawn`, 'rift');
         }
-        if (G.player.stats.f.riftKey) { b.left += 4; b.total += 4; }
+        if (G.player.stats.f.riftKey) b.left += 4; // on the clock only: `total` paces a swarm's spawns, which should not slow
         PS.FX.ring(b.x, b.y, b.r, '#c06bff', 0.5);
         PS.FX.shake(5);
         PS.Audio.play('bossWarn', { vol: 0.4, pitch: 1.5 });
@@ -447,7 +453,7 @@
           const e = PS.Enemies.spawn(this.pickType(), b.x + Math.cos(a) * d, b.y + Math.sin(a) * d, { hpMult: 0.9 });
           if (b.mode === 'swarm') e.breach = b;
           e.spawnT = 0.7; // they climb out before they bite
-          e.xp *= 1.5;
+          e.xp *= this.victory ? 0.5 : 1.5; // overtime's breaches are a fight, not a harvest
         }
       }
     },

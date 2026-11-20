@@ -668,7 +668,7 @@
         if (act) {
           // the timer burns down around the rim
           ctx.globalAlpha = 0.95; ctx.lineWidth = 5; ctx.strokeStyle = pr.left < 7 ? '#ff5a7a' : '#ffffff';
-          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + (pr.left / pr.total) * TAU); ctx.stroke();
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + Math.min(1, pr.left / pr.total) * TAU); ctx.stroke();
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'lighter';

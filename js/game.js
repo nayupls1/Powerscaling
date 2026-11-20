@@ -346,8 +346,8 @@
       G.won = true;
       G.endless = true;
       G.score += 15000;
-      d.stats.wins++;
-      if (!d.unlocked.stormcaller && !G.bot) {
+      if (!G.relaxed) d.stats.wins++;
+      if (!d.unlocked.stormcaller && !G.bot && !G.relaxed) {
         d.unlocked.stormcaller = true;
         G.unlockedClass = 'stormcaller';
         PS.UI.toast('Stormcaller unlocked', 'thunder');
@@ -413,7 +413,7 @@
       d.essenceTotal += essence;
       d.stats.runs++;
       d.stats.kills += G.kills;
-      if (!G.rush) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
+      if (!G.rush && !G.relaxed) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
       // the daily rift lends everyone the full tree, so it keeps its own best score
       const best = G.relaxed ? false : G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
       if (!G.daily && !G.rush && !G.relaxed) d.stats.bestScore = Math.max(d.stats.bestScore, score);

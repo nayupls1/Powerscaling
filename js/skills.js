@@ -534,8 +534,10 @@
           const x = e.x, y = e.y;
           PS.FX.bolt(x, y - 360, x, y, '#e8eeff', 4);
           PS.FX.ring(x, y, r + 20, '#e8eeff', 0.25);
-          if (ev && !e.boss && e.hp < e.maxHp * 0.2) { PS.FX.text(x, y - e.r - 12, 'Executed', '#ffffff'); C.damage(e, e.hp * 3 + 1, { el: 'steel', src: inst.name, noCrit: true }); }
-          else C.damage(e, s.dmg, { el: 'steel', src: inst.name, crit: ev ? true : undefined, critBonus: 0.3, knock: 60 });
+          // the evolution executes through Combat's own `execute` option: a hit sized to the enemy's health would feed every
+          // proc that copies a hit's damage (Arc Coil, the storm bolt), and the hero's damage would grow with the horde's health
+          if (ev && !e.boss && e.hp < e.maxHp * 0.2) PS.FX.text(x, y - e.r - 12, 'Executed', '#ffffff');
+          C.damage(e, s.dmg, { el: 'steel', src: inst.name, crit: ev ? true : undefined, critBonus: 0.3, knock: 60, execute: ev ? 0.2 : 0 });
           if (!e.dead) { e.bleedT = 3; e.bleedDps = Math.max(e.bleedDps, s.dmg * 0.12); }
           C.aoe(x, y, r, s.dmg * 0.35, { el: 'steel', src: inst.name, knock: 120 });
         }

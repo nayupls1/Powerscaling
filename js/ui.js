@@ -1320,12 +1320,13 @@
     },
 
     /* ================================================================ keys */
-    onEscape() {
+    /** esc: true for the Escape key itself (P and a pad's Start pause and resume, but never dismiss an offer) */
+    onEscape(esc) {
       const st = PS.Game.state;
       if (!$('ovSettings').hidden) { $('ovSettings').hidden = true; return; }
       if (st === 'play') PS.Game.pause();
       else if (st === 'paused') PS.Game.resume();
-      else if (st === 'choice' && curSpec && (curSpec.kind === 'pact' || curSpec.kind === 'shop') && performance.now() - choiceAt > 600) PS.Game.choose(curSpec, null); // walk away
+      else if (esc && st === 'choice' && curSpec && (curSpec.kind === 'pact' || curSpec.kind === 'shop') && performance.now() - choiceAt > 600) PS.Game.choose(curSpec, null); // walk away
       else if (st === 'menu' && lastScreen !== 'scrTitle') this.showScreen('scrTitle');
     },
     onKey(code) {
