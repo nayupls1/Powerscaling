@@ -198,6 +198,12 @@ With `--seed`, each run gets its own seed derived from it, so two reports with t
 node tools/stress.js 3
 ```
 
+`tools/check.sh` runs the three checks worth running before a commit (the stress pass, the seed check and the server tests) and prints one line each:
+
+```sh
+tools/check.sh
+```
+
 `tools/determinism.js` plays a seed, then a different run, then the same seed again in one page, for every class, and fails unless both plays match exactly. It catches state a run leaves behind (a module variable, a Director field that `reset()` forgets), which would make a shared seed or the daily rift play differently depending on what was played before:
 
 ```sh
