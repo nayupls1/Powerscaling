@@ -542,7 +542,7 @@
     ctx.globalAlpha = 1;
   }
 
-  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'], merchant: ['#ffd35c', 'coin'] };
+  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#f06be0', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'], merchant: ['#ffd35c', 'coin'] };
 
   function drawProps(G) {
     const p = G.player, t = G.time;
@@ -640,20 +640,20 @@
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'lighter';
-        drawGlow(pr.x, pr.y - 10, 62, '#ff2846', 0.35 + 0.15 * Math.sin(t * 3.1));
+        drawGlow(pr.x, pr.y - 10, 62, '#d94be0', 0.35 + 0.15 * Math.sin(t * 3.1));
         ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 15, 28, 9, 0, 0, TAU); ctx.fill();
-        // a squat slab on two steps, with a bowl of something red
+        // a squat slab on two steps, its bowl alight (violet, not red: red is the rift's danger colour)
         ctx.fillStyle = '#2a2038';
         ctx.beginPath(); ctx.roundRect(pr.x - 26, pr.y + 4, 52, 12, 3); ctx.fill();
         ctx.fillStyle = '#3b2d4f';
         ctx.beginPath(); ctx.roundRect(pr.x - 19, pr.y - 6, 38, 12, 3); ctx.fill();
         ctx.fillStyle = '#54406e';
         ctx.beginPath(); ctx.moveTo(pr.x - 22, pr.y - 6); ctx.lineTo(pr.x - 16, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 22, pr.y - 6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#ff3d5e';
+        ctx.fillStyle = '#e052c8';
         ctx.beginPath(); ctx.ellipse(pr.x, pr.y - 20, 12, 4, 0, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#ffb3c0';
+        ctx.fillStyle = '#ffc6f5';
         const fl = 5 + 2 * Math.sin(t * 9 + pr.x);
         ctx.beginPath(); ctx.moveTo(pr.x - 5, pr.y - 21); ctx.quadraticCurveTo(pr.x - 2, pr.y - 28 - fl, pr.x + 1, pr.y - 34 - fl); ctx.quadraticCurveTo(pr.x + 6, pr.y - 27, pr.x + 5, pr.y - 21); ctx.closePath(); ctx.fill();
         ctx.strokeStyle = 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2;

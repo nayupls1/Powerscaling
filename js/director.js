@@ -798,7 +798,7 @@
             pr.charge += dt / 2.2;
             if (pr.charge >= 1) {
               pr.dead = true;
-              PS.FX.ring(pr.x, pr.y, 160, '#ff5a7a', 0.5);
+              PS.FX.ring(pr.x, pr.y, 160, '#f06be0', 0.5);
               PS.Audio.play('shrine', { pitch: 0.6 });
               PS.G.queue.push({ kind: 'altar' });
             }
