@@ -40,10 +40,12 @@
       opts = opts || {};
       const save = PS.Save.data;
       const rush = !!opts.rush;
+      // Relaxed: a gentler rift, chosen on the class screen (tools may ask for it with opts.relaxed). Not for the daily rift or a rush.
+      const relaxed = !opts.daily && !rush && (opts.relaxed !== undefined ? !!opts.relaxed : !opts.bot && !!save.relaxed && opts.seed === undefined);
       const daily = opts.daily && !rush ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
       if (daily) clsId = daily.cls;
       // tools and the bot may ask for any depth; a player only gets what they have unlocked
-      const depth = daily || rush ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
+      const depth = daily || rush || relaxed ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
         : U.clamp(opts.depth !== undefined ? opts.depth | 0 : save.depth.sel, 0, save.depth.max);
       // a typed seed that names a daily rift is salted, so the day's rift cannot be rehearsed outside it
       const seed = daily ? daily.seed : opts.seed !== undefined ? (/^daily:/i.test(String(opts.seed)) && !opts.bot ? 'x' : '') + String(opts.seed) : PS.RNG.fresh();
@@ -68,6 +70,12 @@
       G.sigil = sg && (opts.bot || save.feats[sg.feat]) ? sg.id : '';
       if (G.sigil && sg.rules) sg.rules(G.rules);
       if (rush) G.rush = { stage: 0, wait: 3, at: 0 };
+      if (relaxed) {
+        // softer hits, a slightly thinner horde, the ground gives way less often; worth less, and kept off the boards
+        G.relaxed = true;
+        const R = G.rules;
+        R.dmg *= 0.7; R.hp *= 0.88; R.tremorEvery = (R.tremorEvery || 1) * 1.6; R.heal *= 1.25; R.score = 0.6; R.essence = 0.75;
+      }
       PS.G = G;
       PS.FX.reset();
       PS.Director.reset();
@@ -95,7 +103,7 @@
     again() {
       const G = PS.G;
       if (!G) return;
-      this.start(G.cls, G.rush ? { rush: true } : G.daily ? { daily: true } : { depth: G.depth });
+      this.start(G.cls, G.rush ? { rush: true } : G.daily ? { daily: true } : { depth: G.depth, relaxed: !!G.relaxed });
     },
 
     pause() {
@@ -344,8 +352,8 @@
         G.unlockedClass = 'stormcaller';
         PS.UI.toast('Stormcaller unlocked', 'thunder');
       }
-      let sub = 'You win. The rift does not close — see how far beyond it you can go.';
-      if (!G.daily && !G.bot) {
+      let sub = G.relaxed ? 'You win. The rift proper is waiting when you are ready for it.' : 'You win. The rift does not close — see how far beyond it you can go.';
+      if (!G.daily && !G.bot && !G.relaxed) {
         d.depth.clear[G.cls] = Math.max(d.depth.clear[G.cls] === undefined ? -1 : d.depth.clear[G.cls], G.depth);
         // winning at your deepest depth opens the next one
         if (G.depth === d.depth.max && d.depth.max < D.DEPTH_MAX) {
@@ -407,8 +415,8 @@
       d.stats.kills += G.kills;
       if (!G.rush) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
       // the daily rift lends everyone the full tree, so it keeps its own best score
-      const best = G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
-      if (!G.daily && !G.rush) d.stats.bestScore = Math.max(d.stats.bestScore, score);
+      const best = G.relaxed ? false : G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
+      if (!G.daily && !G.rush && !G.relaxed) d.stats.bestScore = Math.max(d.stats.bestScore, score);
       G.result = { run, essence, best, retired, rank: 0, firstDaily, streak, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
       if (G.daily && !G.bot) {
         if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
@@ -433,10 +441,10 @@
         let rx = 0; for (const k in G.reactions) rx += G.reactions[k];
         add('reactions', rx); add('elites', G.elitesSlain || 0);
         d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
-          seed: G.seed, daily: G.daily || '', rush: !!G.rush, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
+          seed: G.seed, daily: G.daily || '', rush: !!G.rush, relaxed: !!G.relaxed, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
         if (d.history.length > 30) d.history.length = 30;
       }
-      if (!G.bot && !G.rush) G.result.rank = PS.Save.addRun(run);
+      if (!G.bot && !G.rush && !G.relaxed) G.result.rank = PS.Save.addRun(run);
       else PS.Save.save();
       this.state = 'over';
       PS.Audio.resume();

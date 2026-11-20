@@ -86,7 +86,7 @@ async function runOne({ cls, minutes, flags, bucket, r }) {
     else if (tree) S.tree[n.id] = tree.split(',').includes(n.id) ? n.max : 0;
   }
   const bot = { sloppy: !!flags.sloppy, random: !!flags.random, element: flags.el || null };
-  PS.Game.start(cls, { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, seed: flags.seed !== undefined ? flags.seed + ':' + cls + ':' + r : undefined });
+  PS.Game.start(cls, { bot, relaxed: !!flags.relaxed, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, seed: flags.seed !== undefined ? flags.seed + ':' + cls + ':' + r : undefined });
   PS.Game.state = 'sim';
   const G = PS.G, C = PS.Combat, dt = 1 / 60;
   const origTag = C.tag;

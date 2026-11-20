@@ -249,7 +249,8 @@
           })()}
           ${this.depthPicker()}
           ${this.sigilPicker()}
-          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
+          <label class="set-row relaxed-row"><span><b>Relaxed</b><small>A gentler rift: enemies hit 30% softer, the ground gives way less often, healing is stronger. Worth 60% score and 75% Essence, and kept off the leaderboard. No depths.</small></span><input type="checkbox" id="relaxedTog" ${d.relaxed ? 'checked' : ''}><i class="switch"></i></label>
+          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.relaxed ? 'Begin a relaxed run' : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
           ${locked ? '' : d.stats.wins > 0 ? `<button class="btn btn-rush" id="btnRush">${ico('swords', 18)} Boss rush<small>${d.rush[selClass] ? 'Best ' + U.fmtTime(d.rush[selClass]) : 'Five bosses, back to back'}</small></button>` : `<p class="depth-hint">${ico('lock', 14)} Slay the Rift Lord to open the boss rush: five bosses, back to back.</p>`}
         </div>
         <div class="cd-tree">
@@ -263,6 +264,8 @@
         </div>`;
       const begin = $('btnBegin');
       if (!locked) click(begin, () => PS.Game.start(selClass));
+      const rt = $('relaxedTog');
+      if (rt) rt.addEventListener('change', () => { d.relaxed = rt.checked; PS.Save.save(); this.renderClasses(); });
       if ($('btnRush')) click($('btnRush'), () => PS.Game.start(selClass, { rush: true }));
       const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
       step('depthDown', -1); step('depthUp', 1);
@@ -489,7 +492,7 @@
         <ul class="hist">${rows.map((r, i) => {
           const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
           const how = r.won ? (r.rush ? 'Cleared the gauntlet' : 'Slew the Rift Lord') : r.retired ? 'Walked away' : r.by ? 'Fell to ' + esc(r.by) : 'Fell';
-          const extras = [r.rush ? 'Boss rush' : '', r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
+          const extras = [r.rush ? 'Boss rush' : '', r.relaxed ? 'Relaxed' : '', r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
           return `<li class="hist-row${r.won ? ' won' : ''}" style="--c:${c.color}">
             <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
             <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
@@ -501,7 +504,7 @@
       wireSeed();
       $('boardBody').querySelectorAll('[data-replay]').forEach((b) => click(b, () => {
         const r = rows[+b.dataset.replay];
-        PS.Game.start(r.cls, { seed: r.seed, depth: Math.min(r.depth || 0, d.depth.max) });
+        PS.Game.start(r.cls, { seed: r.seed, depth: Math.min(r.depth || 0, d.depth.max), relaxed: !!r.relaxed });
       }));
     },
 
@@ -1056,6 +1059,7 @@
             ${res.mastery && res.mastery.up ? `<span class="tag gold">${ico('star', 14)} ${c.name} mastery ${res.mastery.rank}</span>` : res.mastery ? `<span class="tag">${ico('star', 14)} +${res.mastery.gained} mastery</span>` : ''}
             ${res.best ? `<span class="tag gold">${G.rush ? 'Your fastest clear' : G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
             ${G.rush ? `<span class="tag">${ico('swords', 14)} Boss rush</span>` : ''}
+            ${G.relaxed ? `<span class="tag">${ico('feather', 14)} Relaxed, score ×0.6, off the leaderboard</span>` : ''}
             ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}
             ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}
             ${res.rank && !G.daily ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}

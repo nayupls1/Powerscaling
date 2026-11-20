@@ -83,6 +83,9 @@
   feat('rush2', 'rift', 'No Breath', 'timer',  'Clear a boss rush in under six minutes.', 150, (G) => G.won && G.time < 360);
   F[F.length - 1].rush = F[F.length - 2].rush = true;
 
+  // feats a Relaxed run cannot earn: wins, endurance, score and the depths
+  const HARD = new Set(['win', 'over15', 'over18', 'dailywin', 'minimal', 'score100', 'score250', 'solenne', 'veyra', 'flawless', 'depth1', 'depth3', 'depth6', 'depth10'].concat(F.filter((f) => f.id.startsWith('w_')).map((f) => f.id)));
+
   const GROUPS = { rift: 'The rift', class: 'Heroes', depth: 'Rift Depths', build: 'Builds', loot: 'Spoils and pacts', slay: 'Slaughter' };
   const BY_ID = {};
   for (const f of F) BY_ID[f.id] = f;
@@ -104,6 +107,7 @@
       let got = 0;
       for (const f of F) {
         if (have[f.id] || rush !== !!f.rush) continue;
+        if (G.relaxed && HARD.has(f.id)) continue; // the rift proper only
         let ok = false;
         try { ok = !!f.test(G, p, d); } catch (e) { ok = false; }
         if (!ok) continue;

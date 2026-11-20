@@ -30,6 +30,7 @@
     streak: { n: 0, last: '' }, // consecutive days with a daily rift played, and the last such day (UTC date)
     mastery: {},         // class id -> mastery points
     rush: {},            // boss rush: best clear time in seconds, per class
+    relaxed: false,      // the Relaxed toggle on the class screen
     sigil: '',           // the sigil worn into the next run ('' for none)
     feats: {},           // featId -> when it was earned (ms)
     depth: { max: 0, sel: 0, clear: {} },                 // Rift Depths: deepest unlocked, the one selected, deepest cleared per class
