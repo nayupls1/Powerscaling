@@ -456,8 +456,10 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
 .kind-relic .choice-head h2 { color: #dccbff; }
 .kind-pact .choice-head h2 { color: #ff8a9a; }
 .kind-forge .choice-head h2 { color: #ffc98a; }
-.kind-forge .cards { grid-template-columns: repeat(auto-fit, minmax(0, 210px)); }
-.kind-forge .card { min-height: 250px; }
+@media (min-width: 761px) {
+  .kind-forge .cards { grid-template-columns: repeat(auto-fit, minmax(0, 210px)); }
+  .kind-forge .card { min-height: 250px; }
+}
 .choice-head p { color: var(--muted); font-weight: 600; margin-top: 4px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 290px)); justify-content: center; gap: clamp(10px, 1.6vw, 18px); width: 100%; }
 .card {
