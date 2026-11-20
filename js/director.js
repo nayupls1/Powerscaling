@@ -324,6 +324,7 @@
           const td = T[U.pick(ids, SD)];
           this.tide = td; this.tideLeft = td.dur; this.lastTide = td.id;
           note('tide', td.id);
+          G.tides++;
           PS.UI.banner(td.name, td.text, 3);
           PS.FX.flash(td.color, 0.18);
           PS.Audio.play('shrine', { vol: 0.5, pitch: 0.8 });
