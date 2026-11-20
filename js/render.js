@@ -386,7 +386,8 @@
     let riftGlows = 8, embers = 3;
     for (const z of G.zones) {
       if (!visible(z.x, z.y, z.r + 20)) continue;
-      const fade = Math.min(1, z.life / 0.4, z.age / 0.2) * own;
+      // a late build's zones cover half the screen: the bigger the wash, the thinner it is painted, so the floor stays readable
+      const fade = Math.min(1, z.life / 0.4, z.age / 0.2) * own * (z.r > 150 ? Math.max(0.42, 150 / z.r) : 1);
       const k = z.kind;
       if (k === 'poison' || k === 'pool') {
         drawZoneDisc('poison', z.x, z.y, z.r, fade);
