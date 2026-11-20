@@ -1109,7 +1109,7 @@
               if (G.tides) bits.push(`<span class="chip">${ico('moon', 15)} Tides weathered <em>${G.tides}</em></span>`);
               return bits.length ? `<h3 class="over-sub">Along the way</h3><div class="chips">${bits.join('')}</div>` : '';
             })()}
-            <p class="muted seed">Seed <span class="seed-text">${esc(G.seed)}</span> <button class="btn btn-small btn-ghost" id="overCopySeed" type="button">Copy</button></p>
+            <p class="muted seed">Seed <span class="seed-text">${esc(G.seed)}</span> <button class="btn btn-small btn-ghost" id="overCopySeed" type="button">Copy</button> <button class="btn btn-small btn-ghost" id="overShare" type="button">Copy a summary</button></p>
           </div>
         </div>
         <div class="over-name">
@@ -1128,6 +1128,14 @@
       if (cp) cp.addEventListener('click', () => {
         const done = () => { cp.textContent = 'Copied'; };
         try { navigator.clipboard.writeText(String(G.seed)).then(done, () => { cp.textContent = 'Select and copy'; }); } catch (e) { cp.textContent = 'Select and copy'; }
+      });
+      const sh = $('overShare');
+      if (sh) sh.addEventListener('click', () => {
+        // one line a friend can read, with the seed to try it themselves
+        const mode = G.rush ? 'boss rush' : G.daily ? 'daily rift ' + G.daily : G.relaxed ? 'relaxed' : G.depth ? 'depth ' + G.depth : '';
+        const text = `Powerscaling: ${c.name}${mode ? ' (' + mode + ')' : ''}, ${r.score.toLocaleString('en-US')} points, ${r.won ? 'slew the Rift Lord' : 'fell'} at ${U.fmtTime(r.time)}, level ${r.level}. Build: ${(r.build || []).slice(0, 3).join(', ')}.${G.daily ? '' : ' Seed ' + G.seed + '.'}`;
+        const done = () => { sh.textContent = 'Copied'; };
+        try { navigator.clipboard.writeText(text).then(done, () => { sh.textContent = 'Could not copy'; }); } catch (e) { sh.textContent = 'Could not copy'; }
       });
       const all = $('overDmgAll');
       if (all) click(all, () => { $('overDmg').innerHTML = this.dmgBars(G, 99); all.remove(); });
