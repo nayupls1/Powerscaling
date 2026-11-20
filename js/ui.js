@@ -642,6 +642,7 @@
           <h3>Between runs</h3>
           <p>Essence buys permanent upgrades in the skill tree. Feats are one-time goals that pay Essence, and some unlock a sigil: one perk to wear into a run, chosen on the class screen.</p>
           <p>Every run earns the class you played mastery, and each rank is 1% more damage for that class. The codex records every relic, evolution, reaction, pact and enemy you have met.</p>
+          <p>If the rift is too much, or you only want to unwind, switch on Relaxed on the class screen: a gentler rift that still pays Essence, kept off the leaderboard.</p>
         </div>
         <div class="help-col">
           <h3>Reactions</h3>
