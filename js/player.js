@@ -10,7 +10,7 @@
 
   /** experience needed to go from `level` to `level + 1` */
   function xpFor(level) {
-    return Math.floor(8 + level * 9 + Math.pow(level, 2.35) * 0.9);
+    return Math.floor(10 + level * 11 + Math.pow(level, 2.35) * 1.15);
   }
   // slots open as the hero levels, so a build is assembled over the run instead of in the first minute.
   // Each unlock is a power spike the player can see coming on the HUD.
@@ -73,10 +73,10 @@
         f: {}, m: {},
       };
       Object.assign(s, cls.base);
-      // permanent meta tree. The daily rift lends every hero the whole tree, so the day's board compares play, not grind
+      // permanent meta tree. The daily rift lends every hero the same tree (Data.DAILY_TREE), so the day's board compares play, not grind
       const G = PS.G, rules = G && G.rules, tree = PS.Save.data.tree;
       for (const n of D.META) {
-        const rank = G && G.daily ? n.max : tree[n.id] || 0;
+        const rank = G && G.daily ? D.DAILY_TREE[n.id] || 0 : Math.min(n.max, tree[n.id] || 0);
         if (rank > 0) n.apply(s, rank);
       }
       // class mastery (not in the daily rift, where everyone plays on equal terms)

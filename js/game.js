@@ -4,7 +4,7 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U, D = PS.Data;
 
-  const LEVEL_HEAL = 0.03; // share of max health every level-up restores (Second Wind adds to it)
+  const LEVEL_HEAL = 0.02; // share of max health every level-up restores (Second Wind adds to it)
   const TL_STEP = 10;      // seconds between rows of the run history shown on the results screen
   const HURT_NAMES = { bullet: 'Bullets', tremor: 'Rift tremors', hazard: 'Blasts', beam: 'Beams', ring: 'Shockwaves' };
 
@@ -32,7 +32,7 @@
     /* ------------------------------------------------------------ run lifecycle */
     /**
      * opts: { bot, seed, depth, daily }
-     *   daily  true for today's daily rift (or a 'YYYY-MM-DD' date): fixed seed, class and mutator, full skill tree, depth 0
+     *   daily  true for today's daily rift (or a 'YYYY-MM-DD' date): fixed seed, class and mutator, a lent skill tree (Data.DAILY_TREE), depth 0
      *   depth  Rift Depth to play at; defaults to the one picked on the class screen, capped at what is unlocked
      *   seed   string or number; a random one is drawn when absent
      */
@@ -414,7 +414,7 @@
       d.stats.runs++;
       d.stats.kills += G.kills;
       if (!G.rush && !G.relaxed) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
-      // the daily rift lends everyone the full tree, so it keeps its own best score
+      // the daily rift lends everyone the same tree, so it keeps its own best score
       const best = G.relaxed ? false : G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
       if (!G.daily && !G.rush && !G.relaxed) d.stats.bestScore = Math.max(d.stats.bestScore, score);
       G.result = { run, essence, best, retired, rank: 0, firstDaily, streak, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };

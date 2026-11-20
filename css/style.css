@@ -301,15 +301,16 @@ i[data-icon], .count i { display: inline-flex; }
 .essence-count { display: flex; align-items: center; gap: 7px; font-size: 1.05rem; color: #dccbff; }
 .essence-count b { font-family: var(--display); font-weight: 900; font-size: 2rem; line-height: 1; color: var(--bone); }
 .tree-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 22px; align-items: start; }
-.tree-canvas { display: grid; place-items: center; }
-.tree-square { position: relative; width: min(100%, 80vh); aspect-ratio: 1; container-type: inline-size; }
+.tree-canvas { overflow: auto; max-height: calc(100vh - 140px); border-radius: 16px; background: rgba(13, 10, 30, 0.35); cursor: grab; overscroll-behavior: contain; }
+.tree-canvas.panning { cursor: grabbing; user-select: none; }
+.tree-square { position: relative; width: max(100%, 1180px); aspect-ratio: 1; container-type: inline-size; }
 .tree-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
-.tree-lines line { stroke: rgba(239, 232, 216, 0.16); stroke-width: 0.07; }
-.tree-lines line.lit { stroke: var(--c); stroke-width: 0.11; }
-.tcore { position: absolute; transform: translate(-50%, -50%); width: max(30px, 9.6cqw); height: max(30px, 9.6cqw); border-radius: 50%; display: grid; place-items: center; background: var(--panel-hi); border: 3px solid #dccbff; color: #dccbff; box-shadow: 0 0 30px rgba(155, 107, 255, 0.5); }
-.tarm { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 900; font-size: max(14px, 3.6cqw); white-space: nowrap; }
+.tree-lines line { stroke: rgba(239, 232, 216, 0.16); stroke-width: 0.05; }
+.tree-lines line.lit { stroke: var(--c); stroke-width: 0.08; }
+.tcore { position: absolute; transform: translate(-50%, -50%); width: max(30px, 5cqw); height: max(30px, 5cqw); border-radius: 50%; display: grid; place-items: center; background: var(--panel-hi); border: 3px solid #dccbff; color: #dccbff; box-shadow: 0 0 30px rgba(155, 107, 255, 0.5); }
+.tarm { position: absolute; transform: translate(-50%, -50%); font-family: var(--display); font-weight: 900; font-size: max(14px, 2.2cqw); white-space: nowrap; }
 .tcore .ps-icon, .tnode .ps-icon { width: 52%; height: 52%; }
-.tnode { --c: #fff; position: absolute; transform: translate(-50%, -50%); width: max(24px, 7.7cqw); height: max(24px, 7.7cqw); border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer; background: var(--dusk); border: 2px solid rgba(239, 232, 216, 0.2); color: rgba(239, 232, 216, 0.35); transition: transform 0.1s, box-shadow 0.12s; }
+.tnode { --c: #fff; position: absolute; transform: translate(-50%, -50%); width: max(24px, 4cqw); height: max(24px, 4cqw); border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer; background: var(--dusk); border: 2px solid rgba(239, 232, 216, 0.2); color: rgba(239, 232, 216, 0.35); transition: transform 0.1s, box-shadow 0.12s; }
 .tnode.cap { border-radius: 28%; }
 .tnode:hover { transform: translate(-50%, -50%) scale(1.12); }
 .tnode.open { color: color-mix(in oklab, var(--c), white 10%); border-color: color-mix(in oklab, var(--c), transparent 40%); }
@@ -318,8 +319,7 @@ i[data-icon], .count i { display: inline-flex; }
 .tnode.max { color: var(--ink); background: var(--c); border-color: #fff; box-shadow: 0 0 16px color-mix(in oklab, var(--c), transparent 40%); }
 .tnode.sel { outline: 3px solid var(--bone); outline-offset: 3px; }
 @keyframes node-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--c), transparent 75%); } }
-.trank { position: absolute; bottom: -0.75em; left: 50%; transform: translateX(-50%); font: 800 max(9px, 1.6cqw) var(--body); padding: 0 5px; border-radius: 5px; background: var(--ink); color: var(--bone); border: 1px solid var(--line); white-space: nowrap; }
-@container (max-width: 520px) { .trank { display: none; } .tnode { width: max(30px, 8.2cqw); height: max(30px, 8.2cqw); } }
+.trank { position: absolute; bottom: -0.75em; left: 50%; transform: translateX(-50%); font: 800 max(9px, 0.9cqw) var(--body); padding: 0 5px; border-radius: 5px; background: var(--ink); color: var(--bone); border: 1px solid var(--line); white-space: nowrap; }
 .tree-info { background: rgba(35, 27, 71, 0.8); border: 2px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 14px; position: sticky; top: 16px; }
 .ti-head { --c: #fff; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
 .ti-ico { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: var(--c); border: 2px solid var(--c); background: color-mix(in oklab, var(--c), var(--ink) 82%); }
@@ -328,6 +328,8 @@ i[data-icon], .count i { display: inline-flex; }
 .ti-effects dt { font-size: 0.8rem; color: var(--muted); }
 .ti-effects dd { margin: 0; font-weight: 600; font-size: 1.05rem; }
 .ti-note { color: var(--muted); font-weight: 600; }
+.ti-progress { height: 8px; border-radius: 4px; background: rgba(239, 232, 216, 0.12); overflow: hidden; }
+.ti-progress span { display: block; height: 100%; background: #dccbff; }
 .ti-foot { color: var(--muted); font-size: 0.88rem; }
 
 /* leaderboard */
@@ -717,7 +719,6 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
   .choice-actions .btn { padding: 0.35em 0.7em; font-size: 0.82rem; }
   .screen { padding-top: 12px; }
   .screen-head { margin-bottom: 10px; }
-  .tree-square { width: min(100%, 92vh); }
 }
 
 /* ---------------------------------------------------------------- cut-stone corners (last, so they win over the shapes above) */

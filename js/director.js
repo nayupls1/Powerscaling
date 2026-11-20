@@ -22,11 +22,17 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 1.6], [1, 2.4], [2, 3.3], [3, 4.4], [4.5, 7.2], [6, 12], [7.5, 17.2], [9, 24.5], [10.5, 35], [12, 49]];
-  const DEEPEN = 1.25; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
+  const HP_KNOTS = [[0, 3.8], [1, 5.6], [2, 7.8], [3, 10.4], [4.5, 17.5], [6, 29], [7.5, 42], [9, 62], [10.5, 90], [12, 130]];
+  const DEEPEN = 1.3; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
   // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
   // still describes the game: with it, the bot's results match what they were before reactions existed.
   const REACTION_OFFSET = 1.05;
+  // overtime: the horde's health multiplies by this every minute after the Rift Lord falls. Nothing is meant to last long there
+  const OT_HP = 3.2;
+  // overtime also thins the horde: fewer enemies on screen and fewer arriving, down to OT_THIN_MIN of the count over
+  // the first minutes, each one carrying the health and experience of the ones that are missing. The rift gets harder
+  // by every enemy being a real threat, not by the screen filling with more of them than a frame can draw.
+  const OT_THIN_RATE = 0.15, OT_THIN_MIN = 0.4;
 
   // from: minute the type first appears, w: weight once established
   const TABLE = [
@@ -89,21 +95,24 @@
     minutes() { const G = PS.G; return G.rush ? RUSH_MIN[Math.min(G.rush.stage, RUSH_MIN.length - 1)] + (G.time - G.rush.at) / 240 : G.time / 60; },
     /** minutes of overtime: the clock starts when the Rift Lord falls, so the final duel itself is not inflated */
     endless() { return this.victory ? Math.max(0, PS.G.time - this.victoryAt) / 60 : 0; },
-    hpMult() {
+    /** the horde's health; `boss` leaves out overtime's thinning, which a boss (always one) does not need */
+    hpMult(boss) {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(1.75, o) * REACTION_OFFSET * PS.G.rules.hp;
+      return knot(HP_KNOTS, t) * Math.pow(DEEPEN, this.depth()) * Math.pow(OT_HP, o) * REACTION_OFFSET * PS.G.rules.hp / (boss ? 1 : this.thin());
     },
+    /** 1 until the Rift Lord falls, then shrinking toward OT_THIN_MIN: the share of the usual horde count overtime sends */
+    thin() { return this.victory ? Math.max(OT_THIN_MIN, 1 - OT_THIN_RATE * this.endless()) : 1; },
     /** bosses slain so far, capped at the four scripted ones (overtime has its own ramp) */
     depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       // the first two acts climb as they always did; the extra bite comes late, when the build can answer it
-      return (0.72 + 0.13 * t + 0.045 * Math.max(0, t - 6)) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o + 0.07 * o * o) * PS.G.rules.dmg; // overtime bites harder every minute: nothing is meant to outlast it
+      return (1.8 + 0.22 * t + 0.1 * Math.max(0, t - 6)) * (1 + 0.06 * this.depth()) * (1 + 1.1 * o + 0.5 * o * o) * PS.G.rules.dmg; // overtime bites harder every minute: nothing is meant to outlast it
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
     /** seconds between hordes */
     hordeGap() { return HORDE_EVERY * PS.G.rules.hordeEvery; },
-    xpMult() { return 1 + this.endless() * 0.1; },
+    xpMult() { return (1 + this.endless() * 0.1) / this.thin(); }, // fewer enemies in overtime, each worth more
     /**
      * Overtime is meant to end the run. Altars, forges, the merchant, breaches and Hoarders come three times as rarely
      * there (and chests stop being free): left at their usual pace they fed the hero relics and levels as fast as the
@@ -125,11 +134,11 @@
     },
     targetCount() {
       const t = this.minutes();
-      return Math.min(MAX_ENEMIES, (30 + 30 * t + 1.4 * t * t) * this.pressure());
+      return Math.min(MAX_ENEMIES, (44 + 34 * t + 1.6 * t * t) * this.pressure()) * this.thin();
     },
     spawnRate() {
       const t = this.minutes();
-      return (5 + 6 * Math.min(t, 12) + this.endless() * 10) * this.pressure();
+      return (6 + 7 * Math.min(t, 12)) * this.pressure() * this.thin();
     },
 
     /** a point just off-screen around the player */
@@ -516,14 +525,14 @@
      * After that the rift picks from all four patterns, never the same one twice running. (force: a pattern, for tools.)
      */
     horde(n, force) {
-      const G = PS.G, p = G.player, t = this.minutes();
+      const G = PS.G, p = G.player, t = this.minutes(), th = this.thin(), few = (k) => Math.max(4, Math.round(k * th)); // overtime sends thinner, sturdier hordes
       const EV = PS.RNG.side('horde' + n); // the nth horde is the same for everyone on the seed, whenever it arrives
       const kinds = ['ring', 'stampede', 'pincer', 'wall', 'coil', 'spearhead'];
       const kind = force || (n < 2 ? kinds[n] : U.pick(kinds.filter((k) => k !== this.lastHorde), EV));
       this.lastHorde = kind;
       if (!force) note('horde', kind);
       if (kind === 'ring') {
-        const count = Math.min(60, Math.round(22 + t * 4));
+        const count = few(Math.min(60, Math.round(22 + t * 4)));
         const type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
         const rad = Math.max(G.viewW, G.viewH) * 0.5 + 60;
         for (let i = 0; i < count; i++) {
@@ -532,11 +541,11 @@
         }
         PS.UI.toast('The swarm closes in', 'ghost');
       } else if (kind === 'stampede') {
-        this.stampede(EV() * TAU, Math.min(50, Math.round(16 + t * 3.5)), t > 3.5 ? 'hound' : 'imp', 1.2);
+        this.stampede(EV() * TAU, few(Math.min(50, Math.round(16 + t * 3.5))), t > 3.5 ? 'hound' : 'imp', 1.2);
         PS.UI.toast('A stampede approaches', 'paw');
       } else if (kind === 'coil') {
         // three arcs at three distances, each a third of the way round: the swarm arrives from one side after another
-        const per = Math.min(20, Math.round(8 + t * 1.4)), a0 = EV() * TAU, type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
+        const per = few(Math.min(20, Math.round(8 + t * 1.4))), a0 = EV() * TAU, type = t > 4 && EV() < 0.4 ? 'slimelet' : 'bat';
         const rad = Math.max(G.viewW, G.viewH) * 0.5 + 60;
         for (let arm = 0; arm < 3; arm++) {
           for (let i = 0; i < per; i++) {
@@ -547,7 +556,7 @@
         PS.UI.toast('The swarm coils in, one side after another', 'ghost');
       } else if (kind === 'spearhead') {
         // a wedge with a heavy at its point: step out of its line, or break the point and the rest scatters into you piecemeal
-        const a = EV() * TAU, rows = Math.min(6, Math.round(3 + t * 0.3)), type = t > 3.5 ? 'hound' : 'imp', lead = t > 4.5 ? 'brute' : type;
+        const a = EV() * TAU, rows = Math.max(2, Math.round(Math.min(6, Math.round(3 + t * 0.3)) * th)), type = t > 3.5 ? 'hound' : 'imp', lead = t > 4.5 ? 'brute' : type;
         const rad = Math.max(G.viewW, G.viewH) * 0.5 + 90, ca = Math.cos(a), sa = Math.sin(a);
         const cx = p.x + ca * rad, cy = p.y + sa * rad;
         PS.Enemies.spawn(lead, cx, cy, { hpMult: 3 });
@@ -562,7 +571,7 @@
         PS.UI.toast('A spearhead drives at you', 'swords');
       } else if (kind === 'pincer') {
         // two smaller stampedes from opposite sides: whichever way you run, you run into one
-        const a = EV() * TAU, count = Math.min(32, Math.round(11 + t * 2.3)), type = t > 3.5 ? 'hound' : 'imp';
+        const a = EV() * TAU, count = few(Math.min(32, Math.round(11 + t * 2.3))), type = t > 3.5 ? 'hound' : 'imp';
         this.stampede(a, count, type, 1.2);
         this.stampede(a + Math.PI, count, type, 1.2);
         PS.UI.toast('The horde closes from both sides', 'swords');
@@ -573,7 +582,7 @@
         const count = Math.min(60, Math.floor(span / 30)), step = span / count;
         const gapAt = (0.25 + EV() * 0.5) * span, gapW = 200;
         const type = t > 8.5 ? 'knight' : t > 4.5 ? 'hound' : 'imp';
-        const rows = t > 7 ? 2 : 1;
+        const rows = t > 7 && th > 0.7 ? 2 : 1;
         for (let row = 0; row < rows; row++) {
           for (let i = 0; i < count; i++) {
             const off = (i + 0.5) * step;
@@ -731,7 +740,7 @@
 
     /* ------------------------------------------------------------ map props */
     chestPrice() {
-      const disc = PS.G.player.stats.f.discount || 0;
+      const st = PS.G.player.stats, disc = 1 - (1 - (st.f.discount || 0)) * (1 - (st.m.discount || 0)); // a relic's and the tree's discounts stack
       return Math.round(this.chestCost * (1 - disc) * PS.G.rules.chestCost);
     },
     updateProps(dt) {

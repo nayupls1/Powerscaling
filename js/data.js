@@ -255,52 +255,107 @@
   for (const id in D.BOONS) D.BOONS[id].id = id;
 
   /* ---------- Meta tree: permanent upgrades bought with Essence ---------- */
-  // Layout coordinates are in abstract units; the UI scales them. Four arms off a central core.
+  // Layout coordinates are in abstract units; the UI scales them. Four arms off a central core, each in three rings:
+  // the inner ring is cheap and shallow, a gate node opens the middle ring, and a second gate opens the last node, a
+  // long sink of small ranks. Ranks are deliberately small, so a few thousand Essence buys an edge, not a different game.
+  // Positions are given along the arm (a) and across it (s), then turned to face the arm's way.
   const T = [];
-  const node = (id, arm, name, icon, x, y, max, cost, req, desc, apply) =>
-    T.push({ id, arm, name, icon, x, y, max, cost, req, desc, apply });
+  const ARM_DIR = { might: (a, s) => [s, -a], vitality: (a, s) => [-a, s], fortune: (a, s) => [a, s], mastery: (a, s) => [s, a] };
+  const node = (id, arm, name, icon, a, s, max, cost, req, desc, apply, grow) => {
+    const [x, y] = ARM_DIR[arm](a, s);
+    T.push({ id, arm, name, icon, x, y, max, cost, req, desc, apply, grow: grow || 0.4, gate: false });
+  };
+  const at = (id, arm, name, icon, x, y, max, cost, req, desc, apply, grow) => T.push({ id, arm, name, icon, x, y, max, cost, req, desc, apply, grow: grow || 0.4, gate: false });
+  const p1 = (v) => (Math.round(v * 10) / 10).toString();
 
   // Might — up
-  node('m1', 'might', 'Sharpened Edge', 'sword',     0, -1.35, 5, 20,  ['core'], (r) => `+${3 * r}% damage`, (s, r) => { s.dmg += 0.03 * r; });
-  node('m2', 'might', 'Quick Hands',    'hourglass', -1.15, -2.6, 5, 35,  ['m1'],   (r) => `+${2 * r}% attack speed`, (s, r) => { s.atkSpd += 0.02 * r; });
-  node('m3', 'might', 'Keen Eye',       'crosshair', 1.15, -2.6,  5, 35,  ['m1'],   (r) => `+${1.5 * r}% critical chance`, (s, r) => { s.crit += 0.015 * r; });
-  node('m4', 'might', 'Wide Arc',       'expand',    -1.15, -3.85, 3, 60,  ['m2'],   (r) => `+${3 * r}% area of effect`, (s, r) => { s.area += 0.03 * r; });
-  node('m5', 'might', 'Brutality',      'skull',     1.15, -3.85,  3, 60,  ['m3'],   (r) => `+${8 * r}% critical damage`, (s, r) => { s.critMult += 0.08 * r; });
-  node('m6', 'might', 'Lingering Pain', 'flame',     0, -4.75,  3, 90,  ['m4', 'm5'], (r) => `+${6 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.06 * r; });
-  node('m7', 'might', 'Giantsbane',     'trophy',    0, -5.95,  1, 400, ['m6'],   () => '+15% damage to elites and bosses', (s, r) => { s.bossDmg += 0.15 * r; });
+  node('m1',  'might', 'Sharpened Edge', 'sword',     1.35, 0,     10, 30,   ['core'], (r) => `+${2 * r}% damage`, (s, r) => { s.dmg += 0.02 * r; });
+  node('m2',  'might', 'Quick Hands',    'hourglass', 2.6, -1.15,  8, 60,    ['m1'],   (r) => `+${p1(1.5 * r)}% attack speed`, (s, r) => { s.atkSpd += 0.015 * r; });
+  node('m3',  'might', 'Keen Eye',       'crosshair', 2.6, 1.15,   8, 60,    ['m1'],   (r) => `+${r}% critical chance`, (s, r) => { s.crit += 0.01 * r; });
+  node('m4',  'might', 'Wide Arc',       'expand',    3.85, -1.15, 5, 120,    ['m2'],   (r) => `+${2 * r}% area of effect`, (s, r) => { s.area += 0.02 * r; });
+  node('m5',  'might', 'Brutality',      'skull',     3.85, 1.15,  6, 120,    ['m3'],   (r) => `+${5 * r}% critical damage`, (s, r) => { s.critMult += 0.05 * r; });
+  node('m6',  'might', 'Lingering Pain', 'flame',     4.75, 0,     5, 200,   ['m4', 'm5'], (r) => `+${4 * r}% Burn, Poison and Bleed damage`, (s, r) => { s.statusDmg += 0.04 * r; });
+  node('m7',  'might', 'Giantsbane',     'trophy',    5.95, 0,     3, 900,   ['m6'],   (r) => `+${5 * r}% damage to elites and bosses`, (s, r) => { s.bossDmg += 0.05 * r; });
+  node('m8',  'might', 'Killing Intent', 'fang',      7.1, -1.6,   10, 120,  ['m7'],   (r) => `×${p1(Math.pow(1.02, r) * 100 - 100)}% more damage (multiplies)`, (s, r) => { s.dmgMore *= Math.pow(1.02, r); });
+  node('m9',  'might', 'Elementalist',   'prism',     7.1, 1.6,    10, 120,  ['m7'],   (r) => `+${2 * r}% damage of every element`, (s, r) => { for (const e in s.el) s.el[e] += 0.02 * r; });
+  node('m10', 'might', 'Deadly Precision', 'target',  8.4, -2.6,   8, 180,   ['m8'],   (r) => `+${p1(0.8 * r)}% critical chance and +${3 * r}% critical damage`, (s, r) => { s.crit += 0.008 * r; s.critMult += 0.03 * r; });
+  node('m11', 'might', 'Festering',      'spores',    8.4, 2.6,    8, 180,   ['m9'],   (r) => `+${4 * r}% Burn, Poison and Bleed damage, +${p1(1.5 * r)}% effect duration`, (s, r) => { s.statusDmg += 0.04 * r; s.duration += 0.015 * r; });
+  node('m12', 'might', 'Warlord',        'swords',    9.6, 0,      5, 400,   ['m10', 'm11'], (r) => `+${3 * r}% damage and +${2 * r}% attack speed`, (s, r) => { s.dmg += 0.03 * r; s.atkSpd += 0.02 * r; });
+  node('m13', 'might', 'Twin Volley',    'multishot', 10.9, 0,     1, 7000,  ['m12'],  () => '+1 projectile on every skill that fires them', (s, r) => { s.proj += r; });
+  node('m14', 'might', 'Endless Might',  'nova',      12.2, 0,     25, 260,  ['m13'],  (r) => `×${p1(Math.pow(1.01, r) * 100 - 100)}% more damage (multiplies)`, (s, r) => { s.dmgMore *= Math.pow(1.01, r); }, 0.12);
 
   // Vitality — left
-  node('v1', 'vitality', 'Hardy',        'heart',   -1.35, 0,  5, 20,  ['core'], (r) => `+${10 * r} max health`, (s, r) => { s.maxHp += 10 * r; });
-  node('v2', 'vitality', 'Mending',      'plus',    -2.6, -1.15,  5, 35,  ['v1'],   (r) => `+${(0.25 * r).toFixed(2)} health regeneration`, (s, r) => { s.regen += 0.25 * r; });
-  node('v3', 'vitality', 'Thick Hide',   'shield',  -2.6, 1.15,   5, 35,  ['v1'],   (r) => `+${2 * r} armor`, (s, r) => { s.armor += 2 * r; });
-  node('v4', 'vitality', 'Second Wind',  'potion',  -3.85, -1.15,  3, 60,  ['v2'],   (r) => `Level-ups heal ${5 * r}% more of max health`, (s, r) => { s.m.levelHeal = 0.05 * r; });
-  node('v5', 'vitality', 'Evasion',      'feather', -3.85, 1.15,   3, 60,  ['v3'],   (r) => `+${2 * r}% chance to dodge hits`, (s, r) => { s.dodge += 0.02 * r; });
-  node('v6', 'vitality', 'Aegis',        'cross',   -4.75, 0,   2, 90,  ['v4', 'v5'], (r) => `Stay invulnerable ${(0.15 * r).toFixed(2)}s longer after being hit`, (s, r) => { s.m.iframes = 0.15 * r; });
-  node('v7', 'vitality', 'Undying',      'phoenix', -5.95, 0,   1, 400, ['v6'],   () => 'Return from death once per run', (s, r) => { s.revives += r; });
+  node('v1',  'vitality', 'Hardy',        'heart',   1.35, 0,     10, 30,  ['core'], (r) => `+${3 * r} max health`, (s, r) => { s.maxHp += 3 * r; });
+  node('v2',  'vitality', 'Mending',      'plus',    2.6, -1.15,  8, 60,   ['v1'],   (r) => `+${(0.1 * r).toFixed(1)} health regeneration`, (s, r) => { s.regen += 0.1 * r; });
+  node('v3',  'vitality', 'Thick Hide',   'shield',  2.6, 1.15,   8, 60,   ['v1'],   (r) => `+${r} armor`, (s, r) => { s.armor += r; });
+  node('v4',  'vitality', 'Second Wind',  'potion',  3.85, -1.15, 5, 120,   ['v2'],   (r) => `Level-ups heal ${r}% more of max health`, (s, r) => { s.m.levelHeal = 0.01 * r; });
+  node('v5',  'vitality', 'Evasion',      'feather', 3.85, 1.15,  5, 120,   ['v3'],   (r) => `+${r}% chance to dodge hits`, (s, r) => { s.dodge += 0.01 * r; });
+  node('v6',  'vitality', 'Aegis',        'cross',   4.75, 0,     4, 240,  ['v4', 'v5'], (r) => `Stay invulnerable ${(0.05 * r).toFixed(2)}s longer after being hit`, (s, r) => { s.m.iframes = 0.05 * r; });
+  node('v7',  'vitality', 'Stalwart',     'armor',   5.95, 0,     3, 900,  ['v6'],   (r) => `+${4 * r}% max health`, (s, r) => { s.hpMult += 0.04 * r; });
+  node('v8',  'vitality', 'Bulwark',      'heart',   7.1, -1.6,   10, 120, ['v7'],   (r) => `+${2 * r}% max health`, (s, r) => { s.hpMult += 0.02 * r; });
+  node('v9',  'vitality', 'Troll Blood',  'plus',    7.1, 1.6,    10, 120, ['v7'],   (r) => `+${(0.15 * r).toFixed(2)} health regeneration`, (s, r) => { s.regen += 0.15 * r; });
+  node('v10', 'vitality', 'Ironskin',     'shield',  8.4, -2.6,   10, 180, ['v8'],   (r) => `+${r} armor`, (s, r) => { s.armor += r; });
+  node('v11', 'vitality', 'Lifebond',     'blood',   8.4, 2.6,    6, 180,  ['v9'],   (r) => `Heal for ${p1(0.25 * r)}% of the damage you deal`, (s, r) => { s.lifesteal += 0.0025 * r; });
+  node('v12', 'vitality', 'Fortitude',    'mountain', 9.6, 0,     5, 400,  ['v10', 'v11'], (r) => `+${3 * r}% max health and +${r} armor`, (s, r) => { s.hpMult += 0.03 * r; s.armor += r; });
+  node('v13', 'vitality', 'Undying',      'phoenix', 10.9, 0,     1, 7000, ['v12'],  () => 'Return from death once per run', (s, r) => { s.revives += r; });
+  node('v14', 'vitality', 'Endless Vigor', 'heart',  12.2, 0,     25, 260, ['v13'],  (r) => `+${r}% max health, +${(0.04 * r).toFixed(1)} regeneration`, (s, r) => { s.hpMult += 0.01 * r; s.regen += 0.04 * r; }, 0.12);
 
   // Fortune — right
-  node('f1', 'fortune', 'Scholar',      'book',   1.35, 0,   5, 20,  ['core'], (r) => `+${2 * r}% experience`, (s, r) => { s.xp += 0.02 * r; });
-  node('f2', 'fortune', 'Prospector',   'coin',   2.6, -1.15,   5, 35,  ['f1'],   (r) => `+${6 * r}% gold found`, (s, r) => { s.gold += 0.06 * r; });
-  node('f3', 'fortune', 'Lucky Star',   'star',   2.6, 1.15,    5, 35,  ['f1'],   (r) => `+${4 * r} luck`, (s, r) => { s.luck += 4 * r; });
-  node('f4', 'fortune', 'Second Opinion', 'dice', 3.85, -1.15,   3, 60,  ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = r; });
-  node('f5', 'fortune', 'Exile',        'ban',    3.85, 1.15,    2, 80,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = r; });
-  node('f6', 'fortune', 'Soul Tithe',   'essence', 4.75, 0,   3, 90,  ['f4', 'f5'], (r) => `+${10 * r}% Essence earned`, (s, r) => { s.m.essence = 0.10 * r; });
-  node('f7', 'fortune', 'Inheritance',  'chest',  5.95, 0,    1, 400, ['f6'],   () => 'Begin every run with a random relic', (s, r) => { s.m.startRelic = r; });
+  node('f1',  'fortune', 'Scholar',        'book',    1.35, 0,     10, 30,  ['core'], (r) => `+${r}% experience`, (s, r) => { s.xp += 0.01 * r; });
+  node('f2',  'fortune', 'Prospector',     'coin',    2.6, -1.15,  8, 60,   ['f1'],   (r) => `+${4 * r}% gold found`, (s, r) => { s.gold += 0.04 * r; });
+  node('f3',  'fortune', 'Lucky Star',     'star',    2.6, 1.15,   8, 60,   ['f1'],   (r) => `+${2 * r} luck`, (s, r) => { s.luck += 2 * r; });
+  node('f4',  'fortune', 'Second Opinion', 'dice',    3.85, -1.15, 3, 180,   ['f2'],   (r) => `+${r} reroll${r > 1 ? 's' : ''} each run`, (s, r) => { s.m.rerolls = (s.m.rerolls || 0) + r; });
+  node('f5',  'fortune', 'Exile',          'ban',     3.85, 1.15,  2, 240,  ['f3'],   (r) => `+${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.banishes = (s.m.banishes || 0) + r; });
+  node('f6',  'fortune', 'Soul Tithe',     'essence', 4.75, 0,     4, 240,  ['f4', 'f5'], (r) => `+${5 * r}% Essence earned`, (s, r) => { s.m.essence = (s.m.essence || 0) + 0.05 * r; });
+  node('f7',  'fortune', 'Fortune\'s Favour', 'trophy', 5.95, 0,   3, 900,  ['f6'],   (r) => `+${4 * r} luck and +${r}% experience`, (s, r) => { s.luck += 4 * r; s.xp += 0.01 * r; });
+  node('f8',  'fortune', 'Tutor',          'book',    7.1, -1.6,   10, 120, ['f7'],   (r) => `+${r}% experience`, (s, r) => { s.xp += 0.01 * r; });
+  node('f9',  'fortune', 'Gilded',         'coin',    7.1, 1.6,    10, 120, ['f7'],   (r) => `+${5 * r}% gold found`, (s, r) => { s.gold += 0.05 * r; });
+  node('f10', 'fortune', 'Bargainer',      'chest',   8.4, -2.6,   5, 180,  ['f8'],   (r) => `Chests cost ${4 * r}% less`, (s, r) => { s.m.discount = 0.04 * r; });
+  node('f11', 'fortune', 'Charmed',        'star',    8.4, 2.6,    10, 180, ['f9'],   (r) => `+${2 * r} luck`, (s, r) => { s.luck += 2 * r; });
+  node('f12', 'fortune', 'Tithe of Ages',  'essence', 9.6, 0,      5, 400,  ['f10', 'f11'], (r) => `+${5 * r}% Essence earned`, (s, r) => { s.m.essence = (s.m.essence || 0) + 0.05 * r; });
+  node('f13', 'fortune', 'Inheritance',    'jar',     10.9, 0,     1, 7000, ['f12'],  () => 'Begin every run with a random relic', (s, r) => { s.m.startRelic = r; });
+  node('f14', 'fortune', 'Endless Fortune', 'gem',    12.2, 0,     25, 260, ['f13'],  (r) => `+${p1(0.4 * r)}% experience and +${2 * r}% gold found`, (s, r) => { s.xp += 0.004 * r; s.gold += 0.02 * r; }, 0.12);
 
   // Mastery — down
-  node('a1', 'mastery', 'Fleet Foot',   'boot',     0, 1.35,  5, 20,  ['core'], (r) => `+${2 * r}% move speed`, (s, r) => { s.speed *= 1 + 0.02 * r; });
-  node('a2', 'mastery', 'Blink Training', 'dash',  -1.15, 2.6,   3, 40,  ['a1'],   (r) => `Dash recharges ${8 * r}% faster`, (s, r) => { s.dashCd *= 1 - 0.08 * r; });
-  node('a3', 'mastery', 'Focus',        'spark',    1.15, 2.6,   4, 40,  ['a1'],   (r) => `+${5 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.05 * r; });
-  node('a4', 'mastery', 'Persistence',  'clock',   -1.15, 3.85,   3, 60,  ['a2'],   (r) => `+${5 * r}% effect duration`, (s, r) => { s.duration += 0.05 * r; });
-  node('a5', 'mastery', 'Prodigy',      'arrowup',  1.15, 3.85,   2, 120, ['a3'],   (r) => `Begin each run ${r} level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = r; });
-  node('a6', 'mastery', 'Tailwind',     'wings',    0, 4.75,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
-  node('a7', 'mastery', 'Seventh Tome', 'book',     0, 5.95,   1, 400, ['a6'],   () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
+  node('a1',  'mastery', 'Fleet Foot',     'boot',    1.35, 0,     10, 30,  ['core'], (r) => `+${r}% move speed`, (s, r) => { s.speed *= 1 + 0.01 * r; });
+  node('a2',  'mastery', 'Blink Training', 'dash',    2.6, -1.15,  5, 80,   ['a1'],   (r) => `Dash recharges ${4 * r}% faster`, (s, r) => { s.dashCd *= 1 - 0.04 * r; });
+  node('a3',  'mastery', 'Focus',          'spark',   2.6, 1.15,   6, 80,   ['a1'],   (r) => `+${3 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.03 * r; });
+  node('a4',  'mastery', 'Persistence',    'clock',   3.85, -1.15, 5, 120,   ['a2'],   (r) => `+${3 * r}% effect duration`, (s, r) => { s.duration += 0.03 * r; });
+  node('a5',  'mastery', 'Prodigy',        'arrowup', 3.85, 1.15,  2, 400,  ['a3'],   (r) => `Begin each run ${r} level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = (s.m.startLevels || 0) + r; });
+  node('a6',  'mastery', 'Tailwind',       'wings',   4.75, 0,     1, 1200,  ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
+  node('a7',  'mastery', 'Attunement',     'orbs',    5.95, 0,     3, 900,  ['a6'],   (r) => `+${4 * r}% ability haste and +${2 * r}% attack speed`, (s, r) => { s.abilityHaste += 0.04 * r; s.atkSpd += 0.02 * r; });
+  node('a8',  'mastery', 'Magnetism',      'magnet',  7.1, -1.6,   5, 150,  ['a7'],   (r) => `+${8 * r} pickup range`, (s, r) => { s.pickup += 8 * r; });
+  node('a9',  'mastery', 'Overclock',      'bolt',    7.1, 1.6,    10, 120, ['a7'],   (r) => `+${3 * r}% ability haste`, (s, r) => { s.abilityHaste += 0.03 * r; });
+  node('a10', 'mastery', 'Slipstream',     'dash',    8.4, -2.6,   10, 180, ['a8'],   (r) => `+${r}% move speed, dash recharges ${2 * r}% faster`, (s, r) => { s.speed *= 1 + 0.01 * r; s.dashCd *= 1 - 0.02 * r; });
+  node('a11', 'mastery', 'Endurance',      'clock',   8.4, 2.6,    6, 180,  ['a9'],   (r) => `+${3 * r}% effect duration and +${2 * r}% area`, (s, r) => { s.duration += 0.03 * r; s.area += 0.02 * r; });
+  node('a12', 'mastery', 'Head Start',     'arrowup', 9.6, 0,      2, 1200, ['a10', 'a11'], (r) => `Begin each run ${r} more level${r > 1 ? 's' : ''} higher`, (s, r) => { s.m.startLevels = (s.m.startLevels || 0) + r; });
+  node('a13', 'mastery', 'Seventh Tome',   'book',    10.9, 0,     1, 7000, ['a12'],  () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
+  node('a14', 'mastery', 'Endless Focus',  'spark',   12.2, 0,     25, 260, ['a13'],  (r) => `+${r}% ability haste and +${p1(0.5 * r)}% attack speed`, (s, r) => { s.abilityHaste += 0.01 * r; s.atkSpd += 0.005 * r; }, 0.12);
 
-  // Bridges: four nodes in the corners between the arms, opened from either arm beside them
-  node('x1', 'might',    'Blooded',     'blood',  -3.2, -3.2, 3, 150, ['m4', 'v4'], (r) => `+${5 * r}% damage while below half health`, (s, r) => { s.m.blooded = 0.05 * r; });
-  node('x2', 'fortune',  'Appraiser',   'lens',    3.2, -3.2, 1, 500, ['m5', 'f4'], () => 'Relic chests offer one more relic to choose from', (s, r) => { s.m.relicChoice = r; });
-  node('x3', 'vitality', 'Field Medic', 'potion', -3.2,  3.2, 3, 150, ['v5', 'a4'], (r) => `Health pickups and tonics heal ${15 * r}% more`, (s, r) => { s.m.healMore = 0.15 * r; });
-  node('x4', 'mastery',  'Wayfinder',   'spark',   3.2,  3.2, 3, 150, ['f5', 'a5'], (r) => `Shrines appear ${20 * r}% more often`, (s, r) => { s.m.shrines = 0.2 * r; });
+  // Bridges: nodes in the corners between the arms, opened from either arm beside them. The inner four hang off the
+  // first ring, the outer four off the second.
+  at('x1', 'might',    'Blooded',     'blood',  -3.2, -3.2, 3, 400,  ['m4', 'v4'], (r) => `+${5 * r}% damage while below half health`, (s, r) => { s.m.blooded = 0.05 * r; });
+  at('x2', 'fortune',  'Appraiser',   'lens',    3.2, -3.2, 1, 3000, ['m5', 'f4'], () => 'Relic chests offer one more relic to choose from', (s, r) => { s.m.relicChoice = r; });
+  at('x3', 'vitality', 'Field Medic', 'potion', -3.2,  3.2, 3, 400,  ['v5', 'a4'], (r) => `Health pickups and tonics heal ${15 * r}% more`, (s, r) => { s.m.healMore = 0.15 * r; });
+  at('x4', 'mastery',  'Wayfinder',   'spark',   3.2,  3.2, 3, 400,  ['f5', 'a5'], (r) => `Shrines appear ${20 * r}% more often`, (s, r) => { s.m.shrines = 0.2 * r; });
+  at('x5', 'might',    'Bloodlust',   'fang',   -6.6, -6.6, 5, 500, ['m10', 'v10'], (r) => `+${2 * r}% damage and +${2 * r}% max health`, (s, r) => { s.dmg += 0.02 * r; s.hpMult += 0.02 * r; });
+  at('x6', 'fortune',  'Bounty Hunter', 'skull', 6.6, -6.6, 5, 500, ['m11', 'f10'], (r) => `+${4 * r}% damage to elites and bosses, +${2 * r} luck`, (s, r) => { s.bossDmg += 0.04 * r; s.luck += 2 * r; });
+  at('x7', 'vitality', 'Second Skin', 'feather', -6.6, 6.6, 5, 500, ['v11', 'a10'], (r) => `+${r}% chance to dodge hits`, (s, r) => { s.dodge += 0.01 * r; });
+  at('x8', 'mastery',  'Forethought', 'dice',    6.6,  6.6, 2, 900, ['f11', 'a11'], (r) => `+${r} reroll${r > 1 ? 's' : ''} and +${r} banish${r > 1 ? 'es' : ''} each run`, (s, r) => { s.m.rerolls = (s.m.rerolls || 0) + r; s.m.banishes = (s.m.banishes || 0) + r; });
+
+  // Lore: past each outer bridge, two nodes of ten ranks that deepen one kind of build: an element each, reactions, minions
+  const lore = (id, arm, name, icon, x, y, req, el) => at(id, arm, name, icon, x, y, 10, 300, [req], (r) => `+${3 * r}% ${D.ELEMENTS[el].name} damage`, (s, r) => { s.el[el] += 0.03 * r; });
+  lore('l1', 'might',    'Ember Lore',   'flame',   -8.1, -9.7, 'x5', 'fire');
+  lore('l2', 'vitality', 'Iron Lore',    'sword',   -9.7, -8.1, 'x5', 'steel');
+  lore('l3', 'might',    'Tempest Lore', 'bolt',     8.1, -9.7, 'x6', 'storm');
+  lore('l4', 'fortune',  'Abyss Lore',   'vortex',   9.7, -8.1, 'x6', 'void');
+  lore('l5', 'vitality', 'Rime Lore',    'snow',    -9.7,  8.1, 'x7', 'frost');
+  lore('l6', 'mastery',  'Blight Lore',  'spores',  -8.1,  9.7, 'x7', 'venom');
+  at('l7', 'fortune', 'Catalyst',  'flask', 9.7, 8.1, 10, 300, ['x8'], (r) => `Reactions hit ${4 * r}% harder`, (s, r) => { s.m.rxDmg = 0.04 * r; });
+  at('l8', 'mastery', 'Warlock',   'bone',  8.1, 9.7, 10, 300, ['x8'], (r) => `Summons deal ${4 * r}% more damage`, (s, r) => { s.summon += 0.04 * r; });
+
+  // gates: the nodes that open the next ring of their arm
+  for (const id of ['m7', 'm13', 'v7', 'v13', 'f7', 'f13', 'a7', 'a13', 'x2']) T.find((n) => n.id === id).gate = true;
 
   D.META = T;
   D.META_BY_ID = {};
@@ -311,8 +366,29 @@
     fortune:  { name: 'Fortune',  color: '#ffcf5c' },
     mastery:  { name: 'Mastery',  color: '#a98bff' },
   };
-  /** cost of buying the next rank of a node */
-  D.metaCost = (n, rank) => Math.round(n.cost * (1 + 0.55 * rank));
+  D.META_SPAN = 13.4; // layout units from the core to the edge of the tree
+  D.TREE_VERSION = 2; // bump when the tree is rebuilt: saves from an older tree get everything they spent back
+  /** cost of buying the next rank of a node: each rank costs a share more than the last (n.grow) */
+  D.metaCost = (n, rank) => Math.round(n.cost * (1 + n.grow * rank));
+  /**
+   * a tree bought the way a player tends to buy it, for the playtest tools: with `budget` Essence, keep taking the
+   * cheapest rank that is open until nothing more is affordable
+   */
+  D.metaGreedy = (budget) => {
+    const tree = {};
+    const open = (n) => n.req.some((r) => r === 'core' || (tree[r] || 0) > 0);
+    for (;;) {
+      let best = null, bc = Infinity;
+      for (const n of T) { const r = tree[n.id] || 0; if (r < n.max && open(n)) { const c = D.metaCost(n, r); if (c < bc) { bc = c; best = n; } } }
+      if (!best || bc > budget) return tree;
+      budget -= bc; tree[best.id] = (tree[best.id] || 0) + 1;
+    }
+  };
+  /** the tree the daily rift lends every hero, so its board compares play, not grind: the same for everyone, well short of all of it */
+  D.DAILY_ESSENCE = 30000;
+  D.DAILY_TREE = D.metaGreedy(D.DAILY_ESSENCE);
+  /** what every rank bought so far has cost */
+  D.metaSpent = (tree) => D.META.reduce((sum, m) => { let s = 0; for (let i = 0; i < Math.min(m.max, tree[m.id] || 0); i++) s += D.metaCost(m, i); return sum + s; }, 0);
 
   /* ---------- Reactions: hit one enemy with two different elements within a few seconds ---------- */
   // keyed by the two element ids in alphabetical order; the effects live in Combat.react
@@ -368,7 +444,7 @@
   /* ---------- Run rules: every knob a Rift Depth or a daily mutator can turn ---------- */
   D.baseRules = () => ({
     hp: 1, dmg: 1, speed: 1,          // the horde: health, damage, movement
-    bossHp: 1, bossRage: 0.4,         // bosses: health, and the share of health at which they enrage
+    bossHp: 0.65, bossRage: 0.4,         // bosses: health, and the share of health at which they enrage
     eliteN: 1, eliteEvery: 1, affixes: 1, hordeEvery: 1,
     chestCost: 1, heal: 1, xp: 1,     // heal covers pickups, tonics and the level-up breather
     pDmg: 1, pHp: 1, pSpeed: 1, dashCd: 1, noWard: false, startRelics: 0, // the hero
@@ -380,9 +456,8 @@
   /*
    * Rift Depths: beating the Rift Lord at your deepest unlocked depth opens the next. Each depth keeps every modifier
    * above it, and the rift itself hardens a little with every step (DEPTH_HP, DEPTH_DMG) so the ladder climbs evenly
-   * instead of only at the modifiers that touch raw numbers. Measured with the bot and the full skill tree
-   * (tools/curve.js --tree=full --depth=N): the careless player model wins nearly every run at depth 0, about six in
-   * seven at depth 3, three in five at depth 6 and one in ten at depth 10, where the careful one still wins most of the time.
+   * instead of only at the modifiers that touch raw numbers. The deep depths are
+   * where a full skill tree is meant to be tested: at depth 0 it wins every run.
    */
   D.DEPTH_HP = 1.095;  // horde health per depth, compounding
   D.DEPTH_DMG = 1.055; // enemy damage per depth, compounding
