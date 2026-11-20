@@ -53,6 +53,21 @@
     } catch (e) { url = ''; }
     return (portraits[key] = url ? `<img class="cx-art" src="${url}" width="${px}" height="${px}" alt="">` : ico('skull', 24));
   }
+  /** a hero's model as an image, for the class cards */
+  function heroPortrait(id, px) {
+    const key = 'hero:' + id + px;
+    if (portraits[key] !== undefined) return portraits[key];
+    let html = '';
+    try {
+      const cv = document.createElement('canvas'), k = 2;
+      cv.width = cv.height = px * k;
+      const g = cv.getContext('2d'), unit = (px * k) / 5.6;
+      g.setTransform(unit, 0, 0, unit, px * k * 0.44, px * k / 2);
+      PS.Models.hero(g, { cls: D.CLASSES[id], moving: false, walk: 0, swing: 0.15 }, 1.2, PS.Models.ink(14));
+      html = `<img class="class-art" src="${cv.toDataURL()}" width="${px}" height="${px}" alt="">`;
+    } catch (e) { html = ''; }
+    return (portraits[key] = html);
+  }
   const mmss = (sec) => Math.floor(sec / 60) + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
 
   const UI = {
@@ -201,6 +216,7 @@
         const c = D.CLASSES[id], locked = !d.unlocked[id], clear = d.depth.clear[id];
         return `<button class="class-card${id === selClass ? ' sel' : ''}${locked ? ' locked' : ''}" data-cls="${id}" style="--c:${c.color}">
           <span class="class-ico">${ico(locked ? 'lock' : CLASS_ICON[id], 34)}</span>
+          ${heroPortrait(id, 76)}
           <span class="class-name">${c.name}</span>
           <span class="class-title">${locked ? c.unlock.text : c.title}</span>
           ${clear >= 0 ? `<span class="class-clear">${ico('crown', 13)} ${clear > 0 ? 'Depth ' + clear + ' cleared' : 'Rift Lord slain'}</span>` : ''}

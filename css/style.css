@@ -229,6 +229,9 @@ i[data-icon], .count i { display: inline-flex; }
 .class-card:hover { background: var(--panel-hi); }
 .class-card.sel { border-color: var(--c); background: color-mix(in oklab, var(--c), var(--dusk) 82%); transform: translateY(-3px); }
 .class-card.locked { opacity: 0.7; }
+.class-card { position: relative; overflow: hidden; }
+.class-art { position: absolute; right: 0; top: -2px; opacity: 0.95; pointer-events: none; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)); }
+.class-card.locked .class-art { filter: grayscale(1) brightness(0.55); opacity: 0.6; }
 .class-ico { color: var(--c); margin-bottom: 8px; }
 .class-name { font-family: var(--display); font-weight: 900; font-size: clamp(1rem, 1.55vw, 1.5rem); line-height: 1; max-width: 100%; overflow-wrap: anywhere; }
 .class-title { color: var(--muted); font-size: 0.9rem; }
