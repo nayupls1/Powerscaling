@@ -514,6 +514,7 @@
         { id: 'relics', name: 'Relics', ids: Object.keys(D.RELICS), has: (id) => !!cx.relics[id] },
         { id: 'evos', name: 'Evolutions', ids: evoIds, has: (id) => !!cx.evos[id] },
         { id: 'rx', name: 'Reactions', ids: Object.keys(D.REACTIONS), has: (k) => !!cx.rx[D.REACTIONS[k].name] },
+        { id: 'sets', name: 'Resonances', ids: D.RELIC_SETS.map((s) => s.id), has: (id) => !!cx.sets[id] },
         { id: 'pacts', name: 'Pacts', ids: Object.keys(D.PACTS), has: (id) => !!cx.pacts[id] },
         { id: 'foes', name: 'Bestiary', ids: foeIds, has: (id) => cx.foes[id] > 0 },
       ];
@@ -557,6 +558,14 @@
           const r = D.REACTIONS[key], k = sh.has(key);
           const pair = `<span class="rx-els">${r.els.map((e) => `<i style="--c:${D.ELEMENTS[e].color}">${ico(D.ELEMENTS[e].icon, 13)}</i>`).join('')}</span>`;
           return entry(k, D.ELEMENTS[r.els[1]].color, pair, r.name, r.els.map((e) => D.ELEMENTS[e].name).join(' and '), k ? esc(r.text) : 'Not set off yet.');
+        }).join('')}</ul>`;
+      } else if (sh.id === 'sets') {
+        hint = 'Hold every relic of a set in one run and it resonates. A piece is named once you have held that relic; the bonus is recorded once you complete the set.';
+        html = `<ul class="cx-list">${D.RELIC_SETS.map((st) => {
+          const k = sh.has(st.id);
+          const parts = st.ids.map((id) => (cx.relics[id] ? esc(D.RELICS[id].name) : '???')).join(' + ');
+          return `<li class="cx${k ? '' : ' unknown'}" style="--c:${k ? '#f0b94a' : '#6d6690'}"><span class="cx-ico">${ico(k ? 'gem' : 'lock', 24)}</span>
+            <span class="cx-text"><b>${k ? esc(st.name) : '???'}</b><small>${parts}</small><span>${k ? esc(st.text) : 'Not completed yet.'}</span></span></li>`;
         }).join('')}</ul>`;
       } else if (sh.id === 'pacts') {
         hint = 'Dark altars offer pacts. A pact is recorded once you have struck it and finished the run.';

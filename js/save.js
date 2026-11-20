@@ -24,7 +24,7 @@
     board: [],           // [{name, cls, score, time, level, kills, bosses, date, build}]
     stats: { runs: 0, kills: 0, bosses: 0, bestTime: 0, bestScore: 0, wins: 0 },
     seenTutorial: false,
-    codex: { relics: {}, evos: {}, rx: {}, pacts: {}, foes: {} }, // what has been found (1) and how many of each foe have fallen
+    codex: { relics: {}, evos: {}, rx: {}, pacts: {}, foes: {}, sets: {} }, // what has been found (1) and how many of each foe have fallen
     history: [],         // the last 30 runs, newest first, with their seeds: see the Leaderboard's 'Your runs' tab
     life: {},            // lifetime tallies beyond `stats`: seconds played, damage, gold, breaches... (see Game.endRun)
     mastery: {},         // class id -> mastery points
@@ -61,7 +61,7 @@
     out.history = (Array.isArray(d.history) ? d.history : []).filter((r) => r && typeof r === 'object' && num(r.score)).slice(0, 30);
     if (typeof out.sigil !== 'string') out.sigil = '';
     const cx = obj(d.codex);
-    out.codex = { relics: obj(cx.relics), evos: obj(cx.evos), rx: obj(cx.rx), pacts: obj(cx.pacts), foes: obj(cx.foes) };
+    out.codex = { relics: obj(cx.relics), evos: obj(cx.evos), rx: obj(cx.rx), pacts: obj(cx.pacts), foes: obj(cx.foes), sets: obj(cx.sets) };
     const dp = obj(d.depth), cap = PS.Data ? PS.Data.DEPTH_MAX : 10;
     const max = num(dp.max) ? Math.max(0, Math.min(cap, Math.floor(dp.max))) : 0;
     out.depth = { max, sel: num(dp.sel) ? Math.max(0, Math.min(max, Math.floor(dp.sel))) : 0, clear: obj(dp.clear) };
@@ -309,6 +309,7 @@
       for (const k of p.skills) if (k.evolved) cx.evos[k.id] = 1;
       for (const id of G.pactsAtAltar) cx.pacts[id] = 1; // struck at an altar, not handed out by a mutator
       for (const name in G.reactions) cx.rx[name] = 1;
+      for (const st of p.sets || []) cx.sets[st.id] = 1;
       for (const id in G.slain) cx.foes[id] = (cx.foes[id] || 0) + G.slain[id];
       if (!this.data.unlocked.plaguebearer && Object.keys(cx.pacts).length >= 3) { this.data.unlocked.plaguebearer = true; G.unlockedClass = G.unlockedClass || 'plaguebearer'; }
     },
