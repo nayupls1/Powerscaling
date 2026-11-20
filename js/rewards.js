@@ -66,12 +66,14 @@
       return cards;
     },
 
-    card(p, type, id, luck) {
+    /** o: { tier } to fix the rarity, { minTier } to floor it: decided here, before the card's text is written */
+    card(p, type, id, luck, o) {
+      const roll = () => (o && o.tier !== undefined ? o.tier : D.rollRarity(luck, o && o.minTier));
       const S = PS.Skills;
       const card = { type, id, tier: 0, icon: 'star', title: '', tag: '', desc: '', el: null, lines: [] };
       if (type === 'skill') {
         const def = S.DEFS[id];
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.icon = def.icon; card.title = def.name; card.tag = 'New skill'; card.desc = def.desc; card.el = def.el;
         if (OVER_BONUS[card.tier]) card.lines.push(`+${Math.round(OVER_BONUS[card.tier] * 100)}% damage from rarity`);
         const n = p.aff[def.el] + 1;
@@ -85,7 +87,7 @@
         }
       } else if (type === 'skillup') {
         const inst = p.hasSkill(id), def = inst.def;
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.icon = def.icon; card.title = def.name; card.el = def.el;
         card.tag = `Level ${inst.level} to ${inst.level + 1}`;
         card.desc = S.upText(def, inst.level + 1);
@@ -99,7 +101,7 @@
         card.desc = def.evo.desc;
       } else if (type === 'over') {
         const inst = p.hasSkill(id), def = inst.def;
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.val = 0.08 * D.RARITY[card.tier].mult;
         card.icon = def.icon; card.title = inst.name; card.el = def.el;
         card.tag = 'Overcharge';
@@ -191,9 +193,7 @@
       const S = PS.Skills;
       // every skill is on the table: a level while it has one to gain, an overcharge after (an evolution still needs its tome)
       return p.skills.map((inst) => {
-        const c = R.card(p, inst.level < S.MAX_LEVEL ? 'skillup' : 'over', inst.id, p.stats.luck);
-        c.tier = Math.max(c.tier, 1);
-        return c;
+        return R.card(p, inst.level < S.MAX_LEVEL ? 'skillup' : 'over', inst.id, p.stats.luck, { minTier: 1 });
       });
     },
 
@@ -207,8 +207,7 @@
         () => {
           const up = p.skills.filter((s) => s.level < S.MAX_LEVEL);
           if (!up.length) return null;
-          const c = R.card(p, 'skillup', U.pick(up, LOOT).id, 0);
-          return Object.assign(c, { tier: 2, cost: Math.round(80 * k) });
+          return Object.assign(R.card(p, 'skillup', U.pick(up, LOOT).id, 0, { tier: 2 }), { cost: Math.round(80 * k) });
         },
         () => {
           const r = R.rollRelic(p, 2);

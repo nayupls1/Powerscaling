@@ -1263,7 +1263,7 @@
         if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
         else if (btn === 'a') this.pickCard(padCard);
         else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
-        else if (btn === 'b' && (curSpec.kind === 'pact' || curSpec.kind === 'shop')) PS.Game.choose(curSpec, null); // walk away
+        else if (btn === 'b' && (curSpec.kind === 'pact' || curSpec.kind === 'shop') && performance.now() - choiceAt > 600) PS.Game.choose(curSpec, null); // walk away, but not on the Ward press that was already on its way
         else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'paused') {
         if (btn === 'b' || btn === 'a') PS.Game.resume();

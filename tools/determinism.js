@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
 
 (async () => {
   const args = process.argv.slice(2);
-  const minutes = +(args.find((a) => !a.startsWith('--')) || 5);
+  const minutes = +(args.find((a) => !a.startsWith('--')) || 9);
   const seed = (args.find((a) => a.startsWith('--seed=')) || '--seed=det').slice(7);
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -40,7 +40,8 @@ const { chromium } = require('playwright');
         PS.Game.start(cls, { bot, seed });
         PS.Game.state = 'sim';
         const G = PS.G;
-        while (G.time < minutes * 60 && !G.over) { PS.Bot.drive(G); PS.Game.step(1 / 60); }
+        // kept alive, so that a careless player's script is as long as a careful one's and all of it is compared
+        while (G.time < minutes * 60 && !G.over) { PS.Bot.drive(G); PS.Game.step(1 / 60); G.player.hp = G.player.stats.maxHp; }
         const sc = G.script;
         if (!G.over) PS.Game.endRun(true);
         PS.Game.state = 'menu'; PS.G = null;

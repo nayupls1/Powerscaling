@@ -262,6 +262,8 @@
         if (spec.kind === 'shop') { spec.cards = spec.cards.filter((c) => c.cost <= p.gold); if (!spec.cards.length) return; }
         const i = PS.Bot.pick(spec, G);
         R.apply(p, spec.cards[i]);
+        if (spec.kind === 'forge') G.forged++;
+        if (spec.kind === 'shop') G.bought++;
         p.inv = Math.max(p.inv, 0.3);
         return;
       }

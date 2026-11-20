@@ -212,15 +212,14 @@
       if (this.eliteT <= 0 && !bossHold) {
         const R = G.rules;
         this.eliteT = Math.max(50, 75 - this.minutes() * 1.2) * R.eliteEvery;
-        const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => {
-          const row = TABLE.find((r) => r.id === id);
-          return this.minutes() >= row.from;
-        });
         let first = null;
         for (let i = 0; i < R.eliteN; i++) {
           const pos = this.ringPos();
-          const SD = PS.RNG.side('elite' + this.eliteN++); // the nth elite is the same for everyone on the seed, whenever it arrives
-          const e = PS.Enemies.spawn(U.pick(pool, SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD) });
+          // The nth elite is the same for everyone on the seed, whenever it arrives: its draw is named by its number, and
+          // what it may be (and how many affixes it carries) goes by the minute an nth elite is due, not by the clock,
+          // which a slow boss fight would have pushed back.
+          const nth = this.eliteN++, due = 1 + nth * 1.1, SD = PS.RNG.side('elite' + nth); // no rule goes into `due`: a pact can change the rules mid-run
+          const e = PS.Enemies.spawn(U.pick(this.elitePool(due), SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD, Math.min(3, R.affixes + (due > 12.5 ? 1 : 0))) });
           first = first || e;
         }
         note('elite', first.def.id + ':' + first.affixes.join('+'));
@@ -329,8 +328,8 @@
           PS.FX.flash(td.color, 0.18);
           PS.Audio.play('shrine', { vol: 0.5, pitch: 0.8 });
           if (td.elites) {
-            const pool = ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => this.minutes() >= TABLE.find((r) => r.id === id).from);
-            for (let i = 0; i < td.elites; i++) { const pos = this.ringPos(); const e = PS.Enemies.spawn(U.pick(pool, SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD) }); e.richChest = true; }
+            const due = 3.4 + (this.tideN - 1) * 3, pool = this.elitePool(due); // by the minute this tide is due, as with the scripted elites
+            for (let i = 0; i < td.elites; i++) { const pos = this.ringPos(); const e = PS.Enemies.spawn(U.pick(pool, SD), pos.x, pos.y, { elite: true, affixes: this.sideAffixes(SD, G.rules.affixes) }); e.richChest = true; }
           }
         }
       }
@@ -481,7 +480,9 @@
     rushStages: RUSH_ORDER.length, rushLevels: RUSH_LEVELS,
 
     /** affixes for an elite that is not part of the run's script (a breach champion, a chest's guard): drawn from `rng`, not `event` */
-    sideAffixes(rng) { return U.shuffle(PS.Data.AFFIX_IDS.slice(), rng).slice(0, this.affixCount()); },
+    sideAffixes(rng, count) { return U.shuffle(PS.Data.AFFIX_IDS.slice(), rng).slice(0, count || this.affixCount()); },
+    /** the kinds an elite may be at `minute` of a run */
+    elitePool(minute) { return ['imp', 'slime', 'hound', 'brute', 'knight', 'wraith', 'toad'].filter((id) => minute >= TABLE.find((r) => r.id === id).from * PS.G.rules.early); },
     /** how many elite affixes the rift hands out right now */
     affixCount() { return Math.min(3, PS.G.rules.affixes + (this.victory ? 1 : 0)); },
 
