@@ -115,7 +115,9 @@
 
     /* ------------------------------------------------------------ emitters */
     dmgNum(x, y, dmg, crit, el, dot) {
-      if (!PS.Save.data.settings.dmgNums) return;
+      // Settings, Damage numbers: all of them, critical hits only, or none (true and false are the old on/off switch)
+      const mode = PS.Save.data.settings.dmgNums;
+      if (!mode || mode === 'off' || (mode === 'crits' && !crit)) return;
       if (nums.length >= MAX_NUMS) {
         if (dot || !crit) return;
         nums.shift();

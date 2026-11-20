@@ -681,7 +681,8 @@
           <select data-danger>${[['red', 'Red'], ['pink', 'Pink'], ['white', 'White']].map(([v, l]) => `<option value="${v}"${(s.danger || 'red') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         ${tog('subtleFx', 'Subtle own effects', 'Draw your own ground effects and shock rings at half strength, so danger zones stand out more')}
         ${tog('flash', 'Screen flashes', 'Full-screen flashes on big hits, bombs and evolutions')}
-        ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
+        <label class="set-row"><span><b>Damage numbers</b><small>Floating numbers over enemies. Critical hits only keeps the screen quieter</small></span>
+          <select data-dmgnums>${[['all', 'All'], ['crits', 'Critical hits only'], ['off', 'Off']].map(([v, l]) => `<option value="${v}"${(s.dmgNums === true ? 'all' : s.dmgNums || 'off') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>
           <select data-quality>${[['auto', 'Auto'], ['high', 'Sharp'], ['low', 'Fast']].map(([v, l]) => `<option value="${v}"${(s.quality || 'auto') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         ${PS.Save.syncCode && PS.Save.syncCode() ? `<div class="set-row set-link"><span><b>Play on another device</b><small>Copy this code there to share your Essence, upgrades and unlocks. Treat it like a password.</small></span>
@@ -698,6 +699,8 @@
       });
       const nm = root.querySelector('[data-name]');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const dn = root.querySelector('[data-dmgnums]');
+      dn.addEventListener('change', () => { s.dmgNums = dn.value; PS.Save.save(); });
       const dg = root.querySelector('[data-danger]');
       dg.addEventListener('change', () => { s.danger = dg.value; PS.Save.save(); });
       const q = root.querySelector('[data-quality]');
