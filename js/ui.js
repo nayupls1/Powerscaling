@@ -516,6 +516,7 @@
         { id: 'rx', name: 'Reactions', ids: Object.keys(D.REACTIONS), has: (k) => !!cx.rx[D.REACTIONS[k].name] },
         { id: 'sets', name: 'Resonances', ids: D.RELIC_SETS.map((s) => s.id), has: (id) => !!cx.sets[id] },
         { id: 'pacts', name: 'Pacts', ids: Object.keys(D.PACTS), has: (id) => !!cx.pacts[id] },
+        { id: 'rift', name: 'The rift', ids: D.AFFIX_IDS.map((id) => 'affix:' + id).concat(Object.keys(D.TIDES).map((id) => 'tide:' + id)), has: (id) => !!cx.rift[id] },
         { id: 'foes', name: 'Bestiary', ids: foeIds, has: (id) => cx.foes[id] > 0 },
       ];
     },
@@ -567,6 +568,10 @@
           return `<li class="cx${k ? '' : ' unknown'}" style="--c:${k ? '#f0b94a' : '#6d6690'}"><span class="cx-ico">${ico(k ? 'gem' : 'lock', 24)}</span>
             <span class="cx-text"><b>${k ? esc(st.name) : '???'}</b><small>${parts}</small><span>${k ? esc(st.text) : 'Not completed yet.'}</span></span></li>`;
         }).join('')}</ul>`;
+      } else if (sh.id === 'rift') {
+        hint = 'What the rift itself throws at you: an affix is recorded once you have slain an elite that carried it, a tide once you have been through one.';
+        html = `<h3>Elite affixes</h3><ul class="cx-list">${D.AFFIX_IDS.map((id) => { const a = D.AFFIXES[id], k = sh.has('affix:' + id); return entry(k, a.color, 'skull', a.name, '', k ? esc(a.text) : 'Not slain yet.'); }).join('')}</ul>
+          <h3>Rift tides</h3><ul class="cx-list">${Object.values(D.TIDES).map((td) => { const k = sh.has('tide:' + td.id); return entry(k, td.color, td.icon, td.name, k ? td.dur + ' seconds' : '', k ? esc(td.text) : 'Not weathered yet.'); }).join('')}</ul>`;
       } else if (sh.id === 'pacts') {
         hint = 'Dark altars offer pacts. A pact is recorded once you have struck it and finished the run.';
         html = `<ul class="cx-list">${sh.ids.map((id) => {

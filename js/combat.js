@@ -380,7 +380,7 @@
         }
       }
       if (e.big && p.relics.warbanner) p.trophies++;
-      if (e.elite) G.elitesSlain = (G.elitesSlain || 0) + 1;
+      if (e.elite) { G.elitesSlain = (G.elitesSlain || 0) + 1; if (e.affixes) for (const id of e.affixes) G.met['affix:' + id] = 1; }
       p.onKill(e, o || EMPTY, canProc);
       if (e.def.onDeath) e.def.onDeath(e);
       if (e.affixes) PS.Enemies.affixDeath(e);

@@ -331,6 +331,7 @@
           if (p.stats.f.tideCaller) this.tideT *= 0.8;
           note('tide', td.id);
           G.tides++;
+          G.met['tide:' + td.id] = 1;
           PS.UI.banner(td.name, td.text, 3);
           PS.FX.flash(td.color, 0.18);
           PS.Audio.play('shrine', { vol: 0.5, pitch: 0.8 });
