@@ -1413,6 +1413,8 @@
   /* ------------------------------------------------------------------ public */
   const Render = {
     BIOMES,
+    /** the colour everything hostile is drawn in (Settings, Danger colour) */
+    dangerColor() { return DANGER_COLORS[PS.Save.data.settings.danger] || DANGER_COLORS.red; },
     prof: null, // set to {} to collect per-layer draw timings (ms)
     init(cv) {
       canvas = cv;

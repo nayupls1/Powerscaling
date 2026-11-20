@@ -853,7 +853,8 @@
         if (h.kind === 'circle') {
           if (h.t >= h.delay && !h.hitDone) {
             h.hitDone = true;
-            PS.FX.explosion(h.x, h.y, h.r, h.color, h.r > 90);
+            // the blast is drawn in the danger colour too, not the caster's: what just went off there was the rift's
+            PS.FX.explosion(h.x, h.y, h.r, PS.Render && PS.Render.dangerColor ? PS.Render.dangerColor() : '#ff2f4e', h.r > 90);
             if (h.r > 90) { PS.FX.shake(5); PS.Audio.play('explode', { vol: 0.5 }); }
             const rr = h.r + p.r * 0.5;
             if (U.dist2(h.x, h.y, p.x, p.y) < rr * rr) {
