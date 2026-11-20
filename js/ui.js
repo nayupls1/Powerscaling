@@ -1094,6 +1094,9 @@
               for (const id of p.pacts) bits.push(`<span class="chip pact" data-tip="${esc(D.PACTS[id].gift)}<br><span class='off'>${esc(D.PACTS[id].price)}</span>">${ico(D.PACTS[id].icon, 15)} ${esc(D.PACTS[id].name)}</span>`);
               if (G.breaches || G.breachesLost) bits.push(`<span class="chip">${ico('rift', 15)} Breaches sealed <em>${G.breaches}</em>${G.breachesLost ? ` of ${G.breaches + G.breachesLost}` : ''}</span>`);
               if (G.hoarders) bits.push(`<span class="chip">${ico('coin', 15)} Hoarders caught <em>${G.hoarders}</em></span>`);
+              if (G.forged) bits.push(`<span class="chip">${ico('anvil', 15)} Skills tempered <em>${G.forged}</em></span>`);
+              if (G.bought) bits.push(`<span class="chip">${ico('coin', 15)} Bought from the merchant <em>${G.bought}</em></span>`);
+              if (G.tides) bits.push(`<span class="chip">${ico('moon', 15)} Tides weathered <em>${G.tides}</em></span>`);
               return bits.length ? `<h3 class="over-sub">Along the way</h3><div class="chips">${bits.join('')}</div>` : '';
             })()}
             <p class="muted seed">Seed <span class="seed-text">${esc(G.seed)}</span> <button class="btn btn-small btn-ghost" id="overCopySeed" type="button">Copy</button></p>
