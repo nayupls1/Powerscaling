@@ -384,9 +384,17 @@
       const score = this.finalScore(G);
       // the first daily rift of the day pays double
       const firstDaily = !!G.daily && !G.bot && !(d.daily.date === G.daily && d.daily.attempts > 0);
+      // a streak of days: the first daily of each day in a row adds 10% more Essence, up to +50%
+      let streak = 0;
+      if (firstDaily) {
+        const prev = PS.Daily.dateOf(Date.parse(G.daily + 'T00:00:00Z') - 86400000);
+        d.streak = { n: d.streak.last === prev ? d.streak.n + 1 : d.streak.last === G.daily ? d.streak.n : 1, last: G.daily };
+        streak = d.streak.n;
+      }
+      const streakMul = 1 + Math.min(0.5, 0.1 * Math.max(0, streak - 1));
       // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
       const essence = Math.round((G.rush ? G.bossesKilled * 20 + (G.won ? 40 : 0) : G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
-        * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 : 1));
+        * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 * streakMul : 1));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
         name: d.name || 'Wanderer', cls: G.cls, score, time: Math.floor(G.time), level: p.level, kills: G.kills, bosses: G.bossesKilled,
@@ -401,7 +409,7 @@
       // the daily rift lends everyone the full tree, so it keeps its own best score
       const best = G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
       if (!G.daily && !G.rush) d.stats.bestScore = Math.max(d.stats.bestScore, score);
-      G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
+      G.result = { run, essence, best, retired, rank: 0, firstDaily, streak, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
       if (G.daily && !G.bot) {
         if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
         d.daily.attempts++;

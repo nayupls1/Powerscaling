@@ -329,11 +329,11 @@
             <li>Everyone plays the same seed: the same hordes and the same elites, in the same order.</li>
             <li>Every hero gets the full skill tree, so the board compares play, not grind.</li>
             <li>Play as often as you like. Your best run of the day counts.</li>
-            <li>Your first run each day pays double Essence.</li>
+            <li>Your first run each day pays double Essence, and 10% more for every day in a row you have played, up to 50%.</li>
           </ul>
           <dl class="record three">
             <div><dt>Your best today</dt><dd>${day.mine.attempts ? U.fmtNum(day.mine.best) : 'None yet'}</dd></div>
-            <div><dt>Runs today</dt><dd>${day.mine.attempts}</dd></div>
+            <div><dt>Day streak</dt><dd>${(() => { const s = PS.Save.data.streak, today = day.date, y = PS.Daily.dateOf(Date.parse(today + 'T00:00:00Z') - 86400000); return s.last === today || s.last === y ? s.n : 0; })()}</dd></div>
             <div><dt>Resets in</dt><dd>${day.left}</dd></div>
           </dl>
           <button class="btn btn-primary btn-big" id="btnDaily">Enter today's rift</button>
@@ -1055,7 +1055,7 @@
             ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}
             ${res.rank && !G.daily ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}
             <span class="tag world" id="overWorld" hidden></span>
-            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' : ''}</span>
+            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' + (res.streak > 1 ? ` and ${Math.min(50, 10 * (res.streak - 1))}% more for a ${res.streak}-day streak` : '') : ''}</span>
           </div>
         </div>
         ${res.feats && res.feats.length ? `<section class="over-feats"><h3>Feats earned <small>+${U.fmtNum(res.feats.reduce((n, id) => n + PS.Feats.BY_ID[id].essence, 0))} Essence</small></h3>

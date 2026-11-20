@@ -27,6 +27,7 @@
     codex: { relics: {}, evos: {}, rx: {}, pacts: {}, foes: {}, sets: {} }, // what has been found (1) and how many of each foe have fallen
     history: [],         // the last 30 runs, newest first, with their seeds: see the Leaderboard's 'Your runs' tab
     life: {},            // lifetime tallies beyond `stats`: seconds played, damage, gold, breaches... (see Game.endRun)
+    streak: { n: 0, last: '' }, // consecutive days with a daily rift played, and the last such day (UTC date)
     mastery: {},         // class id -> mastery points
     rush: {},            // boss rush: best clear time in seconds, per class
     sigil: '',           // the sigil worn into the next run ('' for none)
@@ -57,6 +58,8 @@
     out.feats = obj(d.feats);
     out.rush = obj(d.rush);
     out.mastery = obj(d.mastery);
+    const sk = obj(d.streak);
+    out.streak = { n: num(sk.n) ? Math.max(0, Math.floor(sk.n)) : 0, last: typeof sk.last === 'string' ? sk.last : '' };
     out.life = obj(d.life);
     out.history = (Array.isArray(d.history) ? d.history : []).filter((r) => r && typeof r === 'object' && num(r.score)).slice(0, 30);
     if (typeof out.sigil !== 'string') out.sigil = '';
