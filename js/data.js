@@ -444,7 +444,7 @@
   /* ---------- Run rules: every knob a Rift Depth or a daily mutator can turn ---------- */
   D.baseRules = () => ({
     hp: 1, dmg: 1, speed: 1,          // the horde: health, damage, movement
-    bossHp: 0.65, bossRage: 0.4,         // bosses: health, and the share of health at which they enrage
+    bossHp: 0.55, bossRage: 0.4,         // bosses: health, and the share of health at which they enrage
     eliteN: 1, eliteEvery: 1, affixes: 1, hordeEvery: 1,
     chestCost: 1, heal: 1, xp: 1,     // heal covers pickups, tonics and the level-up breather
     pDmg: 1, pHp: 1, pSpeed: 1, dashCd: 1, noWard: false, startRelics: 0, // the hero

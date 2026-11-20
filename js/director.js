@@ -22,13 +22,13 @@
    * evolve, then flattens as each pick moves a smaller share of the build. The knots follow that shape a step behind,
    * so a run goes from scrappy to dominant instead of the other way round.
    */
-  const HP_KNOTS = [[0, 3.8], [1, 5.6], [2, 7.8], [3, 10.4], [4.5, 17.5], [6, 29], [7.5, 42], [9, 62], [10.5, 90], [12, 130]];
+  const HP_KNOTS = [[0, 8.5], [1, 12.5], [2, 17], [3, 22], [4.5, 34], [6, 54], [7.5, 76], [9, 108], [10.5, 152], [12, 212]];
   const DEEPEN = 1.3; // each boss slain makes the horde this much sturdier: the spoils are the spike, this is the fall
   // Reactions made every mixed-element build a little stronger. This hands that back to the horde so the curve above
   // still describes the game: with it, the bot's results match what they were before reactions existed.
   const REACTION_OFFSET = 1.05;
   // overtime: the horde's health multiplies by this every minute after the Rift Lord falls. Nothing is meant to last long there
-  const OT_HP = 3.2;
+  const OT_HP = 3.6;
   // overtime also thins the horde: fewer enemies on screen and fewer arriving, down to OT_THIN_MIN of the count over
   // the first minutes, each one carrying the health and experience of the ones that are missing. The rift gets harder
   // by every enemy being a real threat, not by the screen filling with more of them than a frame can draw.
@@ -107,7 +107,7 @@
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
       // the first two acts climb as they always did; the extra bite comes late, when the build can answer it
-      return (1.8 + 0.22 * t + 0.1 * Math.max(0, t - 6)) * (1 + 0.06 * this.depth()) * (1 + 1.1 * o + 0.5 * o * o) * PS.G.rules.dmg; // overtime bites harder every minute: nothing is meant to outlast it
+      return (3.2 + 0.36 * t + 0.14 * Math.max(0, t - 6)) * (1 + 0.06 * this.depth()) * (1 + 1.3 * o + 0.65 * o * o) * PS.G.rules.dmg; // overtime bites harder every minute: nothing is meant to outlast it
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
     /** seconds between hordes */
@@ -134,7 +134,7 @@
     },
     targetCount() {
       const t = this.minutes();
-      return Math.min(MAX_ENEMIES, (44 + 34 * t + 1.6 * t * t) * this.pressure()) * this.thin();
+      return Math.min(MAX_ENEMIES, (56 + 36 * t + 1.6 * t * t) * this.pressure()) * this.thin();
     },
     spawnRate() {
       const t = this.minutes();
