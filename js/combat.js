@@ -323,7 +323,8 @@
           });
           break;
         case 'wither':
-          C.damage(e, Math.max(pw * 1.2, e.maxHp * (e.boss ? 0.004 : e.elite ? 0.02 : 0.05)), hit('venom', { noCrit: true }));
+          // noStatus: this hit is sized to the target's health, and Poison takes its strength from the hit that laid it
+          C.damage(e, Math.max(pw * 1.2, e.maxHp * (e.boss ? 0.004 : e.elite ? 0.02 : 0.05)), hit('venom', { noCrit: true, noStatus: true }));
           PS.FX.puff(x, y, '#c06bff', 6);
           break;
       }

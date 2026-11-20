@@ -591,7 +591,7 @@
             const dmg = base + e.poisStacks * e.poisDps * 4 * s.statusDmg, x = e.x, y = e.y;
             PS.FX.puff(x, y, '#b8f078', 7);
             // noStatus: its own hit must not set the Poison it will read next time, or every cast multiplies the last
-            C.damage(e, dmg, { el: 'venom', src: 'Catalyst', noCrit: true, noStatus: true });
+            C.damage(e, dmg, { el: 'venom', src: 'Catalyst', noCrit: true, noStatus: true, noProc: true }); // nor procs: Serpent Tooth would poison from this hit's size
             if (f.chainCatalysis && e.dead) { PS.FX.ring(x, y, 90 * s.area, '#b8f078'); C.aoe(x, y, 90 * s.area, dmg * 0.5, { el: 'venom', src: 'Catalyst', noProc: true, noStatus: true }); }
             if (f.acidBath && pools < 8) { pools++; C.zone({ x, y, r: 70 * s.area, life: 4 * s.duration, tick: 0.5, dmg: C.power('venom') * 0.7, el: 'venom', src: 'Acid Bath', kind: 'poison', color: '#8fe04a' }); }
           }
