@@ -344,6 +344,8 @@
     goldrain:  { name: 'Gold Rain',    icon: 'coin',  color: '#ffd35c', dur: 18, text: 'Three times as many of the slain drop gold.',        gold: 3 },
     stillness: { name: 'Stillness',    icon: 'clock', color: '#9fe6ff', dur: 14, text: 'The rift holds its breath: enemies move 40% slower.', speed: 0.6 },
     surge:     { name: 'Power Surge',  icon: 'bolt',  color: '#ffe14d', dur: 14, text: 'Your skills and attacks come 30% faster.',          haste: 0.3 },
+    echoes:    { name: 'Echoes',       icon: 'echo',  color: '#c9b8ff', dur: 16, text: 'Your skills have a 35% chance to fire twice.',       echo: 0.35 },
+    harvest:   { name: 'Harvest',      icon: 'magnet', color: '#8ad1ff', dur: 16, text: 'Gems and gold fly to you from three times as far.',   pickup: 3 },
     bounty:    { name: 'Open Season',  icon: 'skull', color: '#c77dff', dur: 20, text: 'Two elites enter the rift at once. Their chests hold better relics.', elites: 2 },
   };
   for (const id in D.TIDES) D.TIDES[id].id = id;

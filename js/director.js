@@ -652,7 +652,7 @@
     },
     updatePickups(dt) {
       const G = PS.G, p = G.player, s = p.stats, list = G.pickups;
-      const range2 = s.pickup * s.pickup;
+      const reach = s.pickup * this.tideOf('pickup', 1), range2 = reach * reach;
       for (let i = 0; i < list.length; i++) {
         const k = list[i];
         k.age += dt;

@@ -852,7 +852,7 @@
       const cd = cur.cd;
       if (def.fire(inst, cur, p) === false) { inst.cd = 0.15; return; }
       inst.cd = Math.max(inst.cd + cd, cd * 0.5);
-      const echo = p.stats.f.echo;
+      const echo = (p.stats.f.echo || 0) + PS.Director.tideOf('echo', 0);
       if (echo && U.rnd() < echo) inst.echoT = Math.min(0.14, cd * 0.5);
     },
     /** human text for what levelling this skill to `level` adds */
