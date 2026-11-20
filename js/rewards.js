@@ -197,6 +197,35 @@
       });
     },
 
+    /* ------------------------------------------------------------ the merchant: one of three offers, for gold */
+    shopChoices(p) {
+      const S = PS.Skills, t = PS.Director.minutes(), k = 1 + 0.07 * t; // prices rise with the run, as purses do
+      const offers = [
+        () => Object.assign(R.card(p, 'heal', null, 0), { cost: Math.round(25 * k) }),
+        () => ({ type: 'reroll', id: null, tier: 1, icon: 'dice', title: 'Loaded Die', tag: 'Supplies', desc: 'One more reroll.', el: null, lines: [], cost: Math.round(35 * k) }),
+        () => ({ type: 'banishes', id: null, tier: 1, icon: 'ban', title: 'Writ of Exile', tag: 'Supplies', desc: 'One more banish.', el: null, lines: [], cost: Math.round(40 * k) }),
+        () => {
+          const up = p.skills.filter((s) => s.level < S.MAX_LEVEL);
+          if (!up.length) return null;
+          const c = R.card(p, 'skillup', U.pick(up, LOOT).id, 0);
+          return Object.assign(c, { tier: 2, cost: Math.round(80 * k) });
+        },
+        () => {
+          const r = R.rollRelic(p, 2);
+          if (!r) return null;
+          return { type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: 'Relic', desc: r.desc, el: null, lines: [], cost: Math.round((120 + 40 * (r.tier - 2)) * k) };
+        },
+        () => {
+          const r = R.rollRelic(p, 0);
+          if (!r) return null;
+          return { type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: 'Relic', desc: r.desc, el: null, lines: [], cost: Math.round((45 + 30 * r.tier) * k) };
+        },
+      ];
+      const cards = [];
+      for (const make of U.shuffle(offers, LOOT)) { const c = make(); if (c) cards.push(c); if (cards.length === 3) break; }
+      return cards;
+    },
+
     /* ------------------------------------------------------------ altar pacts */
     pactChoices(p) {
       const ids = U.shuffle(Object.keys(D.PACTS).filter((id) => !p.pacts.includes(id)), LOOT).slice(0, 3);
@@ -209,6 +238,7 @@
     /* ------------------------------------------------------------ apply */
     apply(p, card) {
       const S = PS.Skills;
+      if (card.cost) { p.gold -= card.cost; PS.G.spent = (PS.G.spent || 0) + card.cost; }
       switch (card.type) {
         case 'skill': {
           const inst = p.addSkill(card.id);
@@ -248,6 +278,8 @@
         case 'pact': p.addPact(card.id); PS.G.pactsStruck++; PS.G.pactsAtAltar.push(card.id); PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#ff2846', 0.3); PS.FX.surge(p.x, p.y, '#ff5a7a', false); break;
         case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0))); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
+        case 'reroll': p.rerolls++; PS.Audio.play('pick'); break;
+        case 'banishes': p.banishes++; PS.Audio.play('pick'); break;
       }
       PS.G.picks.push({ t: Math.floor(PS.G.time), type: card.type, title: card.title });
     },

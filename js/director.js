@@ -71,6 +71,7 @@
       this.shrineT = 40;
       this.altarT = 165;   // dark altars: a pact with a price
       this.forgeT = 210;   // forges: a level for a skill of your choosing
+      this.merchantT = 250; // a merchant: gold for one of three offers
       this.breachT = 100;  // breaches: a timed kill trial for a relic
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
@@ -274,6 +275,17 @@
           G.props.push({ kind: 'altar', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 64, dead: false, t: 0, charge: 0, bob: 0 });
           PS.UI.toast('A dark altar has risen', 'blood');
           PS.UI.tip('altar', 'Altars offer pacts: a strong gift with a lasting price', 'blood');
+        }
+      }
+      this.merchantT -= dt;
+      if (this.merchantT <= 0 && !quiet && this.quietT <= 0) {
+        this.quietT = 9;
+        this.merchantT = 200;
+        if (!G.props.some((x) => x.kind === 'merchant')) {
+          const a = U.rnd() * TAU, d = U.rand(480, 700);
+          G.props.push({ kind: 'merchant', x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, r: 60, dead: false, t: 0, charge: 0, bob: 0, life: 75 });
+          PS.UI.toast('A merchant has set up shop. She will not stay long', 'coin');
+          PS.UI.tip('merchant', 'The merchant sells one thing for gold: stand in her circle to see her wares', 'coin');
         }
       }
       this.forgeT -= dt;
@@ -742,6 +754,18 @@
           }
         } else if (pr.kind === 'breach') {
           this.updateBreach(pr, dt, d2 < pr.r * pr.r);
+        } else if (pr.kind === 'merchant') {
+          pr.life -= dt;
+          if (pr.life <= 0) { pr.dead = true; PS.FX.puff(pr.x, pr.y, '#ffd35c', 10); continue; }
+          if (d2 < pr.r * pr.r) {
+            pr.charge += dt / 1.2;
+            if (pr.charge >= 1) {
+              pr.dead = true;
+              PS.FX.ring(pr.x, pr.y, 140, '#ffd35c', 0.5);
+              PS.Audio.play('chest', { vol: 0.6 });
+              PS.G.queue.push({ kind: 'shop' });
+            }
+          } else pr.charge = Math.max(0, pr.charge - dt * 0.5);
         } else if (pr.kind === 'forge') {
           if (d2 < pr.r * pr.r) {
             pr.charge += dt / 2.2;

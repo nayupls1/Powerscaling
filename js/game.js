@@ -228,6 +228,9 @@
         if (q.kind === 'chest') {
           const cards = R.relicChoices(p, q.n + (p.stats.m.relicChoice || 0), q.minTier);
           spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: cards.length > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
+        } else if (q.kind === 'shop') {
+          const cards = R.shopChoices(p);
+          if (cards.length) spec = { kind: 'shop', title: 'The merchant\'s wares', sub: 'One purchase. You have ' + p.gold + ' gold.', cards };
         } else if (q.kind === 'forge') {
           const cards = R.forgeChoices(p);
           if (cards.length) spec = { kind: 'forge', title: 'The forge is hot', sub: 'Choose one skill to temper.', cards };
@@ -256,6 +259,7 @@
       }
       if (!spec) return;
       if (G.bot) {
+        if (spec.kind === 'shop') { spec.cards = spec.cards.filter((c) => c.cost <= p.gold); if (!spec.cards.length) return; }
         const i = PS.Bot.pick(spec, G);
         R.apply(p, spec.cards[i]);
         p.inv = Math.max(p.inv, 0.3);

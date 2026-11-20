@@ -542,7 +542,7 @@
     ctx.globalAlpha = 1;
   }
 
-  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'] };
+  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#ff5a7a', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'], merchant: ['#ffd35c', 'coin'] };
 
   function drawProps(G) {
     const p = G.player, t = G.time;
@@ -571,6 +571,36 @@
         ctx.strokeText(cost + ' gold', pr.x, pr.y - 34);
         ctx.fillStyle = can ? '#ffd35c' : '#ff8a8a';
         ctx.fillText(cost + ' gold', pr.x, pr.y - 34);
+      } else if (pr.kind === 'merchant') {
+        const leaving = pr.life < 12;
+        ctx.globalAlpha = leaving ? 0.25 + 0.25 * Math.sin(t * 8) : 0.5;
+        ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2;
+        ctx.setLineDash([8, 10]); ctx.lineDashOffset = t * 20;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.9; ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x + 16, pr.y - 26, 46, '#ffd35c', 0.45 + 0.12 * Math.sin(t * 4));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 16, 26, 8, 0, 0, TAU); ctx.fill();
+        // a hooded figure beside a heaped pack, a lantern on a pole
+        ctx.fillStyle = '#6a4a2c';
+        ctx.beginPath(); ctx.roundRect(pr.x - 24, pr.y - 6, 22, 22, 6); ctx.fill();
+        ctx.fillStyle = '#8a6238';
+        ctx.beginPath(); ctx.roundRect(pr.x - 21, pr.y - 16, 16, 12, 5); ctx.fill();
+        ctx.fillStyle = '#3d3157';
+        ctx.beginPath(); ctx.moveTo(pr.x - 2, pr.y + 16); ctx.lineTo(pr.x + 2, pr.y - 12); ctx.quadraticCurveTo(pr.x + 9, pr.y - 22, pr.x + 15, pr.y - 12); ctx.lineTo(pr.x + 19, pr.y + 16); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#16102a';
+        ctx.beginPath(); ctx.ellipse(pr.x + 9, pr.y - 9, 4.5, 5, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#b9b2a0'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pr.x + 19, pr.y + 14); ctx.lineTo(pr.x + 19, pr.y - 30); ctx.lineTo(pr.x + 14, pr.y - 30); ctx.stroke();
+        ctx.fillStyle = '#ffe9a8';
+        ctx.beginPath(); ctx.roundRect(pr.x + 10, pr.y - 30, 8, 10, 2); ctx.fill();
       } else if (pr.kind === 'forge') {
         ctx.globalAlpha = 0.5;
         ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
@@ -1375,7 +1405,9 @@
       ctx.closePath(); ctx.fill();
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
-    for (const pr of G.props) if (!pr.dead) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, pr.cursed ? '#c77dff' : m[0], m[1]); }
+    // a chest the hero cannot pay for is not worth an arrow: fewer markers, each one meaning something to do
+    const afford = p.gold >= PS.Director.chestPrice();
+    for (const pr of G.props) if (!pr.dead && (pr.kind !== 'chest' || pr.cursed || afford)) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, pr.cursed ? '#c77dff' : m[0], m[1]); }
     const hoarder = PS.Director.hoarder;
     if (hoarder && !hoarder.dead) mark(hoarder.x, hoarder.y, '#ffd35c', 'coin');
     // only the nearest heal/magnet is worth pointing at, and heals only when hurt

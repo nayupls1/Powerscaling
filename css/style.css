@@ -477,6 +477,10 @@ input:focus-visible + .switch { outline: 3px solid var(--gilt); outline-offset: 
 .card-line { font-size: 0.84rem; color: #c9b8ff; line-height: 1.3; }
 .card-price { font-size: 0.9rem; font-weight: 700; color: #ff8a9a; line-height: 1.3; padding-top: 7px; border-top: 1px solid rgba(255, 90, 122, 0.35); width: 100%; }
 .card-price::before { content: 'Price: '; color: #ff5a7a; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.08em; }
+.card-cost { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: #ffd35c; padding-top: 6px; }
+.card-cost.poor { color: #ff8a8a; }
+.card:has(.card-cost.poor) { opacity: 0.55; }
+.kind-shop .choice-head h2 { color: #ffd35c; }
 .chip.pact { --rc: rgba(255, 90, 122, 0.55); color: #ffc2cc; }
 .card-rar { margin-top: auto; padding-top: 8px; font-size: 0.82rem; font-weight: 800; color: var(--rc); }
 .card.r-epic, .card.r-legendary, .card.sp-evolve { box-shadow: 0 0 22px color-mix(in oklab, var(--rc), transparent 70%); }

@@ -600,7 +600,7 @@
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
-          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle, and a forge lets you pick one of your skills to level up.</p>
+          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle, a forge lets you pick one of your skills to level up, and a merchant sells one thing for gold before she moves on.</p>
           <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it and beat its trial before the timer burns down, and it leaves a relic: slay its spawn, kill its champion, or hold the ring.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
           <p><b style="color:#ff5a72">Red is the rift's.</b> Every bullet, circle, beam and shockwave that can hurt you is drawn in the same red; the circles have a dashed rim and flash white just before they land. Anything in another colour is yours, and harmless to you.</p>
@@ -883,6 +883,7 @@
           ${c.el ? `<span class="card-el">${ico(D.ELEMENTS[c.el].icon, 13)} ${D.ELEMENTS[c.el].name}</span>` : ''}
           <span class="card-desc">${esc(c.desc)}</span>
           ${c.price ? `<span class="card-price">${esc(c.price)}</span>` : ''}
+          ${c.cost ? `<span class="card-cost${p.gold < c.cost ? ' poor' : ''}">${ico('coin', 14)} ${c.cost} gold</span>` : ''}
           ${c.lines.map((l) => `<span class="card-line">${esc(l)}</span>`).join('')}
           <span class="card-rar">${kind}</span>
         </button>`;
@@ -899,8 +900,8 @@
         click($('actReroll'), () => { if (!this.clickGuard()) this.rerollCards(); });
         click($('actBanish'), () => { if (!this.clickGuard()) { banishMode = !banishMode; this.renderCards(); } });
         click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
-      } else if (spec.kind === 'pact') {
-        act.innerHTML = `<button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Walk away</button>`;
+      } else if (spec.kind === 'pact' || spec.kind === 'shop') {
+        act.innerHTML = `<button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} ${spec.kind === 'shop' ? 'Buy nothing' : 'Walk away'}</button>`;
         click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
       } else act.innerHTML = '';
       box.classList.toggle('banishing', banishMode);
@@ -920,6 +921,7 @@
         else PS.Audio.play('deny', { vol: 0.5 });
         return;
       }
+      if (card.cost && PS.G.player.gold < card.cost) { PS.Audio.play('deny', { vol: 0.5 }); return; }
       PS.Audio.play('pick');
       PS.Game.choose(curSpec, card);
     },
@@ -1241,7 +1243,7 @@
         if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
         else if (btn === 'a') this.pickCard(padCard);
         else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
-        else if (btn === 'b' && curSpec.kind === 'pact') PS.Game.choose(curSpec, null); // walk away
+        else if (btn === 'b' && (curSpec.kind === 'pact' || curSpec.kind === 'shop')) PS.Game.choose(curSpec, null); // walk away
         else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'paused') {
         if (btn === 'b' || btn === 'a') PS.Game.resume();
