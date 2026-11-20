@@ -465,10 +465,14 @@
   }
 
   // the one colour reserved for what hurts the hero: nothing the hero casts is drawn in it
-  const DANGER = '#ff2f4e', DANGER_INK = '#2a0410';
+  const DANGER_COLORS = { red: '#ff2f4e', pink: '#ff4fd8', white: '#f4f4ff' }, DANGER_INK = '#2a0410';
+  let DANGER_HOT = '#ffffff'; // the flash just before a blast lands (gold when the danger colour is already white)
+  let DANGER = DANGER_COLORS.red; // picked in Settings (Danger colour), read at the top of every hazard pass
 
   function drawHazards(G) {
     const few = G.hazards.length <= 12;
+    DANGER = DANGER_COLORS[PS.Save.data.settings.danger] || DANGER_COLORS.red;
+    DANGER_HOT = DANGER === DANGER_COLORS.white ? '#ffd35c' : '#ffffff';
     for (const h of G.hazards) {
       if (h.kind === 'circle') {
         if (!visible(h.x, h.y, h.r + 8)) continue;
@@ -487,7 +491,7 @@
           ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
         }
         ctx.globalAlpha = 1;
-        ctx.strokeStyle = hot ? '#ffffff' : DANGER; ctx.lineWidth = 3.5;
+        ctx.strokeStyle = hot ? DANGER_HOT : DANGER; ctx.lineWidth = 3.5;
         ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
@@ -501,7 +505,7 @@
           ctx.strokeStyle = DANGER; ctx.lineWidth = h.w;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.globalAlpha = 0.95;
-          ctx.strokeStyle = t > 0.8 ? '#ffffff' : DANGER; ctx.lineWidth = 2 + 3 * t;
+          ctx.strokeStyle = t > 0.8 ? DANGER_HOT : DANGER; ctx.lineWidth = 2 + 3 * t;
           ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.setLineDash([]);

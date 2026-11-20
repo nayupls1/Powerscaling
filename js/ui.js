@@ -635,6 +635,8 @@
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
+        <label class="set-row"><span><b>Danger colour</b><small>The colour of everything that can hurt you. Change it if red is hard to tell from your own effects</small></span>
+          <select data-danger>${[['red', 'Red'], ['pink', 'Pink'], ['white', 'White']].map(([v, l]) => `<option value="${v}"${(s.danger || 'red') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         ${tog('subtleFx', 'Subtle own effects', 'Draw your own ground effects and shock rings at half strength, so danger zones stand out more')}
         ${tog('flash', 'Screen flashes', 'Full-screen flashes on big hits, bombs and evolutions')}
         ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
@@ -654,6 +656,8 @@
       });
       const nm = root.querySelector('[data-name]');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const dg = root.querySelector('[data-danger]');
+      dg.addEventListener('change', () => { s.danger = dg.value; PS.Save.save(); });
       const q = root.querySelector('[data-quality]');
       q.addEventListener('change', () => { s.quality = q.value; PS.Render.setQuality(q.value); PS.Save.save(); });
       const copy = root.querySelector('[data-copy]');
