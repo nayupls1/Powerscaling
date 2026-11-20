@@ -97,7 +97,8 @@
     depth() { return Math.min(PS.G.bossesKilled, BOSS_TIMES.length); },
     dmgMult() {
       const t = Math.min(this.minutes(), 12), o = this.endless();
-      return (0.72 + 0.15 * t) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
+      // the first two acts climb as they always did; the extra bite comes late, when the build can answer it
+      return (0.72 + 0.13 * t + 0.045 * Math.max(0, t - 6)) * (1 + 0.04 * this.depth()) * (1 + 0.35 * o) * PS.G.rules.dmg;
     },
     speedMult() { return Math.min(1.3, 1 + this.minutes() * 0.012) * PS.G.rules.speed; },
     /** seconds between hordes */
