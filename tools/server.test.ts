@@ -104,6 +104,14 @@ describe('runs and leaderboard', () => {
     }
     expect((await req('POST', '/api/runs', run())).status).toBe(400); // no id
   });
+  test('every class the game has is accepted, and nothing else', () => {
+    // js/data.js is not importable here, so read the class ids out of js/classes.js: the server's list must match
+    const src = require('node:fs').readFileSync(join(import.meta.dir, '..', 'js', 'classes.js'), 'utf8');
+    const ids = [...src.matchAll(/^    ([a-z]+): \{\n      name: '[^']+', title:/gm)].map((m) => m[1]);
+    expect(ids.length).toBeGreaterThanOrEqual(7);
+    for (const cls of ids) expect(validateRun(run({ cls })).cls).toBe(cls);
+    expect(() => validateRun(run({ cls: 'necromancer' }))).toThrow();
+  });
   test('validateRun accepts real-looking runs and trims names', () => {
     expect(validateRun(run({ name: '  Ash  ' })).name).toBe('Ash');
     expect(validateRun(run({ name: '' })).name).toBe('Wanderer');
@@ -176,12 +184,15 @@ describe('daily rift', () => {
     expect(Daily.spec('2026-01-01')).toEqual(Daily.spec('2026-01-01'));
     expect(Daily.valid('2026-02-30')).toBe(false);
     expect(Daily.valid('2026-2-3')).toBe(false);
-    // every class appears once in each block of four days, every mutator once in each block of eight
-    const day0 = Math.ceil(Date.parse('2026-01-01T00:00:00Z') / 86400000 / 8) * 8;
-    const specs = Array.from({ length: 8 }, (_, i) => Daily.spec(Daily.dateOf((day0 + i) * 86400000)));
-    expect(new Set(specs.slice(0, 4).map((x) => x.cls)).size).toBe(4);
-    expect(new Set(specs.slice(4).map((x) => x.cls)).size).toBe(4);
-    expect(new Set(specs.map((x) => x.mutator)).size).toBe(8);
+    // every class appears once in each block of as many days as there are classes, and likewise every mutator
+    const base = Math.floor(Date.parse('2026-01-01T00:00:00Z') / 86400000);
+    for (const [list, key] of [[Daily.CLASSES, 'cls'], [Daily.MUTATORS, 'mutator']] as const) {
+      const n = list.length, day0 = Math.ceil(base / n) * n;
+      for (const block of [0, 1]) {
+        const got = Array.from({ length: n }, (_, i) => Daily.spec(Daily.dateOf((day0 + block * n + i) * 86400000))[key]);
+        expect(new Set(got).size).toBe(n);
+      }
+    }
   });
   test('seeded streams repeat, and differ from each other', () => {
     RNG.seed('abc');
@@ -199,7 +210,7 @@ describe('daily rift', () => {
     expect(validateRun(run({ cls: Daily.spec(yesterday).cls, daily: yesterday }), now).daily).toBe(yesterday); // finished just after midnight
     expect(() => validateRun(run({ cls: Daily.spec(old).cls, daily: old }), now)).toThrow();
     expect(() => validateRun(run({ cls: Daily.spec(tomorrow).cls, daily: tomorrow }), now)).toThrow();
-    const other = ['vanguard', 'pyromancer', 'ranger', 'reaper'].find((c) => c !== spec.cls);
+    const other = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'].find((c) => c !== spec.cls);
     expect(() => validateRun(daily({ cls: other }), now)).toThrow();
     expect(() => validateRun(daily({ depth: 2, score: undefined }), now)).toThrow();
     expect(() => validateRun(daily({ daily: 'soon' }), now)).toThrow();

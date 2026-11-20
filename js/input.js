@@ -21,7 +21,7 @@
           if (k === 'KeyT') PS.UI.toggleAutoAim();
           if (k.startsWith('Arrow')) e.preventDefault();
         }
-        if (!e.repeat && (k === 'Escape' || k === 'KeyP')) PS.UI.onEscape();
+        if (!e.repeat && (k === 'Escape' || k === 'KeyP')) PS.UI.onEscape(k === 'Escape'); // only Esc itself walks away from an offer
         if (!e.repeat) PS.UI.onKey(k);
         keys.add(k);
       });

@@ -16,7 +16,7 @@ const { chromium } = require('playwright');
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForFunction(() => window.PS && PS.Game && PS.Render);
   let pass = 0;
-  for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper']) {
+  for (const cls of ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer']) {
     for (const half of [0, 1]) {
       const res = await page.evaluate(async ({ cls, half, minutes, pass }) => {
         PS.Save.data.unlocked.reaper = true;
@@ -32,20 +32,27 @@ const { chromium } = require('playwright');
         const ids = PS.Skills.poolIds().filter((_, i) => (i % 2) === half);
         for (const id of ids) { const k = p.addSkill(id); k.level = PS.Skills.MAX_LEVEL; k.evolved = true; PS.Skills.rebuild(k); }
         p.skills[0].level = PS.Skills.MAX_LEVEL; PS.Skills.rebuild(p.skills[0]);
+        for (const id in PS.Data.PACTS) p.addPact(id); // every pact, prices and all
+        G.queue.length = 0;
         p.recalc(); p.hp = p.stats.maxHp;
         G.time = 170; // jump straight to the first boss
         let n = 0, bad = null, rxN = 0;
         const limit = G.time + minutes * 60;
-        const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall'], rx = Object.values(PS.Data.REACTIONS);
-        const spawnAt = [200, 260, 320];
+        const affixes = PS.Data.AFFIX_IDS, hordes = ['ring', 'stampede', 'pincer', 'wall', 'coil', 'spearhead'], rx = Object.values(PS.Data.REACTIONS);
+        const spawnAt = [200, 235, 270, 305, 340, 375];
         while (G.time < limit && !G.over) {
           PS.Bot.drive(G); PS.Game.step(1 / 60);
-          if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(4 - spawnAt.length, 0); spawnAt.shift(); }
+          if (spawnAt.length && G.time > spawnAt[0] && !G.boss) { PS.Bosses.spawn(6 - spawnAt.length, 0); spawnAt.shift(); }
           if (n % 240 === 0) {
             // every elite affix in turn (two at a time), every horde pattern, and every reaction on whatever is nearest
             const k = n / 240, pos = PS.Director.ringPos(-200);
             PS.Enemies.spawn('hound', pos.x, pos.y, { elite: true, affixes: [affixes[k % affixes.length], affixes[(k + 3) % affixes.length]] });
+            if (k % 5 === 0) { const q = PS.Director.ringPos(-300), h = PS.Enemies.spawn('hoarder', q.x, q.y); h.life = k % 10 ? 15 : 0.5; h.dripAt = h.maxHp * 0.8; }
+            for (const id of ['toad', 'toad', 'warder']) { const q = PS.Director.ringPos(-260); PS.Enemies.spawn(id, q.x, q.y, { elite: id === 'warder' && k % 3 === 0 }); }
+            if (k % 7 === 2) { G.queue.push({ kind: 'forge' }); G.queue.push({ kind: 'altar' }); p.gold += 300; G.queue.push({ kind: 'shop' }); }
             if (k % 4 === 0) PS.Director.horde(9, hordes[(k / 4) % hordes.length]);
+            // a breach under the hero's feet, so it wakes at once
+            if (k % 6 === 1 && !PS.Director.breach) G.props.push({ kind: 'breach', mode: ['swarm', 'champion', 'hold'][(k / 6 | 0) % 3], x: p.x, y: p.y, r: 150, dead: false, t: 0, charge: 0, bob: 0, active: false, need: 0, got: 0, left: 0, out: 0, acc: 0 });
             for (let i = 0; i < 3; i++) {
               const t = PS.Combat.nearest(p.x, p.y, 700);
               if (t) { PS.Combat.react(t, rx[rxN++ % rx.length]); }

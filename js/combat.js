@@ -68,14 +68,21 @@
           dmg *= s.critMult;
         }
       }
-      if (o.minBossPct && e.boss) dmg = Math.max(dmg, e.maxHp * o.minBossPct);
+      // A floor in boss health (a reflected bullet's) lifts the hit itself, never what the hit sets off: statuses and procs
+      // are sized from the hit as it was, or their strength would climb with the boss's health and spread to the horde.
+      let lift = 1;
+      if (o.minBossPct && e.boss) { const floor = e.maxHp * o.minBossPct; if (floor > dmg && dmg > 0) { lift = floor / dmg; dmg = floor; } }
       let m = 1;
-      if (e.shockT > 0) m += aff.storm >= 2 ? 0.30 : 0.15;
+      if (e.shockT > 0) m += (aff.storm >= 2 ? 0.30 : 0.15) + (s.f.staticShock ? 0.15 : 0);
       if (e.chillT > 0 && aff.frost >= 2) m += aff.frost >= 6 ? 0.35 : 0.12;
       if (e.markT > 0) m += 0.4;
+      if (s.f.necrosis && e.poisStacks >= 8) m += 0.25;
+      if (e.chillT > 0 && p.cls.chillBonus) m += p.cls.chillBonus; // the Frostwarden's passive
       if (e.exposeT > 0) m += 0.2;
       if (e.big) m += s.bossDmg;
+      if (s.f.execute && e.hp < e.maxHp * 0.25) m += s.f.execute;
       dmg *= m * (e.taken || 1);
+      if (e.wardT > G.time) dmg *= 1 - e.wardCut; // a Warder stands nearby
       if (dmg <= 0) return 0;
 
       // a Shielded elite's barrier is spent before its health
@@ -111,9 +118,9 @@
         e.dotEl = o.el;
       } else {
         PS.FX.dmgNum(e.x, e.y - e.r, dmg, crit, o.el);
-        if (!o.noStatus) C.applyElement(e, o.el, dmg, o, crit);
+        if (!o.noStatus) C.applyElement(e, o.el, dmg / lift, o, crit);
         if (!o.noProc) {
-          C.procs(e, dmg, o, crit);
+          C.procs(e, dmg / lift, o, crit);
           if (o.el && e.hp > 0) C.tag(e, o.el);
         }
         if (crit) PS.Audio.play('crit', { vol: 0.5 });
@@ -224,7 +231,7 @@
         if (G.time < e.rxAt || G.rxTokens < 1) return;
         const rx = D.reaction(e.tagEl, el);
         G.rxTokens -= 1;
-        e.rxAt = G.time + RX_COOLDOWN / G.rules.react;
+        e.rxAt = G.time + (RX_COOLDOWN - (G.player.stats.f.rxBoost ? 1 : 0)) / G.rules.react;
         e.tagEl = el; e.tagT = G.time + 4;
         C.react(e, rx);
         return;
@@ -234,7 +241,7 @@
     react(e, rx) {
       const G = PS.G, p = G.player, s = p.stats, area = s.area;
       const a = rx.els[0], b = rx.els[1], name = rx.name;
-      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react;
+      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react * (s.f.rxBoost ? 1.6 : 1);
       const x = e.x, y = e.y;
       const hit = (el, extra) => Object.assign({ el, src: name, noProc: true }, extra);
       G.reactions[name] = (G.reactions[name] || 0) + 1;
@@ -319,7 +326,8 @@
           });
           break;
         case 'wither':
-          C.damage(e, Math.max(pw * 1.2, e.maxHp * (e.boss ? 0.004 : e.elite ? 0.02 : 0.05)), hit('venom', { noCrit: true }));
+          // noStatus: this hit is sized to the target's health, and Poison takes its strength from the hit that laid it
+          C.damage(e, Math.max(pw * 1.2, e.maxHp * (e.boss ? 0.004 : e.elite ? 0.02 : 0.05)), hit('venom', { noCrit: true, noStatus: true }));
           PS.FX.puff(x, y, '#c06bff', 6);
           break;
       }
@@ -332,12 +340,15 @@
       e.dead = true;
       G.kills++;
       p.kills++;
+      const kid = e.def.id;
+      G.slain[kid] = (G.slain[kid] || 0) + 1;
       G.score += e.score;
       PS.FX.death(e);
       if (e.big) PS.Audio.play('eliteDie'); else PS.Audio.play('kill', { vol: 0.4 });
 
       // drops
       PS.Director.drops(e);
+      if (e.breach) PS.Director.breachKill(e);
 
       const canProc = G.procN < 20;
       if (canProc) {
@@ -372,6 +383,8 @@
           PS.Audio.play('explode', { vol: 0.4 });
         }
       }
+      if (e.big && p.relics.warbanner) p.trophies++;
+      if (e.elite) { G.elitesSlain = (G.elitesSlain || 0) + 1; if (e.affixes) for (const id of e.affixes) G.met['affix:' + id] = 1; }
       p.onKill(e, o || EMPTY, canProc);
       if (e.def.onDeath) e.def.onDeath(e);
       if (e.affixes) PS.Enemies.affixDeath(e);
@@ -831,6 +844,19 @@
 
     /* ------------------------------------------------------------------ enemy hazards (telegraphed) */
     /** kinds: circle {x,y,r,delay,dmg} | beam {x,y,ang,len,w,delay,dur,dmg,rot} | ring {x,y,speed,maxR,dmg,thick} */
+    /**
+     * How many blasts that are not a boss's are still coming down around the hero. The horde's shellers check it before
+     * adding another: each of their marks is fair, but five at once from five sources is a wall, not a pattern to read.
+     */
+    pendingBlasts() {
+      const G = PS.G, p = G.player;
+      let n = 0;
+      for (const h of G.hazards) {
+        if (h.kind !== 'circle' || h.hitDone || h.dead || (h.owner && h.owner.boss)) continue;
+        if (U.dist2(h.x, h.y, p.x, p.y) < 280 * 280) n++;
+      }
+      return n;
+    },
     hazard(o) {
       const h = Object.assign({ t: 0, dead: false, delay: 0.8, dur: 0.25, hitDone: false, rad: 0, thick: 16, color: '#ff4d6d' }, o);
       PS.G.hazards.push(h);
@@ -845,7 +871,8 @@
         if (h.kind === 'circle') {
           if (h.t >= h.delay && !h.hitDone) {
             h.hitDone = true;
-            PS.FX.explosion(h.x, h.y, h.r, h.color, h.r > 90);
+            // the blast is drawn in the danger colour too, not the caster's: what just went off there was the rift's
+            PS.FX.explosion(h.x, h.y, h.r, PS.Render && PS.Render.dangerColor ? PS.Render.dangerColor() : '#ff2f4e', h.r > 90);
             if (h.r > 90) { PS.FX.shake(5); PS.Audio.play('explode', { vol: 0.5 }); }
             const rr = h.r + p.r * 0.5;
             if (U.dist2(h.x, h.y, p.x, p.y) < rr * rr) {

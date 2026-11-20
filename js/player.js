@@ -30,6 +30,8 @@
       this.tomes = [];
       this.relics = {}; this.relicOrder = [];
       this.boons = {};
+      this.pacts = [];
+      this.charge = 0; this.trophies = 0; this.calmT = 0; this.skinT = 0; this.gemsEaten = 0; // relic counters
       this.talents = [0, 0, 0];
       this.talentsDue = 0;
       this.banned = new Set();
@@ -77,9 +79,16 @@
         const rank = G && G.daily ? n.max : tree[n.id] || 0;
         if (rank > 0) n.apply(s, rank);
       }
+      // class mastery (not in the daily rift, where everyone plays on equal terms)
+      if (G && !G.daily) s.dmg += 0.01 * D.masteryRank(PS.Save.data.mastery[cls.id] || 0);
       for (const t of this.tomes) t.def.apply(s, t.val);
       for (const id in this.boons) D.BOONS[id].apply(s, this.boons[id]);
+      for (const id of this.pacts) if (D.PACTS[id].stats) D.PACTS[id].stats(s);
+      if (G && G.sigil && D.SIGILS[G.sigil].stats) D.SIGILS[G.sigil].stats(s);
       for (const id in this.relics) D.RELICS[id].apply(s, this.relics[id], this);
+      // resonances: every relic of a set in hand
+      this.sets = D.RELIC_SETS.filter((st) => st.ids.every((id) => this.relics[id] > 0));
+      for (const st of this.sets) st.apply(s);
       cls.branches.forEach((br, bi) => {
         for (let i = 0; i < this.talents[bi]; i++) br.nodes[i].apply(s, this);
       });
@@ -100,6 +109,7 @@
       }
       s.maxHp = Math.max(10, Math.round(s.maxHp * Math.max(0.2, s.hpMult)));
       s.dodge = Math.min(0.6, s.dodge);
+      if (s.noRegen) s.regen = Math.min(0, s.regen);
       s.dashCd = Math.max(0.5, s.dashCd);
       s.baseSpeed = cls.base.speed || 210;
 
@@ -137,18 +147,23 @@
       let dm = s.dmg * s.dmgMore;
       if (f.berserk) dm *= 1 + f.berserk * (1 - this.hp / s.maxHp);
       if (this.reborn) dm *= 1.3;
+      if (s.m.blooded && this.hp < s.maxHp * 0.5) dm *= 1 + s.m.blooded;
       if (f.momentum) dm *= 1 + Math.max(0, s.speed / s.baseSpeed - 1) * 0.6;
       this.dm = dm;
       let as = s.atkSpd;
       if (this.frenzy > 0) as += this.frenzy * 0.025;
       if (this.surgeT > 0) as += 0.6;
       if (this.galeT > 0) as += 0.4;
+      if (this.stepT > 0) as += 0.5;
+      as += PS.Director.tideOf('haste', 0);
       if (f.momentum2 && this.moving) as += 0.2;
       this.as = Math.max(0.2, as);
 
       // timers
       if (this.inv > 0) { this.inv -= dt; if (this.inv <= 0) this.hitInv = false; }
       if (this.hurtFlash > 0) this.hurtFlash -= dt;
+      this.calmT += dt;
+      if (this.skinT > 0) { this.skinT -= dt; if (this.skinT <= 0) this.recalc(); }
       if (this.swing > 0) this.swing = Math.max(0, this.swing - dt * 5);
       if (this.abilityCd > 0) this.abilityCd -= dt;
       if (this.dashCharges < s.dashCharges) {
@@ -173,7 +188,7 @@
       }
 
       // aim
-      this.auraR = 0;
+      this.auraR = 0; this.miasmaR = 0;
       const autoAim = ctrl.autoAim;
       let target = null;
       if (autoAim) {
@@ -199,6 +214,10 @@
         this.hitInv = false;
         PS.Audio.play('dash', { vol: 0.5 });
         PS.FX.dashBurst(this.x, this.y, this.dashAng, cls.color);
+        if (f.dashChill) {
+          PS.FX.ring(this.x, this.y, 170 * s.area, '#bdf0ff', 0.35);
+          G.grid.query(this.x, this.y, 170 * s.area, (e) => { C.chill(e, 3); if (!e.big) C.freeze(e, 1, 0.8); });
+        }
         if (cls.onDash) cls.onDash(this);
       }
 
@@ -213,6 +232,7 @@
       } else {
         let sp = s.speed;
         if (this.whirlT > 0) sp *= 1.3;
+        if (this.tempestT > 0 && f.eye) sp *= 1.25;
         if (f.rampage && this.frenzy >= this.frenzyMax) sp *= 1.2;
         vx = ctrl.mx * sp;
         vy = ctrl.my * sp;
@@ -329,6 +349,8 @@
       }
       let d = raw ? dmg : dmg * (60 / (60 + Math.max(0, s.armor)));
       if (this.whirlT > 0) d *= 0.6;
+      if (this.tempestT > 0 && s.f.eye) d *= 0.65;
+      if (s.f.plagueWard && src && typeof src === 'object' && src.poisStacks > 0) d *= 0.8;
       d = Math.max(1, d);
       this.hp -= d;
       G.dmgTaken += d;
@@ -345,6 +367,8 @@
         PS.FX.ring(this.x, this.y, 130 * s.area, '#d9dfef', 0.25);
         C.aoe(this.x, this.y, 130 * s.area, td, { el: 'steel', src: 'Thornmail', knock: 200, noProc: true });
       }
+      this.calmT = 0;
+      if (s.f.secondSkin) { const had = this.skinT > 0; this.skinT = 5; if (!had) this.recalc(); }
       if (cls.onHurt) cls.onHurt(this, d);
       if (this.hp <= 0) this.die();
       return 'hit';
@@ -380,11 +404,21 @@
       this.xp += v * this.stats.xp;
       while (this.xp >= this.xpNext) {
         this.xp -= this.xpNext;
-        this.level++;
-        this.xpNext = xpFor(this.level);
-        this.pendingLevels++;
-        if (this.level % 6 === 0) this.talentsDue++;
+        this.gainLevel();
       }
+    }
+    /** one level, however it was earned (experience, or a pact that hands levels out) */
+    gainLevel() {
+      const k = this.stats.f.kindling;
+      if (k) {
+        const r = 190 * this.stats.area;
+        PS.FX.explosion(this.x, this.y, r, '#ffd06b');
+        C.aoe(this.x, this.y, r, (40 + this.level * 6) * this.dm * k, { src: 'Kindling', knock: 220, noProc: true });
+      }
+      this.level++;
+      this.xpNext = xpFor(this.level);
+      this.pendingLevels++;
+      if (this.level % 6 === 0) this.talentsDue++;
     }
     onKill(e, o, canProc) {
       if (this.cls.onKill) this.cls.onKill(this, e, canProc);
@@ -410,14 +444,26 @@
       return t;
     }
     addRelic(id) {
+      const before = this.sets ? this.sets.length : 0, had = this.sets || [];
       if (!this.relics[id]) { this.relics[id] = 0; this.relicOrder.push(id); }
       this.relics[id]++;
       this.recalc();
+      if (this.sets.length > before && PS.G && PS.G.player === this) {
+        for (const st of this.sets) if (!had.includes(st)) { PS.UI.toast(`Resonance: ${st.name}. ${st.text}`, 'gem'); PS.Audio.play('shrine', { vol: 0.6, pitch: 1.2 }); }
+      }
     }
     addBoon(id, tier) {
       const def = D.BOONS[id];
       this.boons[id] = (this.boons[id] || 0) + D.incFor(def, tier);
       this.recalc();
+    }
+    /** strike a pact: its price is paid at once (the run's rules turn), its gift lasts the run */
+    addPact(id) {
+      const def = D.PACTS[id], G = PS.G;
+      this.pacts.push(id);
+      if (def.rules) def.rules(G.rules);
+      this.recalc();
+      if (def.now) def.now(G, this);
     }
     talentTotal() { return this.talents[0] + this.talents[1] + this.talents[2]; }
   }

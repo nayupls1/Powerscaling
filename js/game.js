@@ -39,12 +39,16 @@
     start(clsId, opts) {
       opts = opts || {};
       const save = PS.Save.data;
-      const daily = opts.daily ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
+      const rush = !!opts.rush;
+      // Relaxed: a gentler rift, chosen on the class screen (tools may ask for it with opts.relaxed). Not for the daily rift or a rush.
+      const relaxed = !opts.daily && !rush && (opts.relaxed !== undefined ? !!opts.relaxed : !opts.bot && !!save.relaxed && opts.seed === undefined);
+      const daily = opts.daily && !rush ? PS.Daily.spec(opts.daily === true ? PS.Save.today() : opts.daily) : null;
       if (daily) clsId = daily.cls;
       // tools and the bot may ask for any depth; a player only gets what they have unlocked
-      const depth = daily ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
+      const depth = daily || rush || relaxed ? 0 : opts.depth !== undefined && opts.bot ? U.clamp(opts.depth | 0, 0, D.DEPTH_MAX)
         : U.clamp(opts.depth !== undefined ? opts.depth | 0 : save.depth.sel, 0, save.depth.max);
-      const seed = daily ? daily.seed : opts.seed !== undefined ? String(opts.seed) : PS.RNG.fresh();
+      // a typed seed that names a daily rift is salted, so the day's rift cannot be rehearsed outside it
+      const seed = daily ? daily.seed : opts.seed !== undefined ? (/^daily:/i.test(String(opts.seed)) && !opts.bot ? 'x' : '') + String(opts.seed) : PS.RNG.fresh();
       PS.RNG.seed(seed);
       PS.Enemies.reset();
       PS.Bot.reset();
@@ -59,8 +63,19 @@
         cam: { x: 0, y: 0 }, shake: 0, flashA: 0, flashCol: '#fff', hitstop: 0, slowmo: 0, boss: null, over: false,
         viewW: vs.w || 1280, viewH: vs.h || 800, biome: 0,
         ctrl: { mx: 0, my: 0, aimX: 100, aimY: 0, fire: true, dash: false, ability: false, ward: false, autoAim: false, manual: false },
-        picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
+        breaches: 0, breachesLost: 0, flawless: 0, hoarders: 0, forged: 0, bought: 0, tides: 0, pactsStruck: 0, pactsAtAltar: [], script: {}, met: {}, slain: {}, feats: [], featT: 3, picks: [], queue: [], bossLog: [], choiceDelay: 0, bot: opts.bot || null, won: false, endless: false,
       };
+      // one sigil, if its feat is earned; tools and the bot may ask for any (opts.sigil), the daily rift allows none
+      const sg = daily ? null : D.SIGILS[opts.bot ? opts.sigil : save.sigil];
+      G.sigil = sg && (opts.bot || save.feats[sg.feat]) ? sg.id : '';
+      if (G.sigil && sg.rules) sg.rules(G.rules);
+      if (rush) G.rush = { stage: 0, wait: 3, at: 0 };
+      if (relaxed) {
+        // softer hits, a slightly thinner horde, the ground gives way less often; worth less, and kept off the boards
+        G.relaxed = true;
+        const R = G.rules;
+        R.dmg *= 0.7; R.hp *= 0.88; R.tremorEvery = (R.tremorEvery || 1) * 1.6; R.heal *= 1.25; R.score = 0.6; R.essence = 0.75;
+      }
       PS.G = G;
       PS.FX.reset();
       PS.Director.reset();
@@ -70,6 +85,9 @@
         const r = PS.Rewards.rollRelic(p, 0);
         if (r) p.addRelic(r.id);
       }
+      if (G.sigil && D.SIGILS[G.sigil].start) D.SIGILS[G.sigil].start(G, p);
+      if (G.rules.startPacts) for (const id of U.shuffle(Object.keys(D.PACTS).filter((k) => !D.PACTS[k].now), PS.RNG.loot).slice(0, G.rules.startPacts)) p.addPact(id);
+      if (rush) for (let i = 0; i < PS.Director.rushLevels[0]; i++) p.gainLevel();
       if (m.startLevels) {
         for (let i = 0; i < m.startLevels; i++) { p.level++; p.pendingLevels++; }
         p.xpNext = PS.xpFor(p.level);
@@ -85,7 +103,7 @@
     again() {
       const G = PS.G;
       if (!G) return;
-      this.start(G.cls, G.daily ? { daily: true } : { depth: G.depth });
+      this.start(G.cls, G.rush ? { rush: true } : G.daily ? { daily: true } : { depth: G.depth, relaxed: !!G.relaxed });
     },
 
     pause() {
@@ -168,6 +186,7 @@
       if (G.over) return;
       if (G.time >= (G.timeline.length + 1) * TL_STEP) this.snapshot();
       PS.Combat.refillReactions(dt);
+      if ((G.featT -= dt) <= 0) { G.featT = 3; PS.Feats.check(G); }
 
       // ---- rewards waiting to be chosen
       if (p.pendingLevels > 0 && !G.levelFx) {
@@ -215,8 +234,17 @@
       if (G.queue.length) {
         const q = G.queue.shift();
         if (q.kind === 'chest') {
-          const cards = R.relicChoices(p, q.n, q.minTier);
-          spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: q.n > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
+          const cards = R.relicChoices(p, q.n + (p.stats.m.relicChoice || 0), q.minTier);
+          spec = { kind: 'relic', title: q.n > 1 ? 'Spoils of the fallen' : 'Relic found', sub: cards.length > 1 ? 'Choose one relic to keep.' : 'Relics stack with everything, forever.', cards };
+        } else if (q.kind === 'shop') {
+          const cards = R.shopChoices(p);
+          if (cards.length) spec = { kind: 'shop', title: 'The merchant\'s wares', sub: 'One purchase. You have ' + p.gold + ' gold.', cards };
+        } else if (q.kind === 'forge') {
+          const cards = R.forgeChoices(p);
+          if (cards.length) spec = { kind: 'forge', title: 'The forge is hot', sub: 'Choose one skill to temper.', cards };
+        } else if (q.kind === 'altar') {
+          const cards = R.pactChoices(p);
+          if (cards.length) spec = { kind: 'pact', title: 'The altar offers a pact', sub: 'Every gift has a price, and both last the whole run. You may walk away.', cards };
         } else {
           spec = { kind: 'shrine', title: 'The shrine answers', sub: 'Choose a blessing.', cards: R.boonChoices(p) };
         }
@@ -230,7 +258,7 @@
         if (!spec) {
           p.pendingLevels--;
           // once per level, however the levels were batched: a breather that matters most in the opening, while levels come fast
-          p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)) * G.rules.heal, true);
+          if (!G.rules.noLevelHeal) p.heal(p.stats.maxHp * (LEVEL_HEAL + (p.stats.m.levelHeal || 0)) * G.rules.heal, true);
           const lv = p.claimedLevel;
           if (lv > 1 && PS.SLOT_LEVELS.skill.includes(lv)) { PS.UI.toast('A new skill slot opens', 'lock'); PS.Audio.play('shrine', { vol: 0.5 }); }
           else if (PS.SLOT_LEVELS.tome.includes(lv)) PS.UI.toast('A new tome slot opens', 'book');
@@ -239,8 +267,11 @@
       }
       if (!spec) return;
       if (G.bot) {
+        if (spec.kind === 'shop') { spec.cards = spec.cards.filter((c) => c.cost <= p.gold); if (!spec.cards.length) return; }
         const i = PS.Bot.pick(spec, G);
         R.apply(p, spec.cards[i]);
+        if (spec.kind === 'forge') G.forged++;
+        if (spec.kind === 'shop') G.bought++;
         p.inv = Math.max(p.inv, 0.3);
         return;
       }
@@ -251,8 +282,8 @@
     /** called by the UI when a card is taken (or skipped with card === null) */
     choose(spec, card) {
       const G = PS.G, p = G.player;
-      if (card) PS.Rewards.apply(p, card);
-      else p.gold += 10;
+      if (card) { PS.Rewards.apply(p, card); if (spec.kind === 'forge') G.forged++; if (spec.kind === 'shop') G.bought++; }
+      else if (spec.kind === 'level') p.gold += 10;
       const more = G.queue.length || p.pendingLevels > 0;
       if (more) {
         // chain straight into the next reward
@@ -297,10 +328,16 @@
     bossKilled() {
       const d = PS.Save.data;
       PS.G.player.rerolls++; // every boss is worth a reroll
+      if (PS.G.bot) return; // a bot's kills are not the player's: nothing below is theirs to unlock
       d.stats.bosses++;
       if (!d.unlocked.reaper) {
         d.unlocked.reaper = true;
         PS.UI.toast('Reaper unlocked', 'scythe');
+      }
+      if (!d.unlocked.frostwarden && d.stats.bosses >= 10 && !PS.G.bot) {
+        d.unlocked.frostwarden = true;
+        PS.G.unlockedClass = 'frostwarden';
+        PS.UI.toast('Frostwarden unlocked', 'snow');
       }
       PS.Save.save();
     },
@@ -309,9 +346,14 @@
       G.won = true;
       G.endless = true;
       G.score += 15000;
-      d.stats.wins++;
-      let sub = 'You win. The rift does not close — see how far beyond it you can go.';
-      if (!G.daily && !G.bot) {
+      if (!G.relaxed) d.stats.wins++;
+      if (!d.unlocked.stormcaller && !G.bot && !G.relaxed) {
+        d.unlocked.stormcaller = true;
+        G.unlockedClass = 'stormcaller';
+        PS.UI.toast('Stormcaller unlocked', 'thunder');
+      }
+      let sub = G.relaxed ? 'You win. The rift proper is waiting when you are ready for it.' : 'You win. The rift does not close — see how far beyond it you can go.';
+      if (!G.daily && !G.bot && !G.relaxed) {
         d.depth.clear[G.cls] = Math.max(d.depth.clear[G.cls] === undefined ? -1 : d.depth.clear[G.cls], G.depth);
         // winning at your deepest depth opens the next one
         if (G.depth === d.depth.max && d.depth.max < D.DEPTH_MAX) {
@@ -324,8 +366,18 @@
       PS.UI.banner('The Rift Lord is slain', sub, 6);
       PS.Audio.play('evolve');
     },
+    /** the last boss of a rush is down */
+    rushWon() {
+      const G = PS.G, d = PS.Save.data;
+      G.won = true;
+      if (!G.bot) { d.rush = d.rush || {}; const best = d.rush[G.cls]; if (!best || G.time < best) { d.rush[G.cls] = Math.floor(G.time); G.rushBest = true; } }
+      PS.Audio.play('evolve');
+      this.endRun(true);
+    },
     /** mirrored in server.ts (scoreBounds): deeper rifts multiply the whole score */
     finalScore(G) {
+      // a rush is a race: bosses felled, and for a clear, every second under ten minutes
+      if (G.rush) return G.bossesKilled * 10000 + (G.won ? Math.max(0, 600 - Math.floor(G.time)) * 100 : 0);
       return Math.round((G.score + Math.floor(G.time) * 60 + (G.player.level - 1) * 100) * G.rules.score);
     },
     playerDied() {
@@ -340,9 +392,17 @@
       const score = this.finalScore(G);
       // the first daily rift of the day pays double
       const firstDaily = !!G.daily && !G.bot && !(d.daily.date === G.daily && d.daily.attempts > 0);
+      // a streak of days: the first daily of each day in a row adds 10% more Essence, up to +50%
+      let streak = 0;
+      if (firstDaily) {
+        const prev = PS.Daily.dateOf(Date.parse(G.daily + 'T00:00:00Z') - 86400000);
+        d.streak = { n: d.streak.last === prev ? d.streak.n + 1 : d.streak.last === G.daily ? d.streak.n : 1, last: G.daily };
+        streak = d.streak.n;
+      }
+      const streakMul = 1 + Math.min(0.5, 0.1 * Math.max(0, streak - 1));
       // Essence pays for time survived, bosses and levels — not raw kill counts, which balloon late
-      const essence = Math.round((G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
-        * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 : 1));
+      const essence = Math.round((G.rush ? G.bossesKilled * 20 + (G.won ? 40 : 0) : G.time / 4 + G.bossesKilled * 50 + (p.level - 1) * 1.5 + (G.won ? 100 : 0))
+        * (1 + (G.daily ? 0 : p.stats.m.essence || 0)) * G.rules.essence * (firstDaily ? 2 * streakMul : 1));
       const top = Object.entries(G.dmgBy).sort((a, b) => b[1] - a[1]).slice(0, 4).map((x) => x[0]);
       const run = {
         name: d.name || 'Wanderer', cls: G.cls, score, time: Math.floor(G.time), level: p.level, kills: G.kills, bosses: G.bossesKilled,
@@ -353,17 +413,38 @@
       d.essenceTotal += essence;
       d.stats.runs++;
       d.stats.kills += G.kills;
-      d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
+      if (!G.rush && !G.relaxed) d.stats.bestTime = Math.max(d.stats.bestTime, run.time);
       // the daily rift lends everyone the full tree, so it keeps its own best score
-      const best = G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
-      if (!G.daily) d.stats.bestScore = Math.max(d.stats.bestScore, score);
-      G.result = { run, essence, best, retired, rank: 0, firstDaily, unlockedDepth: G.unlockedDepth || 0 };
+      const best = G.relaxed ? false : G.rush ? !!G.rushBest : G.daily ? score > (d.daily.date === G.daily ? d.daily.best : 0) : score > d.stats.bestScore;
+      if (!G.daily && !G.rush && !G.relaxed) d.stats.bestScore = Math.max(d.stats.bestScore, score);
+      G.result = { run, essence, best, retired, rank: 0, firstDaily, streak, unlockedDepth: G.unlockedDepth || 0, unlockedClass: G.unlockedClass || '' };
       if (G.daily && !G.bot) {
         if (d.daily.date !== G.daily) d.daily = { date: G.daily, best: 0, attempts: 0, runs: [] };
         d.daily.attempts++;
         d.daily.best = Math.max(d.daily.best, score);
       }
-      if (!G.bot) G.result.rank = PS.Save.addRun(run);
+      if (!G.bot) { PS.Save.record(G); G.result.unlockedClass = G.unlockedClass || ''; }
+      PS.Feats.check(G); // the run is over: the last look, with G.over set
+      G.result.feats = G.feats.slice();
+      if (!G.bot && !G.daily) {
+        const before = D.masteryRank(d.mastery[G.cls] || 0);
+        d.mastery[G.cls] = (d.mastery[G.cls] || 0) + Math.round(score / 1000);
+        const after = D.masteryRank(d.mastery[G.cls]);
+        G.result.mastery = { gained: Math.round(score / 1000), rank: after, up: after > before };
+      }
+      if (!G.bot) { PS.Feats.check(G); G.result.feats = G.feats.slice(); } // again, now that mastery has moved
+      if (!G.bot) {
+        const L = d.life, add = (k, v) => { L[k] = (L[k] || 0) + (isFinite(v) ? v : 0); };
+        add('time', Math.floor(G.time)); add('dmg', Math.round(G.dmgTotal)); add('taken', Math.round(G.dmgTaken)); add('gold', G.goldEarned);
+        add('breaches', G.breaches); add('hoarders', G.hoarders); add('pacts', G.pactsStruck); add('forged', G.forged); add('bought', G.bought);
+        add('deflected', G.deflected); add('levels', p.level - 1); add('relics', p.relicOrder.reduce((n, id) => n + p.relics[id], 0));
+        let rx = 0; for (const k in G.reactions) rx += G.reactions[k];
+        add('reactions', rx); add('elites', G.elitesSlain || 0);
+        d.history.unshift({ cls: run.cls, score, time: run.time, level: run.level, kills: run.kills, bosses: run.bosses, won: run.won, date: run.date, depth: run.depth,
+          seed: G.seed, daily: G.daily || '', rush: !!G.rush, relaxed: !!G.relaxed, build: top.slice(0, 3), sigil: G.sigil, pacts: p.pacts.slice(), essence, retired: !!retired, by: retired ? '' : G.boss ? G.boss.def.name : G.lastHurt });
+        if (d.history.length > 30) d.history.length = 30;
+      }
+      if (!G.bot && !G.rush && !G.relaxed) G.result.rank = PS.Save.addRun(run);
       else PS.Save.save();
       this.state = 'over';
       PS.Audio.resume();

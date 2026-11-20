@@ -11,7 +11,7 @@ const { chromium } = require('playwright');
   const flags = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => { const [k, v] = a.slice(2).split('='); return [k, v === undefined ? true : v]; }));
   const pos = args.filter((a) => !a.startsWith('--'));
   const clsArg = pos[0] || 'all', minutes = +(pos[1] || 13), runs = +(pos[2] || 1);
-  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper'] : [clsArg];
+  const classes = clsArg === 'all' ? ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'] : [clsArg];
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -30,7 +30,7 @@ const { chromium } = require('playwright');
         if (flags.afk !== undefined) bot.afkAt = +flags.afk;
         if (flags.want) bot.want = String(flags.want).split(',');
         if (flags.tomes) bot.wantTomes = String(flags.tomes).split(',');
-        const opts = { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined };
+        const opts = { bot, depth: +(flags.depth || 0), mutator: flags.mutator || undefined, sigil: flags.sigil || undefined, rush: !!flags.rush, relaxed: !!flags.relaxed };
         if (flags.seed !== undefined) opts.seed = flags.seed + (r ? ':' + r : ''); // later runs of a batch get their own seed
         if (flags.daily) opts.daily = flags.daily;
         PS.Game.start(cls, opts);
@@ -61,7 +61,7 @@ const { chromium } = require('playwright');
         const summary = { cls, seed: G.seed, depth: G.depth, mutator: G.rules.mutator, reactions: rx, hurtBy: Object.entries(G.hurtBy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => k + ' ' + Math.round(v)),
           time: Math.round(G.time), dead: !!G.over, level: p.level, kills: G.kills, bosses: G.bossesKilled, won: G.won, score: PS.Game.finalScore(G),
           skills: p.skills.map((s) => s.name + ' L' + s.level + (s.evolved ? '*' : '')), tomes: p.tomes.map((t) => t.id + t.level), relics: p.relicOrder.map((id) => id + (p.relics[id] > 1 ? 'x' + p.relics[id] : '')),
-          talents: p.talents.join('/'), aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
+          talents: p.talents.join('/'), pacts: p.pacts.join(','), breaches: G.breaches + ' sealed, ' + G.breachesLost + ' lost', hoarders: G.hoarders, aff: JSON.stringify(p.aff), top, msPerFrame: +((performance.now() - t0) / frames).toFixed(3), maxStepMs: +maxStep.toFixed(1),
           killedBy: G.over && G.boss ? G.boss.def.name : null, bossLog: G.bossLog.map((b) => b.name + '@' + b.at + ' ' + b.took + 's').join(', '), taken: Math.round(G.dmgTaken), hp: Math.round(p.hp) + '/' + p.stats.maxHp };
         if (!G.over) PS.Game.endRun(true);
         summary.essence = G.result.essence;

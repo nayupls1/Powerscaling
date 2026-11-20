@@ -30,6 +30,8 @@
    *   event  the run's script: which horde comes next, which elite and which affixes. Drawn once per event, so two
    *          players on the same seed meet the same hordes and elites in the same order.
    *   loot   reward cards, rarities and relic rolls.
+   * Anything whose moment depends on the player (breaches, tides that wait for a boss to fall, Hoarders, guarded chests)
+   * draws from RNG.side(name) instead, so it cannot shift those three.
    * Cosmetic code (particles, screen shake, audio) keeps using Math.random so it can never disturb a seeded run.
    */
   const RNG = {
@@ -43,6 +45,12 @@
       RNG.event = make(RNG.value + '/event');
       RNG.loot = make(RNG.value + '/loot');
     },
+    /**
+     * A generator of its own for one named thing (the third tide, the second breach). What it gives depends only on the
+     * seed and the name, never on when it is asked, so events the player triggers at their own pace (waking a breach,
+     * opening a guarded chest) or that wait on a boss cannot shift the script in `event` for everyone else on the seed.
+     */
+    side(name) { return make(RNG.value + '/side/' + name); },
     /** a fresh seed for an ordinary run: six characters, easy to read out */
     fresh() {
       let s = '';
@@ -53,9 +61,9 @@
 
   /* ---------- the daily rift: one seed, one class and one mutator per UTC day, the same for everyone ---------- */
   const DAY = 86400000;
-  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper'];
-  const MUTATORS = ['glass', 'restless', 'parade', 'quicksilver', 'flux', 'hoard', 'openguard', 'scholar'];
-  /** every class once per four days and every mutator once per eight, in an order that changes each cycle */
+  const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'];
+  const MUTATORS = ['glass', 'restless', 'parade', 'quicksilver', 'flux', 'hoard', 'openguard', 'scholar', 'breached', 'pacted', 'goldrush', 'menagerie'];
+  /** every class once per seven days and every mutator once per twelve, in an order that changes each cycle */
   function cycle(list, day, salt) {
     const n = list.length, block = Math.floor(day / n), rnd = make(salt + ':' + block);
     const order = list.slice();

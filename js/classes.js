@@ -26,7 +26,7 @@
       return;
     }
     const king = !!f.lichKing;
-    const dmg = (11 + p.level * 1.6) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
+    const dmg = (12 + p.level * 1.85) * p.dm * s.el.void * s.summon * (king ? 2 : 1);
     C.minion({
       x, y, kind: king ? 'knight' : 'skeleton', r: king ? 15 : 11, dmg, life: (18 + (f.deadExplode ? 8 : 0)) * s.duration,
       speed: king ? 175 : 160, atkRate: 0.65, src: king ? 'Death Knights' : 'Skeletons', el: 'void', cleave: king ? 55 : 0, seat: alive.length,
@@ -37,6 +37,15 @@
       } : null,
     });
     PS.Audio.play('summon', { vol: 0.35 });
+  }
+
+  /** Lightning Step: a burst where the Stormcaller leaves and where they land */
+  function stepBurst(p) {
+    const s = p.stats, r = 95 * s.area * (s.f.afterimage ? 1.5 : 1);
+    PS.FX.ring(p.x, p.y, r, '#9fe8ff', 0.3);
+    PS.FX.bolt(p.x + U.frand(-30, 30), p.y - 300, p.x, p.y, '#ffffff', 3);
+    C.aoe(p.x, p.y, r, abil(p, 16, 'storm'), { el: 'storm', src: 'Lightning Step', shock: 1, knock: 140 });
+    C.deflect(p.x, p.y, r, false);
   }
 
   const CLASSES = {
@@ -94,6 +103,7 @@
           if (p.barrierT <= 0) { p.barrier = true; PS.FX.ring(p.x, p.y, 40, '#9fd0ff', 0.3); }
         }
       },
+      meter(p) { return p.stats.f.bloodlust ? { v: p.frenzy / p.frenzyMax, color: '#ff5a5a' } : null; },
       onKill(p) {
         if (p.stats.f.bloodlust) {
           p.frenzy = Math.min(p.frenzyMax, p.frenzy + 1);
@@ -369,6 +379,258 @@
             { name: 'Withering', icon: 'drop', desc: 'Your scythe poisons everything it cuts. +1 Blight affinity.', apply: (s) => { s.f.withering = 1; s.aff.venom += 1; } },
             { name: 'Corpse Explosion', icon: 'spores', desc: 'Slain enemies have a 22% chance to burst, poisoning everything nearby.', apply: (s) => { s.f.corpseEx = 1; } },
             { name: 'Pandemic', icon: 'ghost', desc: 'Poison stacks 5 higher and spreads on death. Poisoned enemies deal 25% less damage.', apply: (s) => { s.f.pandemic = 1; } },
+          ],
+        },
+      ],
+    },
+    /* ============================================================ STORMCALLER */
+    stormcaller: {
+      name: 'Stormcaller', title: 'Chain-lightning caster', difficulty: 'Moderate', color: '#5ad1ff', accent: '#fff3a8', primary: 'arc',
+      blurb: 'Lightning that lands the instant you aim and leaps through the crowd. Fragile, quick, and strongest when the horde is packed tight.',
+      base: { maxHp: 105, speed: 220, dashCd: 2.0, crit: 0.06, regen: 0.4 },
+      dashName: 'Lightning Step',
+      passive: 'Lightning bursts where you leave and where you land.',
+      unlock: { text: 'Slay the Rift Lord to unlock', check: (save) => save.stats.wins >= 1 },
+      ability: {
+        name: 'Maelstrom', icon: 'tornado', cd: 14,
+        desc: 'Call a storm that follows you for 5 seconds, striking enemies all around with lightning and swatting bullets out of the air.',
+        use(p) {
+          p.tempestT = 5 + (p.stats.f.gathering ? 2 : 0);
+          p.tempestTick = 0;
+          PS.FX.ring(p.x, p.y, 330, '#9fe8ff', 0.5);
+          PS.Audio.play('ability');
+          PS.Audio.play('thunder', { vol: 0.5 });
+        },
+      },
+      update(p, dt) {
+        const s = p.stats, f = s.f;
+        if (p.stepT > 0) p.stepT -= dt;
+        if (f.capacitor && p.moving && p.charge < 1) {
+          p.charge = Math.min(1, (p.charge || 0) + dt / 4);
+          if (p.charge >= 1) { PS.FX.ring(p.x, p.y, 46, '#ffffff', 0.3); PS.Audio.play('zap', { vol: 0.3, pitch: 1.6 }); }
+        }
+        if (!(p.tempestT > 0)) return;
+        p.tempestT -= dt;
+        p.tempestTick -= dt;
+        if (p.tempestTick > 0) return;
+        p.tempestTick = f.stormlord ? 0.08 : 0.16;
+        C.deflect(p.x, p.y, 130, false);
+        const e = C.randomEnemy(330);
+        if (!e) return;
+        const dmg = abil(p, 19, 'storm'), r = 62 * s.area, x = e.x, y = e.y;
+        PS.FX.bolt(x + U.frand(-40, 40), y - 380, x, y, '#9fe8ff', 3);
+        PS.FX.ring(x, y, r, '#9fe8ff');
+        C.aoe(x, y, r, dmg, { el: 'storm', src: 'Maelstrom', shock: 1, knock: 50 });
+        if (f.stormlord && !e.dead) C.chain(x, y, e, dmg * 0.6, 2, 180, { src: 'Maelstrom', skipFirst: true, color: '#9fe8ff' });
+        PS.Audio.play('zap', { vol: 0.22, pitch: 0.8 });
+      },
+      meter(p) { return p.stats.f.capacitor ? { v: p.charge || 0, color: '#9fe8ff' } : null; },
+      onHurt(p) {
+        if (!p.stats.f.living) return;
+        PS.FX.ring(p.x, p.y, 170 * p.stats.area, '#ffffff', 0.35);
+        C.aoe(p.x, p.y, 170 * p.stats.area, C.power('storm') * 1.5, { el: 'storm', src: 'Living Lightning', shock: 1, knock: 200, noProc: true });
+        PS.G.grid.query(p.x, p.y, 170 * p.stats.area, (e) => { C.freeze(e, 1, 1.2); });
+      },
+      onDash(p) {
+        stepBurst(p);
+        p.stepLanded = false;
+      },
+      dashing(p) {
+        // the far end of the step: one more burst where you land
+        if (p.dashT <= 0 && !p.stepLanded) {
+          p.stepLanded = true;
+          stepBurst(p);
+          if (p.stats.f.living) p.stepT = 3;
+        }
+      },
+      branches: [
+        {
+          name: 'Conduit', icon: 'chain', color: '#9fe8ff',
+          nodes: [
+            { name: 'Forked Lightning', icon: 'chain', desc: 'Arc Lash leaps 2 more times.', apply: (s) => { s.f.forked = 1; } },
+            { name: 'Static', icon: 'bolt', desc: 'Arc Lash always Shocks, and you deal 15% more damage to Shocked enemies.', apply: (s) => { s.f.staticShock = 1; } },
+            { name: 'Thunderbolt', icon: 'thunder', desc: 'Every fifth Arc Lash is a thunderbolt: triple damage, and its leaps lose no strength.', apply: (s) => { s.f.thunderbolt = 1; } },
+          ],
+        },
+        {
+          name: 'Maelstrom', icon: 'tornado', color: '#ffe14d',
+          nodes: [
+            { name: 'Gathering Storm', icon: 'hourglass', desc: 'Maelstrom lasts 2 seconds longer. +25% ability haste.', apply: (s) => { s.f.gathering = 1; s.abilityHaste += 0.25; } },
+            { name: 'Eye of the Storm', icon: 'eye', desc: 'While Maelstrom rages you move 25% faster and take 35% less damage.', apply: (s) => { s.f.eye = 1; } },
+            { name: 'Stormlord', icon: 'crown', desc: 'Maelstrom strikes twice as often, and every strike leaps to 2 more enemies.', apply: (s) => { s.f.stormlord = 1; } },
+          ],
+        },
+        {
+          name: 'Surge', icon: 'dash', color: '#c9b8ff',
+          nodes: [
+            { name: 'Afterimage', icon: 'dash', desc: '+1 dash charge. The bursts of Lightning Step are 50% larger.', apply: (s) => { s.dashCharges += 1; s.f.afterimage = 1; } },
+            { name: 'Capacitor', icon: 'battery', desc: 'Moving builds charge. Once full, your next Arc Lash discharges: four times the damage, in a burst around its target.', apply: (s) => { s.f.capacitor = 1; } },
+            { name: 'Living Lightning', icon: 'spark', desc: '+50% attack speed for 3 seconds after a Lightning Step. Being hit releases a nova that stuns everything nearby.', apply: (s) => { s.f.living = 1; } },
+          ],
+        },
+      ],
+    },
+    /* ============================================================ FROSTWARDEN */
+    frostwarden: {
+      name: 'Frostwarden', title: 'Close-range controller', difficulty: 'Moderate', color: '#9ff0e0', accent: '#ffffff', primary: 'breath',
+      blurb: 'Stands in the thick of it behind a cone of freezing breath. Sturdy and slow, and nothing near it moves fast for long.',
+      base: { maxHp: 135, speed: 200, armor: 4, dashCd: 2.3, regen: 0.5 },
+      dashName: 'Ice Slide', botRange: 100, chillBonus: 0.3,
+      passive: 'You leave a strip of ice that Chills whatever crosses it. Everything Chilled takes 30% more damage from you.',
+      unlock: { text: 'Slay 10 bosses in all to unlock', check: (save) => save.stats.bosses >= 10 },
+      ability: {
+        name: 'Glacial Tomb', icon: 'crystal', cd: 16,
+        desc: 'Freeze everything around you solid for a moment. When the ice breaks, it breaks them: heavy damage to everything that was caught.',
+        use(p) {
+          const s = p.stats, r = 260 * s.area, dmg = abil(p, 85, 'frost') * (s.f.avalanche ? 2.5 : 1);
+          PS.FX.ring(p.x, p.y, r, '#bdf0ff', 0.5);
+          PS.FX.frostBurst(p.x, p.y, r);
+          PS.FX.flash('#bdf0ff', 0.2);
+          const caught = [];
+          PS.G.grid.query(p.x, p.y, r, (e) => { caught.push(e); if (e.boss) C.chill(e, 4); else { e.freezeImm = 0; C.freeze(e, 1, 2.2); } });
+          C.deflect(p.x, p.y, r, false);
+          p.tombT = 1.6; p.tomb = { caught, dmg };
+          PS.Audio.play('ability');
+          PS.Audio.play('freeze', { vol: 0.7 });
+        },
+      },
+      update(p, dt) {
+        const s = p.stats, f = s.f;
+        if (p.snapT > 0) p.snapT -= dt;
+        if (p.iceArmorCd > 0) p.iceArmorCd -= dt;
+        if (p.tombT > 0) {
+          p.tombT -= dt;
+          if (p.tombT <= 0 && p.tomb) {
+            // the ice breaks
+            for (const e of p.tomb.caught) {
+              if (e.dead) continue;
+              PS.FX.shatter(e.x, e.y, '#bdf0ff');
+              C.damage(e, p.tomb.dmg, { el: 'frost', src: 'Glacial Tomb', knock: 120 });
+            }
+            p.tomb = null;
+            PS.FX.shake(6);
+            PS.Audio.play('explode', { vol: 0.5, pitch: 1.4 });
+          }
+        }
+        if (f.blizzardWalk) {
+          p.walkT = (p.walkT || 0) - dt;
+          if (p.walkT <= 0) {
+            p.walkT = 0.5;
+            const r = 150 * s.area;
+            C.aoe(p.x, p.y, r, C.power('frost') * 0.5, { el: 'frost', src: 'Blizzard Walk', noProc: true });
+          }
+          p.miasmaR = 0;
+        }
+      },
+      onHurt(p) {
+        const f = p.stats.f;
+        if (!f.iceArmor || p.iceArmorCd > 0) return;
+        p.iceArmorCd = 4;
+        PS.FX.ring(p.x, p.y, 150 * p.stats.area, '#bdf0ff', 0.3);
+        PS.G.grid.query(p.x, p.y, 150 * p.stats.area, (e) => { C.freeze(e, 1, 1.5); });
+      },
+      onDash(p) {
+        p.iceDrop = 0;
+        if (p.stats.f.coldSnap) p.snapT = 3;
+      },
+      dashing(p, dt) {
+        // the slide lays ice behind it: it Chills, and with Black Ice it bites
+        const s = p.stats, f = s.f;
+        p.iceDrop -= dt;
+        if (p.iceDrop > 0) return;
+        p.iceDrop = 0.04;
+        C.zone({ x: p.x, y: p.y, r: 44 * s.area, life: (f.blackIce ? 5 : 2.5) * s.duration, tick: 0.5, firstTick: 0.05, dmg: f.blackIce ? C.power('frost') * 0.55 : 0.01, el: 'frost', src: 'Ice Slide', kind: 'blizzard', color: '#6fd8ff', slow: 1 });
+      },
+      branches: [
+        {
+          name: 'Winter', icon: 'snow', color: '#bdf0ff',
+          nodes: [
+            { name: 'Deep Freeze', icon: 'crystal', desc: 'Frost Breath has a chance to freeze what it touches solid.', apply: (s) => { s.f.deepFreeze = 1; } },
+            { name: 'Wide Maw', icon: 'expand', desc: 'Frost Breath reaches 30% further and spreads 30% wider.', apply: (s) => { s.f.wideMaw = 1; } },
+            { name: 'Brittle', icon: 'shards', desc: 'Frost Breath deals 40% more damage to frozen enemies, and you deal 20% more Rime damage.', apply: (s) => { s.f.shatterBreath = 1; s.el.frost += 0.2; } },
+          ],
+        },
+        {
+          name: 'Glacier', icon: 'mountain', color: '#9ff0e0',
+          nodes: [
+            { name: 'Permafrost', icon: 'heart', desc: '+35 max health and +6 armor.', apply: (s) => { s.maxHp += 35; s.armor += 6; } },
+            { name: 'Ice Armor', icon: 'armor', desc: 'Being hit freezes everything near you. This can happen once every 4 seconds.', apply: (s) => { s.f.iceArmor = 1; } },
+            { name: 'Avalanche', icon: 'meteor', desc: 'Glacial Tomb breaks for two and a half times the damage. +25% ability haste.', apply: (s) => { s.f.avalanche = 1; s.abilityHaste += 0.25; } },
+          ],
+        },
+        {
+          name: 'Rime', icon: 'dash', color: '#6fd8ff',
+          nodes: [
+            { name: 'Black Ice', icon: 'dash', desc: 'The ice left by Ice Slide lasts twice as long and damages what stands on it. +1 dash charge.', apply: (s) => { s.f.blackIce = 1; s.dashCharges += 1; } },
+            { name: 'Cold Snap', icon: 'hourglass', desc: 'For 3 seconds after an Ice Slide, Frost Breath deals 50% more damage.', apply: (s) => { s.f.coldSnap = 1; } },
+            { name: 'Blizzard Walk', icon: 'tornado', desc: 'A storm follows you, wearing down and Chilling everything near. +10% move speed.', apply: (s) => { s.f.blizzardWalk = 1; s.speed *= 1.1; } },
+          ],
+        },
+      ],
+    },
+    /* ============================================================ PLAGUEBEARER */
+    plaguebearer: {
+      name: 'Plaguebearer', title: 'Poison and detonation', difficulty: 'Demanding', color: '#d6c84a', accent: '#8fe04a', primary: 'darts',
+      blurb: 'Hits like a feather. Fills the horde with Poison, then sets all of it off at once.',
+      base: { maxHp: 110, speed: 215, dashCd: 2.1, regen: 0.4, statusDmg: 1.15 },
+      dashName: 'Miasma Step',
+      passive: 'You leave a cloud of rot where you set off. Your Poison, Burn and Bleed deal 15% more damage.',
+      unlock: { text: 'Strike three different pacts to unlock', check: (save) => Object.keys(save.codex.pacts).length >= 3 },
+      ability: {
+        name: 'Catalyst', icon: 'flask', cd: 12,
+        desc: 'Every poisoned enemy in sight takes four seconds of its Poison at once. The rest are poisoned, so it is never wasted.',
+        use(p) {
+          const G = PS.G, s = p.stats, f = s.f, r = 520 * (f.reagents ? 1.3 : 1), base = abil(p, 10, 'venom');
+          let pools = 0;
+          PS.FX.ring(p.x, p.y, r, '#b8f078', 0.5);
+          const hit = [];
+          G.grid.query(p.x, p.y, r, (e) => { hit.push(e); });
+          for (const e of hit) {
+            if (e.dead) continue;
+            if (e.poisStacks <= 0) { C.poison(e, C.power('venom') * 0.12, 3); continue; }
+            const dmg = base + e.poisStacks * e.poisDps * 4 * s.statusDmg, x = e.x, y = e.y;
+            PS.FX.puff(x, y, '#b8f078', 7);
+            // noStatus: its own hit must not set the Poison it will read next time, or every cast multiplies the last
+            C.damage(e, dmg, { el: 'venom', src: 'Catalyst', noCrit: true, noStatus: true, noProc: true }); // nor procs: Serpent Tooth would poison from this hit's size
+            if (f.chainCatalysis && e.dead) { PS.FX.ring(x, y, 90 * s.area, '#b8f078'); C.aoe(x, y, 90 * s.area, dmg * 0.5, { el: 'venom', src: 'Catalyst', noProc: true, noStatus: true }); }
+            if (f.acidBath && pools < 8) { pools++; C.zone({ x, y, r: 70 * s.area, life: 4 * s.duration, tick: 0.5, dmg: C.power('venom') * 0.7, el: 'venom', src: 'Acid Bath', kind: 'poison', color: '#8fe04a' }); }
+          }
+          PS.FX.flash('#8fe04a', 0.15);
+          PS.Audio.play('ability');
+          PS.Audio.play('poison', { vol: 0.7, pitch: 0.7 });
+        },
+      },
+      update() {},
+      onKill(p, e) {
+        if (p.stats.f.siphon && e.poisStacks > 0) p.leechPool += 0.8;
+      },
+      onDash(p) {
+        const s = p.stats, big = s.f.plagueWard ? 2 : 1;
+        C.zone({ x: p.x, y: p.y, r: 95 * s.area * big, life: 3.5 * s.duration, tick: 0.5, firstTick: 0.05, dmg: C.power('venom') * 0.5, el: 'venom', src: 'Miasma Step', kind: 'poison', color: '#8fe04a', opts: { poison: 2 } });
+      },
+      branches: [
+        {
+          name: 'Contagion', icon: 'spores', color: '#8fe04a',
+          nodes: [
+            { name: 'Virulence', icon: 'drop', desc: 'Plague Darts leave one more stack of Poison. +20% Blight damage.', apply: (s) => { s.f.virulence = 1; s.el.venom += 0.2; } },
+            { name: 'Outbreak', icon: 'ghost', desc: 'Poison stacks 5 higher and spreads when its host dies. Poisoned enemies deal 25% less damage.', apply: (s) => { s.f.pandemic = 1; } },
+            { name: 'Necrosis', icon: 'skull', desc: 'Enemies carrying 8 or more stacks of Poison take 25% more damage from everything.', apply: (s) => { s.f.necrosis = 1; } },
+          ],
+        },
+        {
+          name: 'Catalysis', icon: 'flask', color: '#d6c84a',
+          nodes: [
+            { name: 'Quick Reagents', icon: 'hourglass', desc: 'Catalyst reaches 30% further. +25% ability haste.', apply: (s) => { s.f.reagents = 1; s.abilityHaste += 0.25; } },
+            { name: 'Acid Bath', icon: 'wave', desc: 'Catalyst leaves a pool of acid under up to 8 of the enemies it bursts.', apply: (s) => { s.f.acidBath = 1; } },
+            { name: 'Chain Catalysis', icon: 'bomb', desc: 'Enemies slain by Catalyst burst again, hurting those around them.', apply: (s) => { s.f.chainCatalysis = 1; } },
+          ],
+        },
+        {
+          name: 'Leech', icon: 'blood', color: '#ff7a8a',
+          nodes: [
+            { name: 'Thick Blood', icon: 'heart', desc: '+25 max health and +0.8 regeneration.', apply: (s) => { s.maxHp += 25; s.regen += 0.8; } },
+            { name: 'Siphon', icon: 'fang', desc: 'Every poisoned enemy that dies restores a little of your health.', apply: (s) => { s.f.siphon = 1; } },
+            { name: 'Plague Ward', icon: 'shield', desc: '+1 dash charge, and the cloud Miasma Step leaves is twice as large. Poisoned enemies deal 20% less damage to you.', apply: (s) => { s.dashCharges += 1; s.f.plagueWard = 1; } },
           ],
         },
       ],

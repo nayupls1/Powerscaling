@@ -66,12 +66,14 @@
       return cards;
     },
 
-    card(p, type, id, luck) {
+    /** o: { tier } to fix the rarity, { minTier } to floor it: decided here, before the card's text is written */
+    card(p, type, id, luck, o) {
+      const roll = () => (o && o.tier !== undefined ? o.tier : D.rollRarity(luck, o && o.minTier));
       const S = PS.Skills;
       const card = { type, id, tier: 0, icon: 'star', title: '', tag: '', desc: '', el: null, lines: [] };
       if (type === 'skill') {
         const def = S.DEFS[id];
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.icon = def.icon; card.title = def.name; card.tag = 'New skill'; card.desc = def.desc; card.el = def.el;
         if (OVER_BONUS[card.tier]) card.lines.push(`+${Math.round(OVER_BONUS[card.tier] * 100)}% damage from rarity`);
         const n = p.aff[def.el] + 1;
@@ -85,7 +87,7 @@
         }
       } else if (type === 'skillup') {
         const inst = p.hasSkill(id), def = inst.def;
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.icon = def.icon; card.title = def.name; card.el = def.el;
         card.tag = `Level ${inst.level} to ${inst.level + 1}`;
         card.desc = S.upText(def, inst.level + 1);
@@ -99,7 +101,7 @@
         card.desc = def.evo.desc;
       } else if (type === 'over') {
         const inst = p.hasSkill(id), def = inst.def;
-        card.tier = D.rollRarity(luck);
+        card.tier = roll();
         card.val = 0.08 * D.RARITY[card.tier].mult;
         card.icon = def.icon; card.title = inst.name; card.el = def.el;
         card.tag = 'Overcharge';
@@ -110,14 +112,14 @@
         const inc = D.incFor(def, card.tier);
         card.icon = def.icon; card.title = def.name;
         card.tag = t ? `Level ${t.level} to ${t.level + 1}` : 'New tome';
-        card.desc = `+${def.fmt(inc)} ${def.stat.toLowerCase()}.`;
+        card.desc = def.cardText || `+${def.fmt(inc)} ${def.stat.toLowerCase()}.`;
         if (def.extra) card.lines.push(def.extra);
         // hint when this tome is the key to an evolution
         for (const inst of p.skills) {
           if (inst.def.evo && inst.def.evo.tome === id && !inst.evolved) card.lines.push(`Evolves ${inst.def.name} into ${inst.def.evo.name}.`);
         }
       } else if (type === 'heal') {
-        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = `Restore ${Math.round(40 * PS.G.rules.heal)}% of your health.`;
+        card.icon = 'potion'; card.title = 'Rift Tonic'; card.tag = 'Supplies'; card.desc = `Restore ${Math.round(40 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0)))}% of your health.`;
       } else if (type === 'gold') {
         card.icon = 'coin'; card.title = 'Coin Purse'; card.tag = 'Supplies'; card.val = 30 + p.level * 2; card.desc = `Gain ${card.val} gold.`;
       }
@@ -167,7 +169,11 @@
         if (!r) break;
         seen.add(r.id);
         const have = p.relics[r.id] || 0;
-        cards.push({ type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: have ? `Relic, you own ${have}` : 'Relic', desc: r.desc, lines: [] });
+        cards.push({ type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: have ? `Relic, you own ${have}` : 'Relic', desc: r.desc,
+          lines: (!have && !PS.G.bot && !PS.Save.data.codex.relics[r.id] ? ['New to your codex'] : []).concat(have ? [] : (D.SETS_OF[r.id] || []).map((st) => {
+            const got = st.ids.filter((id) => p.relics[id] > 0).length;
+            return got === st.ids.length - 1 ? `Completes ${st.name}: ${st.text}` : `Part of ${st.name} (${got + 1} of ${st.ids.length})`;
+          })) });
       }
       if (!cards.length) cards.push(R.card(p, 'gold', null, 0));
       return cards;
@@ -182,9 +188,56 @@
       });
     },
 
+    /* ------------------------------------------------------------ the forge: a level for a skill you choose */
+    forgeChoices(p) {
+      const S = PS.Skills;
+      // every skill is on the table: a level while it has one to gain, an overcharge after (an evolution still needs its tome)
+      return p.skills.map((inst) => {
+        return R.card(p, inst.level < S.MAX_LEVEL ? 'skillup' : 'over', inst.id, p.stats.luck, { minTier: 1 });
+      });
+    },
+
+    /* ------------------------------------------------------------ the merchant: one of three offers, for gold */
+    shopChoices(p) {
+      const S = PS.Skills, t = PS.Director.minutes(), k = (1 + 0.07 * t) * (p.stats.f.ledger ? 0.67 : 1); // prices rise with the run, as purses do
+      const offers = [
+        () => Object.assign(R.card(p, 'heal', null, 0), { cost: Math.round(25 * k) }),
+        () => ({ type: 'reroll', id: null, tier: 1, icon: 'dice', title: 'Loaded Die', tag: 'Supplies', desc: 'One more reroll.', el: null, lines: [], cost: Math.round(35 * k) }),
+        () => ({ type: 'banishes', id: null, tier: 1, icon: 'ban', title: 'Writ of Exile', tag: 'Supplies', desc: 'One more banish.', el: null, lines: [], cost: Math.round(40 * k) }),
+        () => {
+          const up = p.skills.filter((s) => s.level < S.MAX_LEVEL);
+          if (!up.length) return null;
+          return Object.assign(R.card(p, 'skillup', U.pick(up, LOOT).id, 0, { tier: 2 }), { cost: Math.round(80 * k) });
+        },
+        () => {
+          const r = R.rollRelic(p, 2);
+          if (!r) return null;
+          return { type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: 'Relic', desc: r.desc, el: null, lines: [], cost: Math.round((120 + 40 * (r.tier - 2)) * k) };
+        },
+        () => {
+          const r = R.rollRelic(p, 0);
+          if (!r) return null;
+          return { type: 'relic', id: r.id, tier: r.tier, icon: r.icon, title: r.name, tag: 'Relic', desc: r.desc, el: null, lines: [], cost: Math.round((45 + 30 * r.tier) * k) };
+        },
+      ];
+      const cards = [];
+      for (const make of U.shuffle(offers, LOOT)) { const c = make(); if (c) cards.push(c); if (cards.length === 3) break; }
+      return cards;
+    },
+
+    /* ------------------------------------------------------------ altar pacts */
+    pactChoices(p) {
+      const ids = U.shuffle(Object.keys(D.PACTS).filter((id) => !p.pacts.includes(id)), LOOT).slice(0, 3);
+      return ids.map((id) => {
+        const def = D.PACTS[id];
+        return { type: 'pact', id, tier: 3, special: 'pact', icon: def.icon, title: def.name, color: '#ff5a7a', tag: 'Pact', desc: def.gift, price: def.price, lines: [] };
+      });
+    },
+
     /* ------------------------------------------------------------ apply */
     apply(p, card) {
       const S = PS.Skills;
+      if (card.cost) { p.gold -= card.cost; PS.G.spent = (PS.G.spent || 0) + card.cost; }
       switch (card.type) {
         case 'skill': {
           const inst = p.addSkill(card.id);
@@ -221,8 +274,11 @@
           break;
         case 'relic': p.addRelic(card.id); PS.Audio.play('relic'); break;
         case 'boon': p.addBoon(card.id, card.tier); break;
-        case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal); PS.Audio.play('heal'); break;
+        case 'pact': p.addPact(card.id); PS.G.pactsStruck++; PS.G.pactsAtAltar.push(card.id); PS.Audio.play('ascend', { pitch: 0.7 }); PS.FX.flash('#d94be0', 0.3); PS.FX.surge(p.x, p.y, '#f06be0', false); break;
+        case 'heal': p.heal(p.stats.maxHp * 0.4 * PS.G.rules.heal * (1 + (p.stats.m.healMore || 0))); PS.Audio.play('heal'); break;
         case 'gold': p.gold += card.val; PS.Audio.play('gold'); break;
+        case 'reroll': p.rerolls++; PS.Audio.play('pick'); break;
+        case 'banishes': p.banishes++; PS.Audio.play('pick'); break;
       }
       PS.G.picks.push({ t: Math.floor(PS.G.time), type: card.type, title: card.title });
     },

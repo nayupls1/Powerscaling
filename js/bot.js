@@ -4,7 +4,7 @@
   const PS = (window.PS = window.PS || {});
   const U = PS.U;
 
-  const PRIORITY = { evolve: 100, talent: 90, relic: 50, boon: 50, skill: 40, skillup: 34, tome: 28, over: 12, heal: 2, gold: 1 };
+  const PRIORITY = { evolve: 100, talent: 90, relic: 50, boon: 50, pact: 50, skill: 40, skillup: 34, tome: 28, over: 12, heal: 2, gold: 1 };
 
   const Bot = {
     /** forget the steering carried over from the last run, so a seeded run replays exactly */
@@ -91,9 +91,14 @@
         }
         for (const pr of G.props) {
           if (pr.dead) continue;
-          if (pr.kind === 'chest' && p.gold >= PS.Director.chestPrice()) consider(pr.x, pr.y, 300);
-          if (pr.kind === 'shrine') consider(pr.x, pr.y, 200);
+          if (pr.kind === 'chest' && (pr.cursed ? p.hp > p.stats.maxHp * 0.6 : p.gold >= PS.Director.chestPrice())) consider(pr.x, pr.y, 300);
+          if (pr.kind === 'shrine' || pr.kind === 'altar' || pr.kind === 'forge') consider(pr.x, pr.y, 200);
+          if (pr.kind === 'merchant' && p.gold >= 60) consider(pr.x, pr.y, 200);
+          if (pr.kind === 'breach' && (pr.active ? pr.mode === 'hold' : p.hp > p.stats.maxHp * 0.6)) consider(pr.x, pr.y, pr.active ? 400 : 150);
         }
+        // a Hoarder on the loose is worth running down
+        const hd = PS.Director.hoarder;
+        if (hd && !hd.dead) consider(hd.x, hd.y, 260);
       }
       if (goal) {
         const dx = goal.x - p.x, dy = goal.y - p.y, d = Math.hypot(dx, dy) || 1;
@@ -102,7 +107,7 @@
       } else if (nearest) {
         // nothing to grab: keep fighting distance, with a strafe so we don't run in a straight line
         const dx = nearest.x - p.x, dy = nearest.y - p.y, d = Math.hypot(dx, dy) || 1;
-        const want = cfg.range || (p.cls.id === 'vanguard' ? 70 : 190);
+        const want = cfg.range || p.cls.botRange || (p.cls.id === 'vanguard' ? 70 : 190);
         const w = d > want ? 1.2 : -0.6;
         fx += (dx / d) * w - (dy / d) * 0.5; fy += (dy / d) * w + (dx / d) * 0.5;
       }

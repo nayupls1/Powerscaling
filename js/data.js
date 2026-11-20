@@ -85,7 +85,7 @@
     haste:     { name: 'Tome of Haste',     icon: 'hourglass', max: 10, per: 0.08, stat: 'Attack speed',    fmt: pc, apply: (s, v) => { s.atkSpd += v; } },
     precision: { name: 'Tome of Precision', icon: 'crosshair', max: 10, per: 0.05, stat: 'Critical chance', fmt: pc, apply: (s, v) => { s.crit += v; s.critMult += v * 2; }, extra: 'Also adds twice that much critical damage.' },
     reach:     { name: 'Tome of Reach',     icon: 'expand',    max: 8,  per: 0.08, stat: 'Area of effect',  fmt: pc, apply: (s, v) => { s.area += v; } },
-    multishot: { name: 'Tome of Volleys',   icon: 'multishot', max: 3,  per: 1,    stat: 'Projectiles',     fmt: (v) => r1(v), fixed: true, minRar: 2, apply: (s, v) => { s.proj += v; } },
+    multishot: { name: 'Tome of Volleys',   icon: 'multishot', max: 3,  per: 1,    stat: 'Projectiles',     fmt: (v) => r1(v), fixed: true, minRar: 2, cardText: '+1 projectile on every skill that fires them.', apply: (s, v) => { s.proj += v; } },
     duration:  { name: 'Tome of Lingering', icon: 'clock',     max: 8,  per: 0.10, stat: 'Effect duration', fmt: pc, apply: (s, v) => { s.duration += v; s.statusDmg += v * 0.5; }, extra: 'Burn, Poison and Bleed also deal more damage.' },
     vitality:  { name: 'Tome of Vitality',  icon: 'heart',     max: 10, per: 18,   whole: true, stat: 'Max health', fmt: (v) => r1(v), apply: (s, v) => { s.maxHp += v; s.regen += v * 0.015; }, extra: 'Also adds a little regeneration.' },
     plating:   { name: 'Tome of Plating',   icon: 'shield',    max: 8,  per: 4,    whole: true, stat: 'Armor',  fmt: (v) => r1(v), apply: (s, v) => { s.armor += v; } },
@@ -108,6 +108,61 @@
     b_luck:  { name: 'Blessing of Fortune', icon: 'clover',  per: 8,    whole: true, stat: 'Luck',   fmt: r1, apply: (s, v) => { s.luck += v; } },
     b_cdr:   { name: 'Blessing of Focus',   icon: 'hourglass', per: 0.08, stat: 'Ability haste', fmt: pc, apply: (s, v) => { s.abilityHaste += v; } },
   };
+
+  /* ---------- Pacts: offered by the dark altars. A strong gift with a lasting price; each can be struck once a run ---------- */
+  // stats(s): the hero's side, applied on every recalc. rules(r): turned once, when the pact is struck. now(G, p): a one-off.
+  D.PACTS = {
+    blood:    { name: 'Pact of Blood',    icon: 'blood',     gift: '+35% damage.',                         price: '20% less max health.',
+      stats: (s) => { s.dmg += 0.35; s.hpMult -= 0.2; } },
+    frenzy:   { name: 'Pact of Frenzy',   icon: 'hourglass', gift: '+30% attack speed.',                   price: 'The horde moves 10% faster.',
+      stats: (s) => { s.atkSpd += 0.3; }, rules: (r) => { r.speed *= 1.1; } },
+    avarice:  { name: 'Pact of Avarice',  icon: 'coin',      gift: '150 gold now, and +60% gold found.',   price: 'Healing is 30% weaker.',
+      stats: (s) => { s.gold += 0.6; }, rules: (r) => { r.heal *= 0.7; }, now: (G, p) => { p.gold += 150; G.goldEarned += 150; } },
+    hunt:     { name: 'Pact of the Hunt', icon: 'skull',     gift: 'A relic of Rare quality or better, now.', price: 'Elites arrive 40% more often.',
+      rules: (r) => { r.eliteEvery *= 0.7; }, now: () => { PS.Game.openChest(3, 2); } },
+    insight:  { name: 'Pact of Insight',  icon: 'eye',       gift: '+35% experience.',                     price: 'The horde has 15% more health.',
+      stats: (s) => { s.xp += 0.35; }, rules: (r) => { r.hp *= 1.15; } },
+    glass:    { name: 'Pact of Edges',    icon: 'crosshair', gift: '+20% critical chance and +60% critical damage.', price: 'Enemies hit 20% harder.',
+      stats: (s) => { s.crit += 0.2; s.critMult += 0.6; }, rules: (r) => { r.dmg *= 1.2; } },
+    echoes:   { name: 'Pact of Echoes',   icon: 'multishot', gift: '+1 projectile on every skill that fires them.', price: 'Your ability recharges 30% slower.',
+      stats: (s) => { s.proj += 1; s.abilityHaste -= 0.23; } },
+    colossus: { name: 'Pact of the Titan', icon: 'mountain', gift: '+35% area of effect and +40 max health.', price: 'You move 12% slower.',
+      stats: (s) => { s.area += 0.35; s.maxHp += 40; s.speed *= 0.88; } },
+    swarm:    { name: 'Pact of the Swarm', icon: 'ghost',    gift: 'Two skill levels, now.',                price: 'Hordes arrive 35% more often.',
+      rules: (r) => { r.hordeEvery *= 0.74; }, now: (G, p) => { p.gainLevel(); p.gainLevel(); } },
+  };
+  Object.assign(D.PACTS, {
+    fury:     { name: 'Pact of Fury',     icon: 'spark',    gift: '+45% ability haste.',                   price: '12% less attack speed.',
+      stats: (s) => { s.abilityHaste += 0.45; s.atkSpd -= 0.12; } },
+    famine:   { name: 'Pact of Famine',   icon: 'dice',     gift: 'Two rerolls and two banishes, now.',    price: 'Level-ups no longer restore health.',
+      rules: (r) => { r.noLevelHeal = true; }, now: (G, p) => { p.rerolls += 2; p.banishes += 2; } },
+    stone:    { name: 'Pact of Stone',    icon: 'armor',    gift: '+15 armor and +30 max health.',         price: 'You no longer regenerate health.',
+      stats: (s) => { s.armor += 15; s.maxHp += 30; s.noRegen = true; } },
+    tempo:    { name: 'Pact of the Gale', icon: 'wings',    gift: '+18% move speed.',                      price: 'The ground gives way half again as often.',
+      stats: (s) => { s.speed *= 1.18; }, rules: (r) => { r.tremorEvery = (r.tremorEvery || 1) * 0.67; } },
+  });
+  for (const id in D.PACTS) D.PACTS[id].id = id;
+
+  /* ---------- Class mastery: every run with a class earns it points (a thousandth of the score); ranks give that class
+     +1% damage each. Small on purpose: a reason to stay with a class, not a second skill tree ---------- */
+  D.MASTERY = [40, 120, 250, 450, 700, 1000, 1400, 1900, 2500, 3200]; // points needed for ranks 1..10
+  D.masteryRank = (pts) => { let r = 0; while (r < D.MASTERY.length && pts >= D.MASTERY[r]) r++; return r; };
+
+  /* ---------- Sigils: one perk worn into a run, each unlocked by a feat (PS.Feats). The daily rift allows none ---------- */
+  // feat: the feat id that unlocks it. stats(s) on every recalc, rules(r) and start(G, p) once when the run begins.
+  D.SIGILS = {
+    purse:    { name: 'Sigil of the Purse',   icon: 'coin',     feat: 'gold5k',   text: 'Begin with 80 gold.',                                   start: (G, p) => { p.gold += 80; } },
+    scholar:  { name: 'Sigil of the Scholar', icon: 'book',     feat: 'lvl40',    text: '+10% experience.',                                      stats: (s) => { s.xp += 0.1; } },
+    bulwark:  { name: 'Sigil of the Bulwark', icon: 'shield',   feat: 'win',      text: '+20 max health and +6 armor.',                          stats: (s) => { s.maxHp += 20; s.armor += 6; } },
+    wind:     { name: 'Sigil of the Wind',    icon: 'feather',  feat: 'flawless', text: '+1 dash charge, but 10% less max health.',              stats: (s) => { s.dashCharges += 1; s.hpMult -= 0.1; } },
+    gambler:  { name: 'Sigil of the Gambler', icon: 'dice',     feat: 'legend',   text: '+15 luck and one more reroll.',                         stats: (s) => { s.luck += 15; }, start: (G, p) => { p.rerolls += 1; } },
+    warlord:  { name: 'Sigil of the Warlord', icon: 'skull',    feat: 'boss3',    text: '+15% damage to elites and bosses. Elites arrive 25% more often.', stats: (s) => { s.bossDmg += 0.15; }, rules: (r) => { r.eliteEvery *= 0.8; } },
+    alchemy:  { name: 'Sigil of Alchemy',     icon: 'flask',    feat: 'rx8',      text: 'Reactions hit 25% harder.',                             rules: (r) => { r.react *= 1.25; } },
+    oath:     { name: 'Sigil of the Oath',    icon: 'blood',    feat: 'pact1',    text: 'A dark altar stands beside you when the run begins.',    start: (G, p) => { G.props.push({ kind: 'altar', x: p.x + 150, y: p.y - 40, r: 64, dead: false, t: 0, charge: 0, bob: 0 }); } },
+    breaker:  { name: 'Sigil of the Breaker', icon: 'rift',     feat: 'breach4',  text: 'Breaches open twice as often.',                         start: (G) => { G.sigilBreach = true; } },
+    star:     { name: 'Sigil of the Star',    icon: 'sun',      feat: 'solenne',  text: '+8% damage, +8% attack speed and +8% move speed.',      stats: (s) => { s.dmg += 0.08; s.atkSpd += 0.08; s.speed *= 1.08; } },
+  };
+  for (const id in D.SIGILS) D.SIGILS[id].id = id;
 
   /* ---------- Relics: found in chests and dropped by bosses. No slot limit. ---------- */
   const affRelic = (el, name, icon) => ({
@@ -139,6 +194,10 @@
     goldtooth:  { name: 'Gilded Hand',     icon: 'hand',    tier: 1, max: 5, desc: '+25% gold found.',      apply: (s, n) => { s.gold += 0.25 * n; } },
     battery:    { name: 'Rift Battery',    icon: 'battery', tier: 1, max: 3, desc: '+20% ability haste.',   apply: (s, n) => { s.abilityHaste += 0.20 * n; } },
     plate:      { name: 'Scale Plate',     icon: 'armor',   tier: 1, max: 99, desc: '+6 armor.',            apply: (s, n) => { s.armor += 6 * n; } },
+    secondskin: { name: 'Second Skin',     icon: 'armor',   tier: 1, max: 2, desc: 'After you are hit, gain 25 armor for 5 seconds.', apply: (s, n, p) => { s.f.secondSkin = n; if (p.skinT > 0) s.armor += 25 * n; }, dynamic: true },
+    kindling:   { name: 'Kindling',        icon: 'nova',    tier: 1, max: 3, desc: 'Every level you gain sets off a blast around you.', apply: (s, n) => { s.f.kindling = (s.f.kindling || 0) + n; } },
+    gemeater:   { name: 'Gem Eater',       icon: 'gem',     tier: 1, max: 2, desc: 'Every 60 gems you collect restore 4% of your health.', apply: (s, n) => { s.f.gemEater = (s.f.gemEater || 0) + n; } },
+    ledger:     { name: 'Merchant\'s Ledger', icon: 'book',  tier: 1, max: 1, desc: 'The merchant charges a third less, and stays twice as long.', apply: (s) => { s.f.ledger = 1; } },
     // rare
     chainspark: { name: 'Arc Coil',        icon: 'chain',   tier: 2, max: 4, desc: 'Hits have a 6% chance to chain lightning to nearby enemies.', apply: (s, n) => { s.f.chainProc = (s.f.chainProc || 0) + 0.06 * n; } },
     volatile:   { name: 'Volatile Ichor',  icon: 'bomb',    tier: 2, max: 4, desc: 'Slain enemies have a 12% chance to explode.', apply: (s, n) => { s.f.corpseBoom = (s.f.corpseBoom || 0) + 0.12 * n; } },
@@ -150,6 +209,11 @@
     venomous:   { name: 'Serpent Tooth',   icon: 'spores',  tier: 2, max: 3, desc: 'Hits have a 20% chance to poison.', apply: (s, n) => { s.f.poisonProc = (s.f.poisonProc || 0) + 0.20 * n; } },
     souljar:    { name: 'Soul Jar',        icon: 'jar',     tier: 2, max: 3, desc: '+1% damage for every 1,000 enemies slain this run, up to +50%.', apply: (s, n, p) => { s.dmg += Math.min(0.5, Math.floor((p.kills || 0) / 1000) * 0.01) * n; }, dynamic: true },
     mirror:     { name: 'Mirror Shard',    icon: 'prism',   tier: 2, max: 1, desc: 'Ward is 25% larger and recharges 25% faster. Reflected bullets hit 60% harder.', apply: (s) => { s.f.mirror = 1; } },
+    executioner: { name: 'Headsman\'s Axe', icon: 'cleave',  tier: 2, max: 2, desc: 'Enemies below 25% health take 35% more damage.', apply: (s, n) => { s.f.execute = (s.f.execute || 0) + 0.35 * n; } },
+    stopwatch:  { name: 'Frozen Stopwatch', icon: 'timer',  tier: 2, max: 1, desc: 'Dashing chills every enemy around where you set off, and freezes the lesser ones for a moment.', apply: (s) => { s.f.dashChill = 1; } },
+    warbanner:  { name: 'War Banner',      icon: 'swords',  tier: 2, max: 1, desc: '+4% damage for every elite and boss you slay from now on, up to +60%.', apply: (s, n, p) => { s.dmg += Math.min(0.6, 0.04 * (p.trophies || 0)); }, dynamic: true },
+    riftkey:    { name: 'Rift Key',        icon: 'key',     tier: 2, max: 1, desc: 'A sealed breach offers one more relic to choose from, and breaches give 4 more seconds.', apply: (s) => { s.f.riftKey = 1; } },
+    tidecaller: { name: 'Tidecaller',      icon: 'moon',    tier: 2, max: 1, desc: 'Rift tides last half again as long, and come a little sooner.', apply: (s) => { s.f.tideCaller = 1; } },
     // epic
     glasscannon: { name: 'Glass Cannon',   icon: 'target',  tier: 3, max: 2, desc: '+50% damage, but −25% max health.', apply: (s, n) => { s.dmg += 0.5 * n; s.hpMult -= 0.25 * n; } },
     berserker:  { name: 'Berserker Mask',  icon: 'mask',    tier: 3, max: 2, desc: 'Deal up to 70% more damage the lower your health.', apply: (s, n) => { s.f.berserk = (s.f.berserk || 0) + 0.7 * n; } },
@@ -158,14 +222,34 @@
     momentum:   { name: 'Stormstride',     icon: 'wings',   tier: 3, max: 1, desc: '+12% move speed. Bonus move speed also raises your damage.', apply: (s) => { s.speed *= 1.12; s.f.momentum = 1; } },
     twinsouls:  { name: 'Twin Souls',      icon: 'multishot', tier: 3, max: 2, desc: '+1 projectile on every skill that fires projectiles.', apply: (s, n) => { s.proj += n; } },
     bloodpact:  { name: 'Blood Pact',      icon: 'blood',   tier: 3, max: 1, desc: '+35% attack speed and 3% lifesteal, but lose 1 health per second.', apply: (s) => { s.atkSpd += 0.35; s.lifesteal += 0.03; s.regen -= 1; } },
+    stillwater: { name: 'Still Water',     icon: 'wave',    tier: 3, max: 1, desc: '+5% damage for every 10 seconds since you were last hit, up to +35%. Being hit resets it.', apply: (s, n, p) => { s.dmg += Math.min(0.35, 0.05 * Math.floor((p.calmT || 0) / 10)); }, dynamic: true },
+    oathstone:  { name: 'Oathstone',       icon: 'blood',   tier: 3, max: 1, desc: '+6% damage and +6% attack speed for every pact you hold.', apply: (s, n, p) => { const k = (p.pacts || []).length; s.dmg += 0.06 * k; s.atkSpd += 0.06 * k; }, dynamic: true },
     // legendary
     crown:      { name: 'Crown of the Rift', icon: 'crown', tier: 4, max: 1, desc: '+1 affinity with every element.', apply: (s) => { for (const k in s.aff) s.aff[k] += 1; } },
     phoenix:    { name: 'Phoenix Plume',   icon: 'phoenix', tier: 4, max: 1, desc: 'Once per run, return from death at full health in a blaze.', apply: (s) => { s.revives += 1; } },
     infinity:   { name: 'Infinity Loop',   icon: 'infinity', tier: 4, max: 1, desc: '+2% damage for every level you have gained.', apply: (s, n, p) => { s.dmg += 0.02 * (p.level || 1); }, dynamic: true },
     paradox:    { name: 'Paradox Engine',  icon: 'gear',    tier: 4, max: 1, desc: '+30% attack speed and +40% ability haste.', apply: (s) => { s.atkSpd += 0.3; s.abilityHaste += 0.4; } },
     colossus:   { name: 'Heart of the Colossus', icon: 'mountain', tier: 4, max: 1, desc: '+100 max health, +10 armor, +25% area of effect.', apply: (s) => { s.maxHp += 100; s.armor += 10; s.area += 0.25; } },
+    prismheart: { name: 'Prism Heart',     icon: 'prism',   tier: 4, max: 1, desc: 'Reactions hit 60% harder and each enemy can react again a second sooner.', apply: (s) => { s.f.rxBoost = 1; } },
     midas:      { name: 'Midas Sigil',     icon: 'trophy',  tier: 4, max: 1, desc: 'Double gold. Chests cost 30% less.', apply: (s) => { s.gold += 1; s.f.discount = 0.3; } },
   };
+  /* Resonances: hold every relic of a set and it gives a bonus of its own. Plain stats, so a set is one line here */
+  D.RELIC_SETS = [
+    { id: 'bloodline',  name: 'Bloodline',       ids: ['vampfang', 'bloodpact'],               text: '+2% lifesteal and +25 max health.',          apply: (s) => { s.lifesteal += 0.02; s.maxHp += 25; } },
+    { id: 'stormfront', name: 'Stormfront',      ids: ['stormcap', 'chainspark'],              text: '+25% Tempest damage.',                       apply: (s) => { s.el.storm += 0.25; } },
+    { id: 'hoardking',  name: 'Hoard King',      ids: ['greed', 'goldtooth'],                  text: '+30% gold found and +15 luck.',              apply: (s) => { s.gold += 0.3; s.luck += 15; } },
+    { id: 'glassedge',  name: 'Glass Edge',      ids: ['glasscannon', 'lens'],                 text: '+30% critical damage.',                      apply: (s) => { s.critMult += 0.3; } },
+    { id: 'timekeeper', name: 'Timekeeper',      ids: ['sandglass', 'timecrystal', 'stopwatch'], text: '+15% attack speed and +20% ability haste.', apply: (s) => { s.atkSpd += 0.15; s.abilityHaste += 0.2; } },
+    { id: 'juggernaut', name: 'Juggernaut',      ids: ['plate', 'ironheart', 'giantsbelt'],    text: '+10 armor and +12% max health.',             apply: (s) => { s.armor += 10; s.hpMult += 0.12; } },
+    { id: 'headhunter', name: 'Headhunter',      ids: ['slayer', 'executioner'],               text: '+25% damage to elites and bosses.',          apply: (s) => { s.bossDmg += 0.25; } },
+    { id: 'deepwinter', name: 'Deep Winter',     ids: ['rimecore', 'frostbite'],               text: '+25% Rime damage.',                          apply: (s) => { s.el.frost += 0.25; } },
+    { id: 'wildfire',   name: 'Ashfall',         ids: ['emberheart', 'volatile'],              text: '+25% Ember damage.',                         apply: (s) => { s.el.fire += 0.25; } },
+    { id: 'plague',     name: 'Rot and Ruin',    ids: ['blightgland', 'venomous'],             text: '+25% Blight damage.',                        apply: (s) => { s.el.venom += 0.25; } },
+    { id: 'windwalker', name: 'Windwalker',      ids: ['boots', 'feather', 'momentum'],        text: '+10% move speed, and dashes recharge 20% faster.', apply: (s) => { s.speed *= 1.1; s.dashCd *= 0.8; } },
+    { id: 'scholar',    name: 'Scholar\'s Pair', ids: ['scrap', 'souljar'],                    text: '+12% experience.',                           apply: (s) => { s.xp += 0.12; } },
+  ];
+  D.SETS_OF = {}; // relic id -> the sets it belongs to
+  for (const st of D.RELIC_SETS) for (const id of st.ids) { if (!D.RELICS[id]) throw new Error('unknown relic in set: ' + id); (D.SETS_OF[id] = D.SETS_OF[id] || []).push(st); }
   for (const id in D.RELICS) D.RELICS[id].id = id;
   for (const id in D.TOMES) D.TOMES[id].id = id;
   for (const id in D.BOONS) D.BOONS[id].id = id;
@@ -212,6 +296,12 @@
   node('a6', 'mastery', 'Tailwind',     'wings',    0, 4.75,   1, 150, ['a4', 'a5'], () => '+1 dash charge', (s, r) => { s.dashCharges += r; });
   node('a7', 'mastery', 'Seventh Tome', 'book',     0, 5.95,   1, 400, ['a6'],   () => '+1 tome slot', (s, r) => { s.m.tomeSlots = r; });
 
+  // Bridges: four nodes in the corners between the arms, opened from either arm beside them
+  node('x1', 'might',    'Blooded',     'blood',  -3.2, -3.2, 3, 150, ['m4', 'v4'], (r) => `+${5 * r}% damage while below half health`, (s, r) => { s.m.blooded = 0.05 * r; });
+  node('x2', 'fortune',  'Appraiser',   'lens',    3.2, -3.2, 1, 500, ['m5', 'f4'], () => 'Relic chests offer one more relic to choose from', (s, r) => { s.m.relicChoice = r; });
+  node('x3', 'vitality', 'Field Medic', 'potion', -3.2,  3.2, 3, 150, ['v5', 'a4'], (r) => `Health pickups and tonics heal ${15 * r}% more`, (s, r) => { s.m.healMore = 0.15 * r; });
+  node('x4', 'mastery',  'Wayfinder',   'spark',   3.2,  3.2, 3, 150, ['f5', 'a5'], (r) => `Shrines appear ${20 * r}% more often`, (s, r) => { s.m.shrines = 0.2 * r; });
+
   D.META = T;
   D.META_BY_ID = {};
   for (const n of T) D.META_BY_ID[n.id] = n;
@@ -248,6 +338,18 @@
   /** reactions between `el` and each element in `others` */
   D.reactionsWith = (el, others) => others.filter((o) => o !== el).map((o) => D.reaction(el, o)).filter(Boolean);
 
+  /* ---------- Rift tides: a short spell of different rules every few minutes. The director reads the numbers ---------- */
+  D.TIDES = {
+    bloodmoon: { name: 'Hunter\'s Moon', icon: 'moon', color: '#ffab4a', dur: 20, text: 'The horde runs 25% faster. Gems are worth half again as much.', speed: 1.25, xp: 1.5 },
+    goldrain:  { name: 'Gold Rain',    icon: 'coin',  color: '#ffd35c', dur: 18, text: 'Three times as many of the slain drop gold.',        gold: 3 },
+    stillness: { name: 'Stillness',    icon: 'clock', color: '#9fe6ff', dur: 14, text: 'The rift holds its breath: enemies move 40% slower.', speed: 0.6 },
+    surge:     { name: 'Power Surge',  icon: 'bolt',  color: '#ffe14d', dur: 14, text: 'Your skills and attacks come 30% faster.',          haste: 0.3 },
+    echoes:    { name: 'Echoes',       icon: 'echo',  color: '#c9b8ff', dur: 16, text: 'Your skills have a 35% chance to fire twice.',       echo: 0.35 },
+    harvest:   { name: 'Harvest',      icon: 'magnet', color: '#8ad1ff', dur: 16, text: 'Gems and gold fly to you from three times as far.',   pickup: 3 },
+    bounty:    { name: 'Open Season',  icon: 'skull', color: '#c77dff', dur: 20, text: 'Two elites enter the rift at once. Their chests hold better relics.', elites: 2 },
+  };
+  for (const id in D.TIDES) D.TIDES[id].id = id;
+
   /* ---------- Elite affixes: every elite carries at least one. Behaviour lives in enemies.js ---------- */
   D.AFFIXES = {
     shielded: { name: 'Shielded', color: '#7fc8ff', text: 'A barrier soaks up damage and regrows if you let up.' },
@@ -257,6 +359,9 @@
     molten:   { name: 'Molten',   color: '#ff5a3d', text: 'Leaves erupting ground in its wake.' },
     brooding: { name: 'Brooding', color: '#b6ff5a', text: 'Keeps spawning lesser enemies.' },
     frenzied: { name: 'Frenzied', color: '#ffd35c', text: 'Faster, and faster still when wounded.' },
+    splitting: { name: 'Splitting', color: '#5ff0d0', text: 'Breaks into three lesser copies of itself when it dies.' },
+    warding:  { name: 'Warding',  color: '#bff3ff', text: 'Shields the horde around it, as a Warder does.' },
+    grasping: { name: 'Grasping', color: '#ff7ad9', text: 'Drags you toward it while it is close.' },
   };
   D.AFFIX_IDS = Object.keys(D.AFFIXES);
 
@@ -268,6 +373,7 @@
     chestCost: 1, heal: 1, xp: 1,     // heal covers pickups, tonics and the level-up breather
     pDmg: 1, pHp: 1, pSpeed: 1, dashCd: 1, noWard: false, startRelics: 0, // the hero
     react: 1,                         // reactions: how often they may trigger and how hard they hit
+    breachEvery: 1, hoarderEvery: 1, startPacts: 0, early: 1, // map events, pacts struck before the run, and how soon each enemy type arrives
     score: 1, essence: 1,
   });
 
@@ -275,11 +381,11 @@
    * Rift Depths: beating the Rift Lord at your deepest unlocked depth opens the next. Each depth keeps every modifier
    * above it, and the rift itself hardens a little with every step (DEPTH_HP, DEPTH_DMG) so the ladder climbs evenly
    * instead of only at the modifiers that touch raw numbers. Measured with the bot and the full skill tree
-   * (tools/curve.js --tree=full --depth=N): the careless player model wins about four runs in five at depth 0, three
-   * in five at depth 6 and none at depth 10, where the careful one still wins most of the time.
+   * (tools/curve.js --tree=full --depth=N): the careless player model wins nearly every run at depth 0, about six in
+   * seven at depth 3, three in five at depth 6 and one in ten at depth 10, where the careful one still wins most of the time.
    */
-  D.DEPTH_HP = 1.06;   // horde health per depth, compounding
-  D.DEPTH_DMG = 1.03;  // enemy damage per depth, compounding
+  D.DEPTH_HP = 1.095;  // horde health per depth, compounding
+  D.DEPTH_DMG = 1.055; // enemy damage per depth, compounding
   D.DEPTHS = [
     { name: 'Thick Hides',     icon: 'armor',     text: 'The horde has 15% more health.',                      apply: (r) => { r.hp *= 1.15; } },
     { name: 'Sharpened Claws', icon: 'fang',      text: 'Enemies hit 15% harder.',                             apply: (r) => { r.dmg *= 1.15; } },
@@ -307,6 +413,12 @@
     openguard:   { name: 'Open Guard',     icon: 'dash',      text: 'No Ward. Your dash recharges 40% faster.',                        apply: (r) => { r.noWard = true; r.dashCd *= 0.6; } },
     scholar:     { name: 'Scholar\'s Rift', icon: 'book',     text: '40% more experience, but the horde has 25% more health.',         apply: (r) => { r.xp *= 1.4; r.hp *= 1.25; } },
   };
+  Object.assign(D.MUTATORS, {
+    breached:  { name: 'Torn Sky',        icon: 'rift',      text: 'Breaches open three times as often.',                              apply: (r) => { r.breachEvery *= 0.34; } },
+    pacted:    { name: 'Sworn In',        icon: 'blood',     text: 'You begin with two pacts already struck, prices and all.',         apply: (r) => { r.startPacts += 2; } },
+    goldrush:  { name: 'Gold Rush',       icon: 'coin',      text: 'Hoarders appear three times as often. Chests cost 50% more.',     apply: (r) => { r.hoarderEvery *= 0.34; r.chestCost *= 1.5; } },
+    menagerie: { name: 'Menagerie',       icon: 'paw',       text: 'Every kind of enemy arrives in the first few minutes. 25% more experience.', apply: (r) => { r.early *= 0.3; r.xp *= 1.25; } },
+  });
   for (const id in D.MUTATORS) D.MUTATORS[id].id = id;
 
   /** the rules for a run at this depth, with this mutator (either may be absent) */

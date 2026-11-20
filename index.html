@@ -77,6 +77,8 @@
         <button class="btn btn-primary btn-enter" id="navPlay">Enter the rift</button>
         <button class="nav-row" id="navDaily"><span>Daily rift</span><span class="pill pill-daily" id="navDailyPill"></span></button>
         <button class="nav-row" id="navTree"><span>Skill tree</span><span class="pill" id="navEssence"></span></button>
+        <button class="nav-row" id="navFeats"><span>Feats</span><span class="pill" id="navFeatsPill"></span></button>
+        <button class="nav-row" id="navCodex"><span>Codex</span><span class="pill" id="navCodexPill"></span></button>
         <button class="nav-row" id="navBoard"><span>Leaderboard</span></button>
         <button class="nav-row" id="navHelp"><span>How to play</span></button>
         <button class="nav-row" id="navSettings"><span>Settings</span></button>
@@ -123,6 +125,25 @@
       </header>
       <div class="tabs" id="boardTabs"></div>
       <div class="board" id="boardBody"></div>
+    </section>
+
+    <section class="screen" id="scrFeats" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Feats</h2>
+        <span class="board-scope" id="featsScope"></span>
+      </header>
+      <div class="feats" id="featsBody"></div>
+    </section>
+
+    <section class="screen" id="scrCodex" hidden>
+      <header class="screen-head">
+        <button class="btn btn-ghost" data-back><i data-icon="back"></i>Back</button>
+        <h2>Codex</h2>
+        <span class="board-scope" id="codexScope"></span>
+      </header>
+      <div class="tabs" id="codexTabs"></div>
+      <div class="codex" id="codexBody"></div>
     </section>
 
     <section class="screen" id="scrHelp" hidden>
@@ -191,6 +212,7 @@
   <script src="js/audio.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/feats.js"></script>
   <script src="js/fx.js"></script>
   <script src="js/combat.js"></script>
   <script src="js/skills.js"></script>

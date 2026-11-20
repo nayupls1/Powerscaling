@@ -353,6 +353,68 @@
       // three hex motes in orbit, one for each bolt of its burst
       for (let i = 0; i < 3; i++) { const q = a / 3 + (i * TAU) / 3; glowDot(g, Math.cos(q) * 1.06, Math.sin(q) * 1.06, 0.11, '#ff9be6', 1.9); }
     },
+    toad(g, ph, col, lw) {
+      const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.45), belly = lite(col, 0.55);
+      // big folded hind legs, pumping
+      for (const s of [-1, 1]) {
+        const k = 0.1 * sw * s;
+        limb(g, [-0.3, s * 0.6, -1.0 + k, s * 1.12, -0.36 + k, s * 1.26, 0.2 + k, s * 1.06], 0.27, dk, lw);
+        for (const c of [-0.14, 0, 0.14]) spike(g, 0.24 + k, s * 1.06 + c, c * 1.2, 0.26, 0.06, belly, lw * 0.5);
+      }
+      // short forelegs
+      for (const s of [-1, 1]) {
+        limb(g, [0.4, s * 0.5, 0.86 - sw * s * 0.08, s * 0.82], 0.2, dk, lw);
+        ell(g, 0.92 - sw * s * 0.08, s * 0.84, 0.15, 0.12); F(g, belly, lw * 0.6);
+      }
+      ell(g, -0.12, 0, 0.92, 0.8); F(g, vol(g, -0.12, 0, 0.92, col), lw);
+      // warts down the back
+      for (const w of [[-0.6, -0.26, 0.13], [-0.5, 0.3, 0.11], [-0.18, 0.02, 0.15], [-0.84, 0.04, 0.09], [0.0, -0.42, 0.09], [0.04, 0.4, 0.1]]) { ell(g, w[0], w[1], w[2], w[2]); F(g, dark(col, 0.3)); }
+      // wide head, with the rift glowing in its throat
+      g.beginPath(); g.ellipse(0.5, 0, 0.56, 0.7, 0, -PI / 2, PI / 2); g.closePath(); F(g, vol(g, 0.5, 0, 0.7, lite(col, 0.12)), lw);
+      g.beginPath(); g.arc(0.66, 0, 0.3, -1.1, 1.1); S(g, INK, 0.07);
+      for (const s of [-1, 1]) {
+        ell(g, 0.5, s * 0.5, 0.21, 0.21); F(g, belly, lw);
+        glowDot(g, 0.54, s * 0.5, 0.12, '#ffe14d', 1.8);
+        ell(g, 0.56, s * 0.5, 0.04, 0.11); F(g, INK);
+      }
+    },
+    warder(g, ph, col, lw) {
+      const a = ph * TAU, br = Math.sin(a), dk = dark(col, 0.5), cloth = '#3d4a7a', gold = '#ffd36b';
+      // trailing robe
+      g.beginPath(); g.moveTo(-0.1, -0.7); g.quadraticCurveTo(-0.9, -0.84, -1.3, -0.4 + br * 0.06);
+      g.lineTo(-1.06, 0); g.lineTo(-1.3, 0.4 - br * 0.06); g.quadraticCurveTo(-0.9, 0.84, -0.1, 0.7); g.closePath();
+      F(g, dark(cloth, 0.25), lw);
+      // a standard carried upright in both hands: a tall pole crowned with a warding sigil
+      for (const s of [-1, 1]) limb(g, [0, s * 0.62, 0.5, s * 0.5, 0.74, s * 0.12], 0.21, cloth, lw);
+      limb(g, [0.3, 0, 1.3, 0], 0.09, '#8a6a4a', lw * 0.8);
+      const hr = 0.3 + br * 0.03;
+      g.beginPath(); g.arc(1.42, 0, hr, 0, TAU); S(g, INK, 0.12 + lw * 2); S(g, gold, 0.12);
+      glowDot(g, 1.42, 0, 0.13, '#bff3ff', 2.4);
+      for (let i = 0; i < 3; i++) { const q = a + (i * TAU) / 3; glowDot(g, 1.42 + Math.cos(q) * hr, Math.sin(q) * hr, 0.06, '#bff3ff', 1.6); }
+      ell(g, 0.74, 0, 0.17, 0.2); F(g, col, lw);
+      // body and a broad flat hat seen from above
+      ell(g, -0.05, 0, 0.6, 0.8); F(g, vol(g, -0.05, 0, 0.8, cloth), lw);
+      g.beginPath(); g.arc(-0.05, 0, 0.5, PI * 0.62, PI * 1.38); S(g, gold, 0.07);
+      ell(g, 0.08, 0, 0.66, 0.66); F(g, vol(g, 0.08, 0, 0.66, col), lw);
+      ell(g, 0.08, 0, 0.3, 0.3); F(g, dk, lw * 0.7);
+      g.beginPath(); g.arc(0.08, 0, 0.5, 0, TAU); S(g, dk, 0.05, 0.6);
+    },
+    hoarder(g, ph, col, lw) {
+      const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.45), sack = '#8a5a2b', gold = '#ffd35c';
+      // a bulging sack slung behind, coins spilling from a tear
+      ell(g, -0.78, 0.06 + sw * 0.05, 0.72, 0.66); F(g, vol(g, -0.78, 0.06, 0.72, sack), lw);
+      g.beginPath(); g.moveTo(-0.3, -0.2); g.quadraticCurveTo(-0.1, 0.05, -0.3, 0.3); S(g, dark(sack, 0.4), 0.09);
+      for (const c of [[-1.1, -0.3, 0.13], [-0.9, 0.36, 0.11], [-1.36, 0.12, 0.1], [-0.62, -0.26, 0.09]]) { ell(g, c[0], c[1] + sw * 0.03, c[2], c[2]); F(g, gold, lw * 0.6); }
+      // scurrying feet
+      for (const s of [-1, 1]) { ell(g, 0.1 + s * sw * 0.34, s * 0.5, 0.3, 0.17); F(g, dk, lw); }
+      // arms hugging the sack strap
+      for (const s of [-1, 1]) limb(g, [0.2, s * 0.56, -0.1, s * 0.78, -0.4, s * 0.5], 0.2, dk, lw);
+      ell(g, 0.2, 0, 0.62, 0.6); F(g, vol(g, 0.2, 0, 0.62, col), lw);
+      // big ears and greedy eyes
+      for (const s of [-1, 1]) { poly(g, [0.2, s * 0.44, 0.02, s * 1.04, 0.52, s * 0.6]); F(g, lite(col, 0.15), lw); }
+      eyes(g, 0.52, 0.24, 0.13, '#ffffff', true);
+      glowDot(g, 0.82, 0, 0.07, gold, 1.6);
+    },
     knight(g, ph, col, lw) {
       const a = ph * TAU, sw = Math.sin(a), dk = dark(col, 0.5), red = '#ff5a6e', steel = lite(col, 0.25);
       // tattered cape
@@ -588,10 +650,57 @@
       eyes(g, 0.52, 0.34, 0.085, rift);
       for (const s of [-1, 1]) spike(g, 0.88, s * 0.12, 0, 0.16, 0.045, BONE, 0);
     },
+    boss4(g, ph, col, lw, st) {
+      const a = ph * TAU, br = Math.sin(a), rage = st && st.rage, hot = rage ? '#ff7a3d' : col, pale = '#fff3d6';
+      // a ragged corona: long rays and short, turning slowly against each other
+      for (let i = 0; i < 12; i++) {
+        const q = (i * TAU) / 12 + a / 12 * (i % 2 ? 1 : -1), long = i % 2 === 0;
+        spike(g, Math.cos(q) * 0.7, Math.sin(q) * 0.7, q, (long ? 0.95 : 0.55) + br * 0.06, long ? 0.2 : 0.14, long ? hot : lite(hot, 0.3), lw);
+      }
+      // the burning rim, and the dark it is collapsing into
+      ell(g, 0, 0, 0.92, 0.92); F(g, vol(g, 0, 0, 0.92, hot), lw);
+      g.beginPath(); g.arc(0, 0, 0.8, 0, TAU); glowLine(g, pale, 0.05 + 0.015 * br);
+      ell(g, 0, 0, 0.7, 0.7); F(g, '#1a0c1f', lw * 0.8);
+      // fractures of light across the dark face
+      g.beginPath();
+      g.moveTo(-0.56, -0.2); g.lineTo(-0.3, -0.06); g.lineTo(-0.38, 0.24); g.lineTo(-0.12, 0.4);
+      g.moveTo(-0.3, -0.06); g.lineTo(-0.06, -0.3); g.lineTo(-0.2, -0.56);
+      g.moveTo(-0.12, 0.4); g.lineTo(0.1, 0.52);
+      glowLine(g, hot, 0.03 + (rage ? 0.02 : 0));
+      // one burning eye, facing the hero
+      g.beginPath(); g.moveTo(0.02, 0); g.quadraticCurveTo(0.3, -0.34, 0.62, 0); g.quadraticCurveTo(0.3, 0.34, 0.02, 0); g.closePath(); F(g, pale, lw * 0.6);
+      glowDot(g, 0.34, 0, 0.17, hot, 2.2);
+      ell(g, 0.36, 0, 0.05, 0.15); F(g, INK);
+      // embers held in orbit
+      for (let i = 0; i < 4; i++) { const q = a / 4 + (i * TAU) / 4; glowDot(g, Math.cos(q) * 1.5, Math.sin(q) * 1.5, 0.09, pale, 2); }
+    },
+    boss5(g, ph, col, lw, st) {
+      const a = ph * TAU, br = Math.sin(a), rage = st && st.rage, glass = rage ? '#ff8ad0' : col, pale = '#fff0fa', dk = '#2a1430';
+      // shards of herself hang about her, turning
+      for (let i = 0; i < 6; i++) {
+        const q = a / 6 + (i * TAU) / 6, d = 1.42 + (i % 2) * 0.16 + br * 0.04;
+        g.save(); g.translate(Math.cos(q) * d, Math.sin(q) * d); g.rotate(q + a / 3);
+        poly(g, [0, -0.2, 0.1, 0, 0, 0.2, -0.1, 0]); F(g, lite(glass, 0.35), lw * 0.7);
+        g.restore();
+      }
+      // a robe of long panes
+      g.beginPath(); g.moveTo(0.1, -0.84); g.lineTo(-0.7, -1.0); g.lineTo(-1.36, -0.5 + br * 0.05); g.lineTo(-1.0, 0); g.lineTo(-1.36, 0.5 - br * 0.05); g.lineTo(-0.7, 1.0); g.lineTo(0.1, 0.84); g.closePath();
+      F(g, vol(g, -0.5, 0, 1.2, dark(glass, 0.45)), lw);
+      g.beginPath(); g.moveTo(-0.1, -0.7); g.lineTo(-1.1, -0.44); g.moveTo(-0.2, 0); g.lineTo(-1.0, 0); g.moveTo(-0.1, 0.7); g.lineTo(-1.1, 0.44); S(g, lite(glass, 0.3), 0.04, 0.6);
+      // the mirror she wears for a body: a tall faceted pane
+      poly(g, [0.9, 0, 0.36, -0.86, -0.36, -0.6, -0.56, 0, -0.36, 0.6, 0.36, 0.86]); F(g, vol(g, 0, 0, 0.95, glass), lw);
+      poly(g, [0.62, 0, 0.26, -0.58, -0.2, -0.4, -0.34, 0, -0.2, 0.4, 0.26, 0.58]); F(g, dk, lw * 0.7);
+      g.beginPath(); g.moveTo(0.26, -0.58); g.lineTo(-0.34, 0); g.lineTo(0.26, 0.58); g.moveTo(0.62, 0); g.lineTo(-0.2, -0.4); g.moveTo(0.62, 0); g.lineTo(-0.2, 0.4);
+      glowLine(g, pale, 0.022 + (rage ? 0.014 : 0));
+      // two eyes that are your own, looking back
+      for (const s of [-1, 1]) { glowDot(g, 0.3, s * 0.2, 0.085, pale, 2.2); ell(g, 0.32, s * 0.2, 0.03, 0.07); F(g, INK); }
+      // hands held open
+      for (const s of [-1, 1]) { limb(g, [0.2, s * 0.8, 0.7, s * 1.06, 1.02 + br * 0.04, s * 0.82], 0.15, dark(glass, 0.3), lw); glowDot(g, 1.06 + br * 0.04, s * 0.8, 0.09, pale, 1.8); }
+    },
   };
   /** walk cycles per second */
-  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6,
-    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75 };
+  const RATE = { imp: 2.3, bat: 3.1, spitter: 1.6, slime: 1.1, slimelet: 1.7, hound: 2.6, brute: 1.25, bloater: 1.1, wraith: 1.3, mortar: 1.6, hexer: 0.9, knight: 1.6, toad: 1.4, warder: 1.0, hoarder: 3.2,
+    boss0: 0.95, boss1: 1.5, boss2: 0.8, boss3: 0.75, boss4: 0.6, boss5: 0.7 };
 
   /** a sword along +x from the hand at the origin */
   function sword(g, len, w, blade, guard, grip, lw) {
@@ -712,6 +821,109 @@
       hood(g, 0.12, 0.5, -0.84, fl * 2.5, vol(g, 0, 0, 0.8, col), lw);
       g.beginPath(); g.arc(0.14, 0, 0.36, -1.0, 1.0); g.closePath(); F(g, dark(col, 0.72));
       g.beginPath(); g.moveTo(-0.3, 0); g.lineTo(-0.72, fl * 2); S(g, dark(col, 0.3), 0.05, 0.7);
+    },
+    stormcaller(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 6) * 0.07, coat = mix(col, '#12224a', 0.62), coatDk = dark(coat, 0.3), brass = '#d9a441', skin = '#f0c9a0';
+      // a long coat split into two tails that whip about
+      g.beginPath(); g.moveTo(-0.2, -0.7);
+      g.quadraticCurveTo(-0.95, -0.92, -1.72, -0.6 + fl * 2);
+      g.lineTo(-1.1, -0.2 + fl); g.lineTo(-0.9, 0); g.lineTo(-1.1, 0.2 - fl); g.lineTo(-1.72, 0.6 - fl * 2);
+      g.quadraticCurveTo(-0.95, 0.92, -0.2, 0.7); g.closePath();
+      F(g, coatDk, lw);
+      g.beginPath(); g.moveTo(-0.5, -0.5); g.lineTo(-1.5, -0.56 + fl * 2); g.moveTo(-0.5, 0.5); g.lineTo(-1.5, 0.56 - fl * 2); S(g, col, 0.045, 0.6);
+      feet(g, wk, '#1c2440', lw);
+      // two brass rods rise from the back, a spark hopping between their tips
+      for (const s of [-1, 1]) {
+        limb(g, [-0.42, s * 0.3, -1.0, s * 0.62], 0.075, brass, lw * 0.8);
+        ell(g, -1.02, s * 0.63, 0.11, 0.11); F(g, lite(brass, 0.3), lw * 0.7);
+      }
+      const zz = Math.sin(t * 23) * 0.12;
+      g.beginPath(); g.moveTo(-1.02, -0.63); g.lineTo(-1.14 + zz, -0.2); g.lineTo(-0.94 - zz, 0.16); g.lineTo(-1.02, 0.63); glowLine(g, acc, 0.035);
+      // both hands thrown forward, the lash gathering between them
+      const reach = 0.98 + sw * 0.3, gap = 0.5 - sw * 0.16;
+      for (const s of [-1, 1]) {
+        limb(g, [0, s * 0.7, 0.52, s * 0.86, reach, s * gap], 0.25, coat, lw);
+        ell(g, reach - 0.18, s * (gap + 0.07), 0.2, 0.17); F(g, brass, lw * 0.8); // gauntlet cuff
+        ell(g, reach, s * gap, 0.16, 0.16); F(g, skin, lw);
+      }
+      o.glow(g, reach + 0.12, 0, 0.9 + sw * 0.9, col, 0.85);
+      const j = Math.sin(t * 31) * 0.1, k = Math.cos(t * 27) * 0.1;
+      g.beginPath(); g.moveTo(reach + 0.06, -gap); g.lineTo(reach + 0.3 + j, -gap * 0.4); g.lineTo(reach + 0.08 + k, 0); g.lineTo(reach + 0.32 - j, gap * 0.4); g.lineTo(reach + 0.06, gap);
+      glowLine(g, '#ffffff', 0.04 + sw * 0.03);
+      const orb = 0.1 + sw * 0.1 + Math.sin(t * 15) * 0.02;
+      ell(g, reach + 0.18, 0, orb, orb); F(g, acc);
+      // body, with a bolt stitched down the back of the coat
+      ell(g, -0.05, 0, 0.6, 0.84); F(g, vol(g, -0.05, 0, 0.84, coat), lw);
+      poly(g, [-0.16, -0.2, -0.36, 0.02, -0.25, 0.02, -0.42, 0.24, -0.5, 0.0, -0.39, 0.0, -0.3, -0.2]); F(g, acc, lw * 0.5);
+      // a high winged collar
+      for (const s of [-1, 1]) {
+        poly(g, [0.2, s * 0.3, 0.05, s * 0.86, -0.42, s * 1.04, -0.22, s * 0.5]); F(g, vol(g, -0.1, s * 0.7, 0.5, lite(coat, 0.14)), lw);
+        g.beginPath(); g.moveTo(0.05, s * 0.86); g.lineTo(-0.42, s * 1.04); S(g, brass, 0.06);
+      }
+      // bare head: swept-back white hair and a brass circlet
+      ell(g, 0.14, 0, 0.44, 0.42); F(g, vol(g, 0.14, 0, 0.44, '#e9f6ff'), lw);
+      g.beginPath(); g.moveTo(0.02, -0.4); g.quadraticCurveTo(-0.5, -0.3 + fl, -0.74, -0.06 + fl * 3); g.quadraticCurveTo(-0.44, 0.02, -0.7, 0.2 + fl * 3); g.quadraticCurveTo(-0.4, 0.34, 0.02, 0.4); g.closePath();
+      F(g, '#ffffff', lw);
+      g.beginPath(); g.arc(0.14, 0, 0.44, -1.15, 1.15); S(g, brass, 0.085);
+      poly(g, [0.64, 0, 0.55, 0.08, 0.46, 0, 0.55, -0.08]); F(g, col, lw * 0.6);
+    },
+    frostwarden(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.06, robe = mix(col, '#17364a', 0.66), fur = '#f1fbff', ice = '#bdf0ff';
+      // a heavy cloak, its hem hung with icicles
+      g.beginPath(); g.moveTo(-0.15, -0.78); g.quadraticCurveTo(-1.0, -0.96, -1.5, -0.6 + fl);
+      g.lineTo(-1.36, -0.3); g.lineTo(-1.72, -0.18 + fl); g.lineTo(-1.4, 0); g.lineTo(-1.72, 0.18 - fl); g.lineTo(-1.36, 0.3); g.lineTo(-1.5, 0.6 - fl);
+      g.quadraticCurveTo(-1.0, 0.96, -0.15, 0.78); g.closePath();
+      F(g, dark(robe, 0.2), lw);
+      feet(g, wk, '#22323c', lw);
+      // a horn of ice held to the mouth in both hands: the breath comes out of it
+      for (const s of [-1, 1]) limb(g, [0, s * 0.72, 0.5, s * 0.6, 0.86, s * 0.2], 0.27, robe, lw);
+      poly(g, [0.62, -0.17, 1.5 + sw * 0.1, -0.4, 1.62 + sw * 0.1, 0, 1.5 + sw * 0.1, 0.4, 0.62, 0.17]); F(g, vol(g, 1.1, 0, 0.6, ice), lw);
+      g.beginPath(); g.moveTo(0.9, -0.2); g.lineTo(0.9, 0.2); g.moveTo(1.2, -0.3); g.lineTo(1.2, 0.3); S(g, dark(ice, 0.35), 0.05, 0.7);
+      o.glow(g, 1.7, 0, 0.8 + sw * 0.7, '#9fe6ff', 0.75);
+      ell(g, 1.62 + sw * 0.1, 0, 0.1, 0.3); F(g, '#ffffff');
+      for (const s of [-1, 1]) { ell(g, 0.88, s * 0.2, 0.17, 0.15); F(g, '#f0c9a0', lw); }
+      // body under a fur mantle
+      ell(g, -0.05, 0, 0.64, 0.88); F(g, vol(g, -0.05, 0, 0.88, robe), lw);
+      g.beginPath();
+      for (let i = 0; i <= 10; i++) { const q = PI * 0.5 + (i / 10) * PI, rr = 0.86 + (i % 2 ? 0.1 : 0); const x = -0.02 + Math.cos(q) * rr * 0.72, y = Math.sin(q) * rr; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.quadraticCurveTo(0.34, 0, -0.02, 0.86); g.closePath(); F(g, vol(g, -0.2, 0, 0.9, fur), lw);
+      // hooded head with a crown of ice
+      ell(g, 0.16, 0, 0.46, 0.44); F(g, vol(g, 0.16, 0, 0.46, lite(robe, 0.2)), lw);
+      for (const a of [-2.4, -1.75, 1.75, 2.4, PI]) spike(g, 0.16 + Math.cos(a) * 0.36, Math.sin(a) * 0.36, a, 0.42, 0.1, ice, lw * 0.8);
+      g.beginPath(); g.arc(0.18, 0, 0.3, -1.0, 1.0); g.closePath(); F(g, '#0f2530');
+      eyes(g, 0.36, 0.13, 0.055, col);
+    },
+    plaguebearer(g, o) {
+      const { t, wk, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.07, coat = '#2f3a2a', coatLt = '#46563c', leather = '#6a4a2c', bone = '#efe6cf';
+      // a long waxed coat, ragged at the hem
+      g.beginPath(); g.moveTo(-0.2, -0.72); g.quadraticCurveTo(-1.0, -0.9, -1.56, -0.56 + fl);
+      g.lineTo(-1.3, -0.26 + fl); g.lineTo(-1.74, -0.04 + fl * 2); g.lineTo(-1.34, 0.2 - fl); g.lineTo(-1.6, 0.52 - fl);
+      g.quadraticCurveTo(-1.0, 0.9, -0.2, 0.72); g.closePath();
+      F(g, dark(coat, 0.2), lw);
+      feet(g, wk, '#241c14', lw);
+      // a censer swung on a chain from the off hand, trailing rot
+      const cx = 0.5 + Math.sin(t * 3) * 0.16, cy = -1.16 + Math.cos(t * 3) * 0.08;
+      limb(g, [0, -0.7, 0.44, -0.86], 0.25, coat, lw);
+      g.beginPath(); g.moveTo(0.46, -0.86); g.lineTo(cx, cy); S(g, '#b9b2a0', 0.035);
+      o.glow(g, cx, cy, 0.7, acc, 0.7);
+      ell(g, cx, cy, 0.19, 0.19); F(g, vol(g, cx, cy, 0.19, col), lw);
+      ell(g, cx, cy, 0.08, 0.08); F(g, acc);
+      ell(g, 0.46, -0.86, 0.14, 0.14); F(g, leather, lw);
+      // the throwing arm, a dart between the fingers
+      const hx = 0.98 + sw * 0.32, hy = 0.56 - sw * 0.2;
+      limb(g, [0, 0.7, 0.5, 0.86, hx, hy], 0.25, coat, lw);
+      if (sw < 0.5) { limb(g, [hx, hy, hx + 0.5, hy - 0.04], 0.05, bone, lw * 0.5); poly(g, [hx + 0.66, hy - 0.05, hx + 0.46, hy - 0.13, hx + 0.46, hy + 0.04]); F(g, acc, lw * 0.5); }
+      ell(g, hx, hy, 0.15, 0.15); F(g, leather, lw);
+      // body, a bandolier of vials across it
+      ell(g, -0.05, 0, 0.6, 0.84); F(g, vol(g, -0.05, 0, 0.84, coatLt), lw);
+      g.beginPath(); g.moveTo(-0.4, -0.6); g.lineTo(0.2, 0.62); S(g, leather, 0.13);
+      for (const k of [0.2, 0.5, 0.8]) { const vx = -0.4 + 0.6 * k, vy = -0.6 + 1.22 * k; ell(g, vx, vy, 0.08, 0.08); F(g, k === 0.5 ? col : acc, lw * 0.5); }
+      // wide flat hat and a long bone beak
+      ell(g, 0.1, 0, 0.7, 0.68); F(g, vol(g, 0.1, 0, 0.7, '#1e241b'), lw);
+      ell(g, 0.1, 0, 0.36, 0.36); F(g, vol(g, 0.1, 0, 0.36, '#2f3a2a'), lw * 0.8);
+      g.beginPath(); g.arc(0.1, 0, 0.36, 0, TAU); S(g, col, 0.06);
+      poly(g, [0.4, -0.15, 1.22, 0.02, 0.4, 0.15]); F(g, bone, lw);
+      for (const s of [-1, 1]) { ell(g, 0.5, s * 0.2, 0.085, 0.085); F(g, '#1a1410', lw * 0.5); ell(g, 0.5, s * 0.2, 0.04, 0.04); F(g, acc); }
     },
     reaper(g, o) {
       const { t, sw, col, acc, lw } = o, fl = Math.sin(t * 5) * 0.08, shroud = '#2e1a4a', pale = acc; // it floats: no stride

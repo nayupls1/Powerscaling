@@ -335,11 +335,12 @@
   /* Lingering zones are discs a few hundred pixels across, and some builds keep dozens down at once. Filling and outlining
      each one was two path draws the size of its bounding square. Instead each kind is painted once per on-screen size
      (a body that deepens toward the rim, then the rim) and blitted 1:1, which is cheaper and no longer flat. */
+  // the hero's own ground effects: soft-edged washes with a faint rim, so they never read as the hard red discs of the rift
   const ZONE_STYLE = {
-    poison:   { rgb: '95,184,46',   a0: 0.06, a1: 0.22, rim: '#b8f078', ra: 0.55 },
-    fire:     { rgb: '255,106,42',  a0: 0.2,  a1: 0.07, rim: '#ff9a4d', ra: 0.55 },
-    blizzard: { rgb: '159,230,255', a0: 0.04, a1: 0.15, rim: '#e8f9ff', ra: 0.4 },
-    arrows:   { rgb: '241,231,207', a0: 0.02, a1: 0.11, rim: '#f1e7cf', ra: 0.6 },
+    poison:   { rgb: '95,184,46',   a0: 0.06, a1: 0.22, rim: '#b8f078', ra: 0.28 },
+    fire:     { rgb: '255,106,42',  a0: 0.2,  a1: 0.07, rim: '#ff9a4d', ra: 0.25 },
+    blizzard: { rgb: '159,230,255', a0: 0.04, a1: 0.15, rim: '#e8f9ff', ra: 0.25 },
+    arrows:   { rgb: '241,231,207', a0: 0.02, a1: 0.11, rim: '#f1e7cf', ra: 0.3 },
   };
   const zoneSpr = new Map();
   let zonePx = 0; // pixels held by the cache, which is trimmed oldest first
@@ -381,11 +382,12 @@
     worldTf();
   }
   function drawZones(G) {
-    const t = G.time;
+    const t = G.time, own = PS.Save.data.settings.subtleFx ? 0.5 : 1; // "Subtle own effects" in Settings
     let riftGlows = 8, embers = 3;
     for (const z of G.zones) {
       if (!visible(z.x, z.y, z.r + 20)) continue;
-      const fade = Math.min(1, z.life / 0.4, z.age / 0.2);
+      // a late build's zones cover half the screen: the bigger the wash, the thinner it is painted, so the floor stays readable
+      const fade = Math.min(1, z.life / 0.4, z.age / 0.2) * own * (z.r > 150 ? Math.max(0.42, 150 / z.r) : 1);
       const k = z.kind;
       if (k === 'poison' || k === 'pool') {
         drawZoneDisc('poison', z.x, z.y, z.r, fade);
@@ -453,9 +455,9 @@
     ctx.globalCompositeOperation = 'lighter';
     for (const z of G.zones) {
       if (z.kind !== 'ball' || !visible(z.x, z.y, z.r)) continue;
-      const fade = Math.min(1, z.life / 0.4);
+      const fade = Math.min(1, z.life / 0.4) * (PS.Save.data.settings.subtleFx ? 0.5 : 1);
       drawGlow(z.x, z.y, 46, '#ffe14d', 0.9 * fade, true);
-      ctx.globalAlpha = 0.25 * fade;
+      ctx.globalAlpha = 0.09 * fade; // the orb's reach, barely there: a screenful of these read as circles to be dodged
       ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, TAU); ctx.stroke();
     }
@@ -463,19 +465,37 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  // the one colour reserved for what hurts the hero: nothing the hero casts is drawn in it
+  const DANGER_COLORS = { red: '#ff2f4e', pink: '#ff4fd8', white: '#f4f4ff' }, DANGER_INK = '#2a0410';
+  let DANGER_HOT = '#ffffff'; // the flash just before a blast lands (gold when the danger colour is already white)
+  let DANGER = DANGER_COLORS.red; // picked in Settings (Danger colour), read at the top of every hazard pass
+
   function drawHazards(G) {
+    const few = G.hazards.length <= 12;
+    DANGER = DANGER_COLORS[PS.Save.data.settings.danger] || DANGER_COLORS.red;
+    DANGER_HOT = DANGER === DANGER_COLORS.white ? '#ffd35c' : '#ffffff';
     for (const h of G.hazards) {
       if (h.kind === 'circle') {
-        const t = Math.min(1, h.t / h.delay);
-        // a clear rim and a filling core show the timing without hiding what is underneath
-        ctx.globalAlpha = 0.1 + 0.06 * t;
-        ctx.fillStyle = h.color;
+        if (!visible(h.x, h.y, h.r + 8)) continue;
+        const t = Math.min(1, h.t / h.delay), hot = t > 0.8;
+        // Everything that will hurt the hero wears the same colours, whoever cast it: a red disc with a core that fills
+        // as the blast comes due, inside a heavy dark-backed rim of marching dashes that turns white just before it lands.
+        ctx.globalAlpha = 0.13 + 0.07 * t;
+        ctx.fillStyle = DANGER;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.2 + 0.25 * t;
+        ctx.globalAlpha = 0.22 + 0.28 * t;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r * t, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.95;
-        ctx.strokeStyle = t > 0.8 ? '#ffffff' : h.color; ctx.lineWidth = 3;
+        if (few) {
+          // the dark backing costs a stroke apiece: worth it while there are a handful, not when a boss carpets the floor
+          ctx.globalAlpha = 0.7;
+          ctx.strokeStyle = DANGER_INK; ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = hot ? DANGER_HOT : DANGER; ctx.lineWidth = 3.5;
+        ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
       } else if (h.kind === 'beam') {
         const live = h.t >= h.delay;
         const x2 = h.x + Math.cos(h.ang) * h.len, y2 = h.y + Math.sin(h.ang) * h.len;
@@ -483,15 +503,17 @@
         if (!live) {
           const t = h.t / h.delay;
           ctx.globalAlpha = 0.18 + 0.2 * t;
-          ctx.strokeStyle = h.color; ctx.lineWidth = h.w;
+          ctx.strokeStyle = DANGER; ctx.lineWidth = h.w;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
-          ctx.globalAlpha = 0.9;
-          ctx.strokeStyle = t > 0.8 ? '#ffffff' : h.color; ctx.lineWidth = 2 + 3 * t;
+          ctx.globalAlpha = 0.95;
+          ctx.strokeStyle = t > 0.8 ? DANGER_HOT : DANGER; ctx.lineWidth = 2 + 3 * t;
+          ctx.setLineDash([13, 7]); ctx.lineDashOffset = -G.time * 46;
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.setLineDash([]);
         } else if (!h.harmless) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = 0.7;
-          ctx.strokeStyle = h.color; ctx.lineWidth = h.w * (1.1 + 0.15 * Math.sin(G.time * 40));
+          ctx.strokeStyle = DANGER; ctx.lineWidth = h.w * (1.1 + 0.15 * Math.sin(G.time * 40));
           ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(x2, y2); ctx.stroke();
           ctx.globalAlpha = 1;
           ctx.strokeStyle = '#ffffff'; ctx.lineWidth = h.w * 0.4;
@@ -499,8 +521,11 @@
           ctx.globalCompositeOperation = 'source-over';
         }
       } else if (h.kind === 'ring') {
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = h.color; ctx.lineWidth = h.thick;
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = DANGER_INK; ctx.lineWidth = h.thick + 5;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.95;
+        ctx.strokeStyle = DANGER; ctx.lineWidth = h.thick;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(h.x, h.y, h.rad, 0, TAU); ctx.stroke();
@@ -518,11 +543,24 @@
     ctx.globalAlpha = 1;
   }
 
+  const PROP_MARK = { chest: ['#ffcf5c', 'chest'], shrine: ['#ffe9a8', 'spark'], altar: ['#f06be0', 'blood'], breach: ['#c06bff', 'rift'], forge: ['#ffb061', 'anvil'], merchant: ['#ffd35c', 'coin'] };
+
   function drawProps(G) {
     const p = G.player, t = G.time;
     for (const pr of G.props) {
-      if (pr.dead || !visible(pr.x, pr.y, 90)) continue;
-      if (pr.kind === 'chest') {
+      if (pr.dead || !visible(pr.x, pr.y, pr.r + 30)) continue;
+      if (pr.kind === 'chest' && pr.cursed) {
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y, 60, '#a35cff', 0.4 + 0.12 * Math.sin(t * 4 + pr.bob));
+        ctx.globalCompositeOperation = 'source-over';
+        drawChest(pr.x, pr.y, 1, true);
+        ctx.font = `800 14px ${PS.FONT_NUM}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,8,28,0.9)';
+        ctx.strokeText('Guarded, free', pr.x, pr.y - 34);
+        ctx.fillStyle = '#e3b8ff';
+        ctx.fillText('Guarded, free', pr.x, pr.y - 34);
+      } else if (pr.kind === 'chest') {
         const cost = PS.Director.chestPrice(), can = p.gold >= cost;
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(pr.x, pr.y, 56, can ? '#ffcf5c' : '#7a6a9a', 0.35 + 0.1 * Math.sin(t * 3 + pr.bob));
@@ -534,6 +572,135 @@
         ctx.strokeText(cost + ' gold', pr.x, pr.y - 34);
         ctx.fillStyle = can ? '#ffd35c' : '#ff8a8a';
         ctx.fillText(cost + ' gold', pr.x, pr.y - 34);
+      } else if (pr.kind === 'merchant') {
+        const leaving = pr.life < 12;
+        ctx.globalAlpha = leaving ? 0.25 + 0.25 * Math.sin(t * 8) : 0.5;
+        ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2;
+        ctx.setLineDash([8, 10]); ctx.lineDashOffset = t * 20;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.9; ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x + 16, pr.y - 26, 46, '#ffd35c', 0.45 + 0.12 * Math.sin(t * 4));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 16, 26, 8, 0, 0, TAU); ctx.fill();
+        // a hooded figure beside a heaped pack, a lantern on a pole
+        ctx.fillStyle = '#6a4a2c';
+        ctx.beginPath(); ctx.roundRect(pr.x - 24, pr.y - 6, 22, 22, 6); ctx.fill();
+        ctx.fillStyle = '#8a6238';
+        ctx.beginPath(); ctx.roundRect(pr.x - 21, pr.y - 16, 16, 12, 5); ctx.fill();
+        ctx.fillStyle = '#3d3157';
+        ctx.beginPath(); ctx.moveTo(pr.x - 2, pr.y + 16); ctx.lineTo(pr.x + 2, pr.y - 12); ctx.quadraticCurveTo(pr.x + 9, pr.y - 22, pr.x + 15, pr.y - 12); ctx.lineTo(pr.x + 19, pr.y + 16); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#16102a';
+        ctx.beginPath(); ctx.ellipse(pr.x + 9, pr.y - 9, 4.5, 5, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#b9b2a0'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pr.x + 19, pr.y + 14); ctx.lineTo(pr.x + 19, pr.y - 30); ctx.lineTo(pr.x + 14, pr.y - 30); ctx.stroke();
+        ctx.fillStyle = '#ffe9a8';
+        ctx.beginPath(); ctx.roundRect(pr.x + 10, pr.y - 30, 8, 10, 2); ctx.fill();
+      } else if (pr.kind === 'forge') {
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
+        ctx.setLineDash([8, 10]); ctx.lineDashOffset = t * 20;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.9; ctx.lineWidth = 5; ctx.strokeStyle = '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y - 8, 60, '#ff9a3d', 0.4 + 0.18 * Math.sin(t * 6));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 15, 26, 8, 0, 0, TAU); ctx.fill();
+        // an anvil: foot, waist, and a face with a horn to one side
+        ctx.fillStyle = '#3a3448';
+        ctx.beginPath(); ctx.roundRect(pr.x - 18, pr.y + 4, 36, 11, 3); ctx.fill();
+        ctx.fillStyle = '#4c455e';
+        ctx.fillRect(pr.x - 9, pr.y - 8, 18, 13);
+        ctx.fillStyle = '#6b6384';
+        ctx.beginPath(); ctx.moveTo(pr.x - 20, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 30, pr.y - 14); ctx.lineTo(pr.x + 16, pr.y - 8); ctx.lineTo(pr.x - 20, pr.y - 8); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2; ctx.stroke();
+        // the work on it, glowing
+        ctx.fillStyle = '#ffd08a';
+        ctx.fillRect(pr.x - 10, pr.y - 24 - Math.sin(t * 6) * 0.6, 16, 4);
+      } else if (pr.kind === 'altar') {
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = '#f3d9c8'; ctx.lineWidth = 2;
+        ctx.setLineDash([3, 9]); ctx.lineDashOffset = -t * 14;
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (pr.charge > 0) {
+          ctx.globalAlpha = 0.95; ctx.lineWidth = 5; ctx.strokeStyle = '#ffd0d8';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + pr.charge * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y - 10, 62, '#d94be0', 0.35 + 0.15 * Math.sin(t * 3.1));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y + 15, 28, 9, 0, 0, TAU); ctx.fill();
+        // a squat slab on two steps, its bowl alight (violet, not red: red is the rift's danger colour)
+        ctx.fillStyle = '#2a2038';
+        ctx.beginPath(); ctx.roundRect(pr.x - 26, pr.y + 4, 52, 12, 3); ctx.fill();
+        ctx.fillStyle = '#3b2d4f';
+        ctx.beginPath(); ctx.roundRect(pr.x - 19, pr.y - 6, 38, 12, 3); ctx.fill();
+        ctx.fillStyle = '#54406e';
+        ctx.beginPath(); ctx.moveTo(pr.x - 22, pr.y - 6); ctx.lineTo(pr.x - 16, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 22, pr.y - 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#e052c8';
+        ctx.beginPath(); ctx.ellipse(pr.x, pr.y - 20, 12, 4, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#ffc6f5';
+        const fl = 5 + 2 * Math.sin(t * 9 + pr.x);
+        ctx.beginPath(); ctx.moveTo(pr.x - 5, pr.y - 21); ctx.quadraticCurveTo(pr.x - 2, pr.y - 28 - fl, pr.x + 1, pr.y - 34 - fl); ctx.quadraticCurveTo(pr.x + 6, pr.y - 27, pr.x + 5, pr.y - 21); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = 'rgba(10,6,22,0.75)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pr.x - 22, pr.y - 6); ctx.lineTo(pr.x - 16, pr.y - 20); ctx.lineTo(pr.x + 16, pr.y - 20); ctx.lineTo(pr.x + 22, pr.y - 6); ctx.closePath(); ctx.stroke();
+      } else if (pr.kind === 'breach') {
+        const act = pr.active, pulse = 0.5 + 0.5 * Math.sin(t * (act ? 7 : 2.4));
+        ctx.globalAlpha = act ? 0.8 : 0.5;
+        ctx.strokeStyle = '#c06bff'; ctx.lineWidth = act ? 3 : 2;
+        ctx.setLineDash([14, 10]); ctx.lineDashOffset = t * (act ? 60 : 18);
+        ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        if (act) {
+          // the timer burns down around the rim
+          ctx.globalAlpha = 0.95; ctx.lineWidth = 5; ctx.strokeStyle = pr.left < 7 ? '#ff5a7a' : '#ffffff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, -Math.PI / 2, -Math.PI / 2 + Math.min(1, pr.left / pr.total) * TAU); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'lighter';
+        drawGlow(pr.x, pr.y, 80, '#a35cff', 0.3 + 0.2 * pulse);
+        ctx.globalCompositeOperation = 'source-over';
+        // the tear itself: a jagged dark slit with a bright edge
+        const h = 34 + 4 * pulse, w = 9 + 3 * pulse;
+        ctx.fillStyle = '#12061f';
+        ctx.beginPath();
+        ctx.moveTo(pr.x, pr.y - h); ctx.lineTo(pr.x + w, pr.y - h * 0.35); ctx.lineTo(pr.x + w * 0.4, pr.y); ctx.lineTo(pr.x + w * 1.1, pr.y + h * 0.4); ctx.lineTo(pr.x, pr.y + h);
+        ctx.lineTo(pr.x - w, pr.y + h * 0.3); ctx.lineTo(pr.x - w * 0.4, pr.y - h * 0.05); ctx.lineTo(pr.x - w * 1.1, pr.y - h * 0.45);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#e3b8ff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+        const label = !act ? 'Breach' : pr.mode === 'champion' ? 'Slay the champion' : pr.mode === 'hold' ? 'Hold ' + Math.ceil(pr.need - pr.got) + 's' : pr.got + ' / ' + pr.need;
+        ctx.font = `800 ${act ? 20 : 14}px ${PS.FONT_NUM}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,8,28,0.9)';
+        ctx.strokeText(label, pr.x, pr.y - h - 16);
+        ctx.fillStyle = act && pr.left < 7 ? '#ff8a9a' : '#e3b8ff';
+        ctx.fillText(label, pr.x, pr.y - h - 16);
+        if (act && pr.mode === 'hold') {
+          // how much of the stand is done, as a wash that fills the ring
+          ctx.globalAlpha = 0.14; ctx.fillStyle = '#c06bff';
+          ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r * Math.sqrt(pr.got / pr.need), 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+        }
+        if (act) {
+          const tl = Math.ceil(pr.left) + 's';
+          ctx.font = `700 13px ${PS.FONT_NUM}`;
+          ctx.strokeText(tl, pr.x, pr.y + h + 14);
+          ctx.fillText(tl, pr.x, pr.y + h + 14);
+        }
       } else if (pr.kind === 'shrine') {
         ctx.globalAlpha = 0.5;
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
@@ -619,14 +786,15 @@
     for (const k of list) {
       if (k.kind === 'xp' || k.kind === 'gold' || !visible(k.x, k.y, 30)) continue;
       const bob = Math.sin(t * 4 + k.x * 0.05) * 2;
-      if (k.kind === 'chest' || k.kind === 'bosschest') {
-        const boss = k.kind === 'bosschest';
+      if (k.kind.endsWith('chest')) {
+        const boss = k.kind !== 'chest';
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(k.x, k.y, boss ? 90 : 60, boss ? '#c06bff' : '#ffcf5c', 0.5 + 0.15 * Math.sin(t * 5));
         ctx.globalCompositeOperation = 'source-over';
         drawChest(k.x, k.y + bob, boss ? 1.25 : 1, boss);
       } else {
-        const col = k.kind === 'heal' ? '#ff5a7a' : k.kind === 'magnet' ? '#8ad1ff' : '#ffffff';
+        // health is green on the field: red is the rift's, and a red orb this size would read as a bullet
+        const col = k.kind === 'heal' ? '#7dffa0' : k.kind === 'magnet' ? '#8ad1ff' : '#ffffff';
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(k.x, k.y, 30, col, 0.5);
         ctx.globalCompositeOperation = 'source-over';
@@ -635,6 +803,17 @@
         ctx.beginPath(); ctx.arc(k.x, k.y + bob, 12, 0, TAU); ctx.fill();
         PS.Icons.draw(ctx, k.kind === 'heal' ? 'heart' : k.kind === 'magnet' ? 'magnet' : 'bomb', k.x, k.y + bob, 17, col);
       }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /** a ring of n small square dots, turning slowly: the cheap way to show a reach */
+  function dotRing(x, y, r, color, n, turn) {
+    if (!visible(x, y, r + 4)) return;
+    ctx.fillStyle = color; ctx.globalAlpha = 0.55;
+    for (let i = 0; i < n; i++) {
+      const a = turn + (i * TAU) / n;
+      ctx.fillRect(x + Math.cos(a) * r - 1.5, y + Math.sin(a) * r - 1.5, 3, 3);
     }
     ctx.globalAlpha = 1;
   }
@@ -666,7 +845,7 @@
       if (!visible(e.x, e.y, e.r * 2.6)) continue;
       if (e.boss) { drawBoss(e, t, G.frame); continue; }
       const spr = SPR[e.def.sprite];
-      const sc = e.r / e.def.r;
+      const sc = (e.r / e.def.r) * (1 + e.hop * 0.4); // a leaping toad swells toward the camera
       const frozen = e.freezeT > 0;
       const wob = frozen ? 0 : Math.sin(t * 9 + e.wob) * 0.035;
       // each enemy runs its walk cycle from its own offset; frozen ones hold a pose
@@ -675,7 +854,7 @@
       const flash = e.flash > 0;
       const img = flash && !e.big ? tinted(fr, 'white') : frozen ? tinted(fr, 'ice') : fr.img;
       ctx.globalAlpha = e.spawnT > 0 ? Math.max(0.15, 1 - e.spawnT / 0.35) : 1;
-      spriteTf(e.x, e.y, e.ang, sc * (1 + wob), sc * (1 - wob));
+      spriteTf(e.x, e.y - e.hop * 34, e.ang, sc * (1 + wob), sc * (1 - wob));
       ctx.drawImage(img, spr.x, spr.y, spr.w, spr.h);
       if (flash && e.big) { ctx.globalAlpha = 0.4; ctx.drawImage(tinted(fr, 'white'), spr.x, spr.y, spr.w, spr.h); }
     }
@@ -691,6 +870,24 @@
       if (e.chillT > 0 && e.freezeT <= 0) {
         ctx.globalAlpha = 0.35; ctx.fillStyle = '#9fe6ff';
         ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 0.9, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      if (e.def.hoard) {
+        // how long before it slips away, as a ring that empties
+        ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 7, -Math.PI / 2, -Math.PI / 2 + TAU * Math.max(0, e.life / 15)); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      // Reach rings and ward marks are drawn as a few square dots, not dashed arcs: in the software rasterizer a thin ring
+      // costs as much as its whole bounding square, and a warder can mark half the horde.
+      if (e.affixes && (e.affixes.includes('warding') || e.affixes.includes('grasping'))) {
+        const gr = e.affixes.includes('grasping');
+        dotRing(e.x, e.y, gr ? 330 : 150, gr ? '#ff7ad9' : '#bff3ff', gr ? 44 : 28, t * (gr ? 0.08 : 0.06));
+      }
+      if (e.def.ward) {
+        dotRing(e.x, e.y, e.def.ward.r * (e.elite ? 1.3 : 1), '#bff3ff', 28, t * 0.06);
+      } else if (e.wardT > t) {
+        // warded: a pale bar over the enemy
+        ctx.fillStyle = '#bff3ff'; ctx.globalAlpha = 0.85;
+        ctx.fillRect(e.x - 5, e.y - e.r - 7, 10, 2.5); ctx.globalAlpha = 1;
       }
       if (e.markT > 0) {
         ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
@@ -820,10 +1017,27 @@
     if (p.auraR > 0) {
       ctx.globalCompositeOperation = 'lighter';
       drawGlow(x, y, p.auraR * 1.15, '#ff5a1f', 0.14 + 0.04 * Math.sin(t * 9));
-      ctx.globalAlpha = 0.6; ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2.5;
-      ctx.setLineDash([14, 10]); ctx.lineDashOffset = -t * 60;
+      // the hero's own aura: a soft solid edge (marching dashes belong to the rift's danger zones)
+      ctx.globalAlpha = 0.4; ctx.strokeStyle = '#ff9a4d'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x, y, p.auraR, 0, TAU); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (p.breathT > 0) {
+      // Frost Breath: a soft wedge of cold with no hard edge, brighter toward the mouth
+      p.breathT -= G.rdt || 0.016;
+      const k = Math.min(1, p.breathT / 0.2), a0 = p.aim - p.breathHalf, a1 = p.aim + p.breathHalf;
+      ctx.fillStyle = '#bdf0ff';
+      for (const [f, al] of [[1, 0.07], [0.72, 0.07], [0.42, 0.09]]) {
+        ctx.globalAlpha = al * k * (0.85 + 0.15 * Math.sin(t * 30 + f * 9));
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, p.breathR * f, a0, a1); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (p.miasmaR > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      drawGlow(x, y, p.miasmaR * 1.1, '#5fb82e', 0.13 + 0.04 * Math.sin(t * 5));
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#b8f078'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, p.miasmaR, 0, TAU); ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
     PS.FX.drawGhosts(ctx);
@@ -945,6 +1159,14 @@
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
+    // a class resource, when a talent gives the hero one (Frenzy, the Capacitor): a thin meter that flares when full
+    const m = p.cls.meter && p.cls.meter(p);
+    if (m) {
+      yy += h + 3; const mh = 2.6, x0 = x - W / 2, v = U.clamp(m.v, 0, 1), full = v >= 1;
+      ctx.fillStyle = back; ctx.fillRect(x0 - 1.2, yy - 1.2, W + 2.4, mh + 2.4);
+      ctx.fillStyle = full && Math.sin(G.time * 14) > 0 ? '#ffffff' : m.color;
+      ctx.fillRect(x0, yy, W * v, mh);
+    }
   }
   function drawOrbits(G) {
     for (const o of G.orbits) {
@@ -1008,7 +1230,7 @@
       else if (k === 'spore') { drawGlow(p.x, p.y, 15, '#8fe04a', 0.8); }
       else if (k === 'shard') { drawGlow(p.x, p.y, 15, '#6fd8ff', 0.55); }
       else if (k === 'scythe') { drawGlow(p.x, p.y, 36 * p.size, p.color, 0.4); }
-      else if (k === 'wave') { drawGlow(p.x, p.y, 40, '#bcd0ff', 0.4); }
+      else if (k === 'wave') { drawGlow(p.x, p.y, 40 * p.size, p.color === '#fff' ? '#bcd0ff' : p.color, 0.4); }
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -1054,7 +1276,7 @@
         ctx.strokeStyle = '#3a2a4a'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(Math.cos(1.0) * 20, Math.sin(1.0) * 20); ctx.lineTo(-10, 4); ctx.stroke();
       } else if (k === 'wave') {
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+        ctx.strokeStyle = p.color; ctx.lineWidth = 6; ctx.lineCap = 'round';
         ctx.globalAlpha = Math.min(1, p.life * 4);
         ctx.beginPath(); ctx.arc(-22, 0, 36, -0.85, 0.85); ctx.stroke();
         ctx.globalAlpha = 1;
@@ -1073,12 +1295,20 @@
     for (const s of G.strikes) {
       const t = Math.min(1, s.t / s.delay);
       if (s.kind === 'meteor') {
-        ctx.globalAlpha = 0.05 + 0.1 * t;
-        ctx.fillStyle = '#ff7a3d';
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 0.45;
-        ctx.strokeStyle = '#ffb061'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (1.25 - 0.25 * t), 0, TAU); ctx.stroke();
+        // the hero's own strike: a thin aiming reticle with four ticks, never a filling disc (those are the rift's)
+        const rr = s.r * (1.2 - 0.2 * t);
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = '#ffe2b8'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 8]);
+        ctx.beginPath(); ctx.arc(s.x, s.y, rr, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.45; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const a = i * Math.PI / 2 + Math.PI / 4, c = Math.cos(a), sn = Math.sin(a);
+          ctx.moveTo(s.x + c * rr * 0.86, s.y + sn * rr * 0.86); ctx.lineTo(s.x + c * rr * 1.08, s.y + sn * rr * 1.08);
+        }
+        ctx.stroke();
         // falling rock
         const fy = s.y - (1 - t) * 520, fx = s.x + (1 - t) * 170;
         ctx.globalCompositeOperation = 'lighter';
@@ -1117,10 +1347,12 @@
     const list = G.eprojs;
     if (!list.length) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // every hostile bullet wears the danger colour, whoever fired it; a bullet the hero has turned is drawn elsewhere, in blue
+    const col = Render.dangerColor();
     for (let i = 0; i < list.length; i++) {
       const b = list[i];
       if (!visible(b.x, b.y, 24)) continue;
-      const c = bulletSprite(b.color, b.r), h = c.width / 2;
+      const c = bulletSprite(col, b.r), h = c.width / 2;
       ctx.drawImage(c, Math.round((b.x - camL) * scale - h), Math.round((b.y - camT) * scale - h));
     }
     worldTf();
@@ -1185,18 +1417,22 @@
       ctx.closePath(); ctx.fill();
       PS.Icons.draw(ctx, icon, 0, 0, 18, color);
     };
-    for (const pr of G.props) if (!pr.dead) mark(pr.x, pr.y, pr.kind === 'chest' ? '#ffcf5c' : '#ffe9a8', pr.kind === 'chest' ? 'chest' : 'spark');
+    // a chest the hero cannot pay for is not worth an arrow: fewer markers, each one meaning something to do
+    const afford = p.gold >= PS.Director.chestPrice();
+    for (const pr of G.props) if (!pr.dead && (pr.kind !== 'chest' || pr.cursed || afford)) { const m = PROP_MARK[pr.kind]; mark(pr.x, pr.y, pr.cursed ? '#c77dff' : m[0], m[1]); }
+    const hoarder = PS.Director.hoarder;
+    if (hoarder && !hoarder.dead) mark(hoarder.x, hoarder.y, '#ffd35c', 'coin');
     // only the nearest heal/magnet is worth pointing at, and heals only when hurt
     let heal = null, hd = 1e12, mag = null, md = 1e12;
     for (const k of G.pickups) {
-      if (k.kind === 'chest' || k.kind === 'bosschest') mark(k.x, k.y, '#c77dff', 'chest');
+      if (k.kind.endsWith('chest')) mark(k.x, k.y, '#c77dff', 'chest');
       else if (k.kind === 'heal' || k.kind === 'magnet') {
         const d = U.dist2(k.x, k.y, p.x, p.y);
         if (k.kind === 'heal') { if (d < hd) { hd = d; heal = k; } }
         else if (d < md) { md = d; mag = k; }
       }
     }
-    if (heal && p.hp < p.stats.maxHp * 0.65) mark(heal.x, heal.y, '#ff5a7a', 'heart');
+    if (heal && p.hp < p.stats.maxHp * 0.65) mark(heal.x, heal.y, '#7dffa0', 'heart');
     if (mag) mark(mag.x, mag.y, '#8ad1ff', 'magnet');
     if (G.boss) mark(G.boss.x, G.boss.y, '#ff4d6d', 'skull');
     for (const e of G.enemies) if (e.elite) mark(e.x, e.y, '#ff9a4d', 'skull');
@@ -1223,6 +1459,8 @@
   /* ------------------------------------------------------------------ public */
   const Render = {
     BIOMES,
+    /** the colour everything hostile is drawn in (Settings, Danger colour) */
+    dangerColor() { return DANGER_COLORS[PS.Save.data.settings.danger] || DANGER_COLORS.red; },
     prof: null, // set to {} to collect per-layer draw timings (ms)
     init(cv) {
       canvas = cv;

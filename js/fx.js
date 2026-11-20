@@ -115,7 +115,9 @@
 
     /* ------------------------------------------------------------ emitters */
     dmgNum(x, y, dmg, crit, el, dot) {
-      if (!PS.Save.data.settings.dmgNums) return;
+      // Settings, Damage numbers: all of them, critical hits only, or none (true and false are the old on/off switch)
+      const mode = PS.Save.data.settings.dmgNums;
+      if (!mode || mode === 'off' || (mode === 'crits' && !crit)) return;
       if (nums.length >= MAX_NUMS) {
         if (dot || !crit) return;
         nums.shift();
@@ -185,9 +187,11 @@
       budget += 320;
       burst(x, y, 110, col, 560, 1.2, 7, STREAK);
       burst(x, y, 50, '#ffffff', 380, 0.9, 5);
-      for (let i = 0; i < 4; i++) rings.push({ x, y, r: 200 + i * 130, life: 0.5 + i * 0.15, max: 0.5 + i * 0.15, color: col, w: 8 });
+      // the rings and rays of a kill are gold whatever the boss: a red boss must not ring the hero in the colour of danger
+      const win = '#ffe2a6';
+      for (let i = 0; i < 4; i++) rings.push({ x, y, r: 200 + i * 130, life: 0.5 + i * 0.15, max: 0.5 + i * 0.15, color: win, w: 8 });
       booms.push({ x, y, r: 320, life: 0.6, max: 0.6, color: col, big: true });
-      FX.rays(x, y, 460, col, 14, 1.1);
+      FX.rays(x, y, 460, win, 14, 1.1);
       flares.push({ x, y, r: e.r * 5, color: '#ffffff', life: 0.4, max: 0.4 });
       decals.push({ x, y, r: e.r * 3.6, color: col, life: 7, max: 7 });
       FX.fallen = { e, x, y, life: 0.9, max: 0.9, painted: false };
@@ -334,6 +338,7 @@
     },
     flash(color, a) {
       const G = PS.G;
+      if (PS.Save.data.settings.flash === false) a *= 0.2; // switched off in Settings: a hint of colour, no more
       G.flashA = Math.max(G.flashA, a);
       G.flashCol = color;
     },
@@ -433,11 +438,12 @@
         if (!seen(r, rad, view)) continue;
         ctx.strokeStyle = r.color;
         if (echo || r.w >= 6) {
-          ctx.globalAlpha = (1 - t) * 0.25;
+          ctx.globalAlpha = (1 - t) * 0.16;
           ctx.lineWidth = r.w * 3.2 * (1 - t) + 2;
           ctx.beginPath(); ctx.arc(r.x, r.y, rad * 0.93, 0, TAU); ctx.stroke();
         }
-        ctx.globalAlpha = (1 - t) * 0.95;
+        // shock rings are the hero's own and harmless: kept light, so the solid red discs of the rift stand out against them
+        ctx.globalAlpha = (1 - t) * (PS.Save.data.settings.subtleFx ? 0.3 : 0.62);
         ctx.lineWidth = r.w * (1 - t) + 1;
         ctx.beginPath(); ctx.arc(r.x, r.y, rad, 0, TAU); ctx.stroke();
       }

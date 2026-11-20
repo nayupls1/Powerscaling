@@ -11,7 +11,7 @@ const Daily = (globalThis as any).PS.Daily as {
 };
 export const DEPTH_MAX = 10;
 
-export const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper'];
+export const CLASSES = ['vanguard', 'pyromancer', 'ranger', 'reaper', 'stormcaller', 'frostwarden', 'plaguebearer'];
 const MAX_BODY = 64 * 1024;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 const TOKEN_RE = /^[A-Za-z0-9._-]{16,128}$/;

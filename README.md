@@ -37,21 +37,37 @@ With a mouse or gamepad, health and the three cooldowns sit bottom-centre, and a
 
 ## What is in it
 
-- **Four classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter) and Reaper (summoner, unlocked by killing a boss). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
-- **18 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
+- **Seven classes** — Vanguard (melee bruiser), Pyromancer (explosive caster), Ranger (piercing sharpshooter), Reaper (summoner, unlocked by killing a boss), Stormcaller (instant chain lightning, unlocked by slaying the Rift Lord), Frostwarden (a cone of freezing breath at close range, unlocked by slaying ten bosses in all) and Plaguebearer (fills the horde with Poison, then detonates it; unlocked by striking three different pacts). Each has its own attack, ability, dash and three talent paths; you advance one path every 6 levels, and only one path can reach its final tier.
+- **24 skills across six elements** — Ember, Rime, Tempest, Blight, Iron and Abyss. Owning 2, 4 and 6 skills of one element unlocks set bonuses, so builds can go deep on one element or split across two.
 - **Slots you grow into** — a run starts with only the class attack. Skill slots open at levels 2, 5, 9, 14 and 20, tome slots at 2, 4, 7, 11, 16 and 22, and the HUD shows each locked slot with the level that opens it.
 - **Reactions** — hit one enemy with two different elements within 4 seconds and the pair reacts: fifteen reactions, one for every pair (Ember and Blight *Combust* the poison stacks, Rime and Tempest *Superconduct* into a stun, Iron and Abyss *Sunder* the crowd). A split build is a real build, not a failed mono-element one. The pause screen lists the reactions your current skills can set off, and a new-skill card says what it would react with.
 - **Evolutions** — a skill at level 6 evolves when you hold its matching tome, then can be overcharged without limit.
-- **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 38 relics from chests, elites and bosses, and blessings from shrines on the map.
+- **Tomes, relics and shrine blessings** — slotted stat passives with rarity-scaled upgrades, 56 relics from chests, elites and bosses, and blessings from shrines on the map.
+- **Resonances** — twelve named sets of two or three relics (Bloodline, Timekeeper, Juggernaut…) give a bonus of their own once you hold every piece. A relic card says which set it belongs to and when it would complete one.
+- **Altars and breaches** — dark altars offer three of thirteen pacts: a strong gift with a price that lasts the run (35% more damage for a fifth of your health, a rare relic for elites that come 40% more often), or you can walk away. Breaches are a trial: step in to wake one and beat it before the timer on its rim burns down, and it leaves a relic behind. There are three kinds: slay enough of what pours out, kill the champion that climbs out, or hold your ground inside the ring.
+- **Forges** — now and then a rift forge kindles on the map. Hold its circle and choose one of your own skills to gain a level (or an overcharge once it is maxed), so an evolution can be steered toward instead of waited for.
+- **A merchant** — she sets up for a little over a minute at a time and sells one thing for gold: a tonic, a reroll, a banish, a level for a skill, or a relic.
+- **Guarded chests** — some chests on the map ask no gold. Open one and an elite steps out of it; you keep the relic either way, and the elite drops another if you can kill it.
+- **Hoarders** — every couple of minutes a Rift Hoarder scurries out with a sack of gold and a relic and runs for it, shedding coins as it is hurt. Kill it before the ring around it empties, or it slips away.
 - **Bullets you can fight back against** — your class attack cuts enemy bullets out of the air (melee swings bat them back), and a timed Ward reflects everything around you. Both recharge your ability.
+- **Red means danger** — every enemy bullet, blast, beam and shockwave is drawn in one reserved red, whoever cast it, and the blasts carry a dashed rim that flashes white before they land. Settings can change that colour to pink or white, and a *Calmer screen* switch turns on the quieter options together: the hero's own effects at half strength, numbers for critical hits only, no shake or flashes. The hero's own ground effects are soft-edged, and their strikes are marked with a thin reticle, so a glance tells you which circles to leave.
 - **No standing still** — the rift shells the ground under you and Bombardiers lob blasts at your position; both are trivial to sidestep and fatal to ignore.
-- **Elites with affixes** — every elite carries one of seven affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding or Frenzied. Deeper rifts and overtime stack more than one.
-- **Four horde shapes** — the closing ring and the stampede, then a pincer from two sides and a wall that sweeps the whole screen with a single gap in it.
-- **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score.
-- **Rift Depths** — beating the Rift Lord opens Depth 1, and winning at your deepest depth opens the next, up to 10. Each depth adds one named modifier on top of all the ones before it (sturdier hordes, elites in pairs, bosses that enrage early), hardens the horde by a further 6% health and 3% damage, and adds 15% to score and 10% to Essence. Depth 10 is meant for a full skill tree and clean play.
-- **Daily rift** — one seed a day, the same for everyone: a set class, one of eight mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence.
+- **A horde with roles** — fifteen enemy types arrive through the run. Besides chasers, chargers and gunners there are Rift Toads, which crouch, mark the spot you stand on and leap onto it, and Warders, which shield every enemy inside their dotted ring until you cut them down.
+- **Elites with affixes** — every elite carries one of ten affixes, named over its head: Shielded, Volatile, Blinking, Mending, Molten, Brooding, Frenzied, Splitting, Warding or Grasping. Deeper rifts and overtime stack more than one.
+- **Rift tides** — every few minutes the rules bend for a short spell: a Hunter's Moon (a faster horde, richer gems), Gold Rain, Stillness (everything slows), a Power Surge (your attacks come faster), Echoes (skills fire twice), Harvest (gems fly to you) or Open Season (two elites with richer chests). The tide and its seconds show under the clock.
+- **Six horde shapes** — the closing ring and the stampede, then a pincer from two sides, a wall that sweeps the whole screen with a single gap in it, a coil that arrives from one side after another, and a spearhead with a heavy at its point.
+- **Bosses** — one every three minutes with telegraphed attack patterns. Kill the Rift Lord at 12:00 to win the run, then keep going in overtime for score. Overtime has two bosses of its own that the run has not shown you: Solenne, the Dying Star, who pulls you in before she bursts and lays blasts in a checkerboard, and Veyra, the Mirror, whose blasts follow your footsteps and close around you in a ring.
+- **Boss rush** — once the Rift Lord has fallen, any class can run the gauntlet: all five bosses back to back, each as tough as it is in a real run, with a burst of level-ups to spend before every fight. Scored on speed, with a best time kept per class.
+- **Relaxed mode** — a toggle on the class screen for a gentler rift: enemies hit 30% softer, the horde is a little thinner, the ground gives way less often and healing is stronger. It is worth 60% of the score and 75% of the Essence and stays off the leaderboard. A Relaxed win is not counted as slaying the Rift Lord: it opens no class, depth or boss rush, and cannot earn the feats that are about beating the rift proper.
+- **Rift Depths** — beating the Rift Lord opens Depth 1, and winning at your deepest depth opens the next, up to 10. Each depth adds one named modifier on top of all the ones before it (sturdier hordes, elites in pairs, bosses that enrage early), hardens the horde by a further 9.5% health and 5.5% damage, and adds 15% to score and 10% to Essence. Depth 10 is meant for a full skill tree and clean play.
+- **Daily rift** — one seed a day, the same for everyone: a set class, one of twelve mutators, and the full skill tree for every hero. Play it as often as you like; your best run of the day goes on the daily board, and the first run each day pays double Essence, with 10% more for every day in a row you have played (up to 50%).
 - **A run summary worth reading** — damage per second and damage taken charted over the run with boss kills and evolutions marked, every damage source, what hurt you, and the reactions you set off.
-- **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery).
+- **Codex** — a record of every relic you have held, evolution awakened, reaction set off, resonance completed, pact struck, elite affix slain and tide weathered, and a bestiary with a note and a kill count for each enemy. Undiscovered entries stay hidden.
+- **Feats** — 61 one-time goals, from slaying the first boss to winning at Depth 10 or beating the Rift Lord with four skills. Each pays Essence the moment it is earned, and the results screen lists the ones a run brought in.
+- **Class mastery** — every run earns the class you played a point of mastery per 1,000 score. Ten ranks, each worth 1% damage for that class.
+- **Sigils** — ten perks, each unlocked by a feat. Wear one into a run: 80 gold in your purse, a spare dash, stronger reactions, or a dark altar waiting at your feet. The daily rift allows none.
+- **Permanent skill tree** — Essence earned every run buys upgrades across four arms (Might, Vitality, Fortune, Mastery), and four bridge nodes in the corners between them (more damage when hurt, an extra relic to choose from, stronger healing, more shrines).
+- **Your runs** — the last 30 runs are kept with how they ended, their build and their seed, and any of them can be played again on the same seed: the same hordes, elites and loot rolls, a different fight. A seed from someone else can be typed in too.
 - **Leaderboard** — every run is scored and ranked, filterable by class. Served by `server.ts` it is global, shared by everyone on that server; opened as a file or from a static host it is stored in the browser's local storage, so it is per device.
 
 ## Progression
@@ -70,11 +86,11 @@ Every direct hit from a skill, an ability or a minion marks the enemy with its e
 
 ### Depths and mutators
 
-A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, damage and speed, elite and horde timing, affix count, chest cost, healing, and a few hero-side knobs. Rift Depths and daily mutators are just functions that turn those knobs, so adding one is a line in `DEPTHS` or `MUTATORS`. With the full tree, the bot's careless player model (`--sloppy`) wins about four runs in five at depth 0, three in five at depth 6 and none at depth 10; the careful one still wins most of its runs there. Nothing in the rules moves the boss schedule, which the server's run validation relies on.
+A run's rules are one flat object (`Data.rules(depth, mutator)`): horde health, damage and speed, elite and horde timing, affix count, chest cost, healing, and a few hero-side knobs. Rift Depths and daily mutators are just functions that turn those knobs, so adding one is a line in `DEPTHS` or `MUTATORS`. With the full tree, the bot's careless player model (`--sloppy`) wins nearly every run at depth 0, about six in seven at depth 3, three in five at depth 6 and one in ten at depth 10; the careful one still wins most of its runs there. Without the tree, the careful model wins about four runs in five at depth 0. Nothing in the rules moves the boss schedule, which the server's run validation relies on.
 
 ### Seeds
 
-Every run has a seed, shown on the pause and results screens. It feeds three independent streams (`js/seed.js`): `sim` for moment-to-moment simulation, `event` for the run's script (which horde comes next, which elite, which affixes) and `loot` for reward cards and relic rolls. Two players on the same seed meet the same hordes and elites in the same order even though their fights differ; with the bot at a fixed time step, the same seed replays the same run exactly. Particles, shake and sound use `Math.random` and cannot disturb a seeded run.
+Every run has a seed, shown on the pause and results screens. It feeds independent streams (`js/seed.js`): `sim` for moment-to-moment simulation and `loot` for reward cards and relic rolls, while the run's script (which horde comes next, which elite and its affixes, which tide, which breach trial) is drawn per numbered event from `RNG.side(name)`, so the third horde is the same horde however late a player meets it. Two players on the same seed meet the same hordes and elites in the same order even though their fights differ; with the bot at a fixed time step, the same seed replays the same run exactly. Particles, shake and sound use `Math.random` and cannot disturb a seeded run.
 
 Horde toughness is a per-minute knot table in `js/director.js` (`HP_KNOTS`), interpolated geometrically, so each act can be tuned on its own. Overtime starts when the Rift Lord falls and ramps until it ends the run. The permanent skill tree roughly doubles a hero's strength when fully bought: enough that a weaker player can grind their way to a win, not so much that a strong one is never threatened.
 
@@ -89,14 +105,15 @@ js/util.js        math helpers, spatial hash
 js/save.js        local storage plus server sync: progress, settings, leaderboard
 js/audio.js       synthesized sound effects and music
 js/icons.js       vector glyph library used by the UI and canvas
-js/data.js        elements, rarities, affinities, tomes, relics, meta tree, reactions, elite affixes, depths, mutators
+js/feats.js       feats: one-time goals that pay Essence
+js/data.js        elements, rarities, affinities, tomes, relics, pacts, meta tree, reactions, elite affixes, depths, mutators
 js/skills.js      skill definitions and behaviour
 js/classes.js     classes, abilities, talent paths
 js/player.js      stats, movement, dash, damage intake, levelling
 js/combat.js      damage pipeline, statuses, reactions, projectiles, zones, hazards
 js/enemies.js     enemy roster, AI and elite affixes
 js/bosses.js      boss fights
-js/director.js    difficulty curves, spawning, drops, chests, shrines
+js/director.js    difficulty curves, spawning, drops, chests, shrines, altars, breaches
 js/rewards.js     reward card generation
 js/fx.js          effects: particles, explosions, bolts, scorch marks, damage numbers, screen shake
 js/models.js      character art: the horde, bosses, heroes and minions
@@ -162,7 +179,7 @@ tools/batch.sh "--sloppy" 14               # two runs per class in parallel
 tools/afk.sh "300 600"                   # idle test: play to T seconds, then let go of the controls
 ```
 
-Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--seed=<text>` (reproducible: the same seed, class and flags replay the same run), `--depth=<0-10>`, `--mutator=<id>`, `--daily[=YYYY-MM-DD]` (that day's rift: its seed, class and mutator, full tree), `--quiet`.
+Flags: `--sloppy` (slow, careless player model), `--random` (random card picks), `--el=<element>` (prefer one element), `--branch=<0-2>` (prefer a talent path), `--tree=full` (all permanent upgrades), `--want=<skill ids>` and `--tomes=<tome ids>` (force a build), `--afk=<seconds>` (stand still from that time), `--seed=<text>` (reproducible: the same seed, class and flags replay the same run), `--depth=<0-10>`, `--mutator=<id>`, `--sigil=<id>`, `--rush` (boss rush), `--relaxed` (Relaxed mode), `--daily[=YYYY-MM-DD]` (that day's rift: its seed, class and mutator, full tree), `--quiet`.
 
 `tools/curve.js` is the balance report. It plays many runs in parallel and averages, per time bucket, the hero's level and loadout against how hard the rift is pushing back: seconds to kill a normal enemy and an elite, how full the screen is relative to the director's target, clearing headroom (raw damage against the toughness of what spawns), damage taken and lowest health. It also lists death times and the average length of each boss fight:
 
@@ -180,6 +197,25 @@ With `--seed`, each run gets its own seed derived from it, so two reports with t
 
 ```sh
 node tools/stress.js 3
+```
+
+`tools/check.sh` runs the checks worth running before a commit (the stress pass, the seed check, the README's counts against the game's data, and the server tests) and prints one line each:
+
+```sh
+tools/check.sh
+```
+
+`tools/determinism.js` plays a seed, then a different run, then the same seed again in one page, for every class, and fails unless both plays match exactly. It catches state a run leaves behind (a module variable, a Director field that `reset()` forgets), which would make a shared seed or the daily rift play differently depending on what was played before:
+
+```sh
+node tools/determinism.js 5
+```
+
+`tools/overtime.js` plays the careful bot with the full tree for up to 30 minutes on a few seeds and fails if any run is still alive: overtime is meant to end every run, and a build that outlasts it means something is feeding the hero as fast as the horde grows.
+
+```sh
+node tools/overtime.js                      # ranger, pyromancer, frostwarden and plaguebearer on two seeds
+node tools/overtime.js reaper --seeds=a,b,c
 ```
 
 `tools/perf.js` measures frame cost. It plays a seeded run with the bot and, at each checkpoint, renders a burst of real frames, splitting the time into simulation, HUD and each canvas layer:

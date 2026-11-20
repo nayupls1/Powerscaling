@@ -6,9 +6,10 @@
   const $ = (id) => document.getElementById(id);
   const esc = U.esc;
   const ico = (name, size, color) => PS.Icons.svg(name, { size: size || 20, color: color || 'currentColor' });
-  const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe' };
+  const CLASS_ICON = { vanguard: 'sword', pyromancer: 'flame', ranger: 'bow', reaper: 'scythe', stormcaller: 'thunder', frostwarden: 'snow', plaguebearer: 'flask' };
 
   let hudT = 0, loadoutSig = '', affSig = '', dashSig = null, curSpec = null, choiceAt = 0, banishMode = false;
+  let codexTab = 'relics', sigilPeek = '', padNav = 0, tideSig = '';
   let selClass = 'vanguard', selNode = 'm1', boardTab = 'all', bannerT = 0, lastScreen = 'scrTitle', padCard = 1;
 
   function hydrate(root) {
@@ -36,6 +37,37 @@
     const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
     return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
   }
+  /** a small portrait of a horde model or a boss, drawn once with the real art and kept as an image */
+  const portraits = {};
+  function portrait(sprite, color, r, px) {
+    const key = sprite + px;
+    if (portraits[key]) return portraits[key];
+    let url = '';
+    try {
+      const cv = document.createElement('canvas'), k = 2;
+      cv.width = cv.height = px * k;
+      const g = cv.getContext('2d'), unit = (px * k) / 3.3;
+      g.setTransform(unit, 0, 0, unit, px * k * 0.52, px * k / 2);
+      PS.Models.enemy(g, sprite, 0.15, color, PS.Models.ink(r), null);
+      url = cv.toDataURL();
+    } catch (e) { url = ''; }
+    return (portraits[key] = url ? `<img class="cx-art" src="${url}" width="${px}" height="${px}" alt="">` : ico('skull', 24));
+  }
+  /** a hero's model as an image, for the class cards */
+  function heroPortrait(id, px) {
+    const key = 'hero:' + id + px;
+    if (portraits[key] !== undefined) return portraits[key];
+    let html = '';
+    try {
+      const cv = document.createElement('canvas'), k = 2;
+      cv.width = cv.height = px * k;
+      const g = cv.getContext('2d'), unit = (px * k) / 5.6;
+      g.setTransform(unit, 0, 0, unit, px * k * 0.44, px * k / 2);
+      PS.Models.hero(g, { cls: D.CLASSES[id], moving: false, walk: 0, swing: 0.15 }, 1.2, PS.Models.ink(14));
+      html = `<img class="class-art" src="${cv.toDataURL()}" width="${px}" height="${px}" alt="">`;
+    } catch (e) { html = ''; }
+    return (portraits[key] = html);
+  }
   const mmss = (sec) => Math.floor(sec / 60) + ':' + String(Math.floor(sec % 60)).padStart(2, '0');
 
   const UI = {
@@ -52,6 +84,8 @@
       click($('navPlay'), () => this.showScreen('scrClass'));
       click($('navDaily'), () => this.showScreen('scrDaily'));
       click($('navTree'), () => this.showScreen('scrTree'));
+      click($('navFeats'), () => this.showScreen('scrFeats'));
+      click($('navCodex'), () => this.showScreen('scrCodex'));
       click($('navBoard'), () => this.showScreen('scrBoard'));
       click($('navHelp'), () => this.showScreen('scrHelp'));
       click($('navSettings'), () => this.showScreen('scrSettings'));
@@ -117,6 +151,8 @@
       if (id === 'scrTree') this.renderTree();
       if (id === 'scrBoard') this.renderBoard();
       if (id === 'scrHelp') this.renderHelp();
+      if (id === 'scrFeats') this.renderFeats();
+      if (id === 'scrCodex') this.renderCodex();
       if (id === 'scrSettings') this.renderSettings($('settingsBody'));
     },
     renderTitle() {
@@ -124,6 +160,10 @@
       $('navEssence').innerHTML = `${ico('essence', 14)} ${U.fmtNum(d.essence)}`;
       const affordable = D.META.some((n) => (d.tree[n.id] || 0) < n.max && this.nodeOpen(n) && d.essence >= D.metaCost(n, d.tree[n.id] || 0));
       $('navTree').classList.toggle('has-news', affordable);
+      const fs = PS.Feats.summary();
+      $('navFeatsPill').innerHTML = `${ico('trophy', 13)} ${fs.done} / ${fs.total}`;
+      const cx = this.codexCount();
+      $('navCodexPill').innerHTML = `${ico('book', 13)} ${Math.floor(100 * cx.done / cx.total)}%`;
       const scope = PS.Save.boardScope ? PS.Save.boardScope('all') : 'device';
       const top = PS.Save.board().slice(0, 5);
       const day = this.dailyInfo();
@@ -147,6 +187,7 @@
           </dl>` : `<p class="muted">No runs yet. The first boss arrives at 3:00. Last that long and the Reaper is yours.</p>`}
           ${affordable ? `<p class="hint">${ico('essence', 14)} You can afford a skill tree upgrade.</p>` : ''}
         </div>
+        ${this.nextGoals()}
         ${top.length ? `<div class="side-card">
           <div class="board-head"><h3>Top runs</h3><span class="scope ${scope}">${scope === 'global' ? 'Everyone' : 'This device'}</span></div>
           <ol class="mini-board">${top.map((r) => {
@@ -156,6 +197,20 @@
         </div>` : ''}`;
     },
 
+    /** a short list of the nearest things to aim for: a class to unlock, the next depth, the cheapest feats left */
+    nextGoals() {
+      const d = PS.Save.data, goals = [];
+      // three runs in and no boss down yet: say that there is a gentler way in
+      if (d.stats.runs >= 3 && d.stats.bosses === 0 && !d.relaxed) goals.push({ icon: 'feather', color: '#9fe6ff', name: 'Finding it rough?', text: 'Switch on Relaxed on the class screen for a gentler rift' });
+      const lockedCls = D.CLASS_IDS.find((id) => !d.unlocked[id]);
+      if (lockedCls) goals.push({ icon: CLASS_ICON[lockedCls], color: D.CLASSES[lockedCls].color, name: D.CLASSES[lockedCls].name, text: D.CLASSES[lockedCls].unlock.text.replace(/ to unlock$/, '') });
+      if (d.stats.wins > 0 && d.depth.max < D.DEPTH_MAX) goals.push({ icon: 'vortex', color: '#9b6bff', name: 'Rift Depth ' + (d.depth.max + 1), text: `Slay the Rift Lord at depth ${d.depth.max}` });
+      const left = PS.Feats.LIST.filter((f) => !d.feats[f.id] && !f.rush && f.group !== 'depth').sort((a, b) => a.essence - b.essence);
+      for (const f of left) { if (goals.length >= 3) break; goals.push({ icon: 'trophy', color: '#f0b94a', name: f.name, text: f.text + ' +' + f.essence + ' Essence' }); }
+      if (!goals.length) return '';
+      return `<div class="side-card"><h3>What's next</h3><ul class="goals">${goals.slice(0, 3).map((g) => `<li style="--c:${g.color}">${ico(g.icon, 16)}<span><b>${esc(g.name)}</b><small>${esc(g.text)}</small></span></li>`).join('')}</ul></div>`;
+    },
+
     renderClasses() {
       const d = PS.Save.data;
       const grid = $('classGrid');
@@ -163,9 +218,11 @@
         const c = D.CLASSES[id], locked = !d.unlocked[id], clear = d.depth.clear[id];
         return `<button class="class-card${id === selClass ? ' sel' : ''}${locked ? ' locked' : ''}" data-cls="${id}" style="--c:${c.color}">
           <span class="class-ico">${ico(locked ? 'lock' : CLASS_ICON[id], 34)}</span>
+          ${heroPortrait(id, 76)}
           <span class="class-name">${c.name}</span>
           <span class="class-title">${locked ? c.unlock.text : c.title}</span>
           ${clear >= 0 ? `<span class="class-clear">${ico('crown', 13)} ${clear > 0 ? 'Depth ' + clear + ' cleared' : 'Rift Lord slain'}</span>` : ''}
+          ${D.masteryRank(d.mastery[id] || 0) ? `<span class="class-clear">${ico('star', 13)} Mastery ${D.masteryRank(d.mastery[id])}</span>` : ''}
         </button>`;
       }).join('');
       grid.querySelectorAll('.class-card').forEach((b) => click(b, () => { selClass = b.dataset.cls; this.renderClasses(); }));
@@ -186,8 +243,17 @@
             <div class="kit"><span class="kit-ico" style="--c:${c.color}">${ico(c.ability.icon, 26)}</span><div><b>${c.ability.name}</b><small>Ability, ${c.ability.cd}s cooldown</small><p>${c.ability.desc}</p></div></div>
             <div class="kit"><span class="kit-ico" style="--c:#bcd0ff">${ico('dash', 26)}</span><div><b>${c.dashName}</b><small>Dash</small><p>A quick burst of movement. You cannot be hurt while dashing.${c.passive ? ' ' + c.passive : ''}</p></div></div>
           </div>
+          ${(() => {
+            const pts = d.mastery[selClass] || 0, rank = D.masteryRank(pts), M = D.MASTERY, lo = rank ? M[rank - 1] : 0, hi = M[rank];
+            return `<div class="mastery" data-tip="Every run with this class earns mastery, a point per 1,000 score. Each rank is +1% damage for this class.">
+              <span><b>Mastery ${rank}</b><small>${rank ? '+' + rank + '% damage' : 'No bonus yet'}${hi ? ` · ${U.fmtNum(hi - pts)} to rank ${rank + 1}` : ' · mastered'}</small></span>
+              <span class="mastery-bar"><i style="width:${hi ? Math.round(100 * (pts - lo) / (hi - lo)) : 100}%"></i></span></div>`;
+          })()}
           ${this.depthPicker()}
-          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
+          ${this.sigilPicker()}
+          <label class="set-row relaxed-row"><span><b>Relaxed</b><small>A gentler rift: enemies hit 30% softer, the ground gives way less often, healing is stronger. Worth 60% score and 75% Essence, and kept off the leaderboard. No depths.</small></span><input type="checkbox" id="relaxedTog" ${d.relaxed ? 'checked' : ''}><i class="switch"></i></label>
+          <button class="btn btn-primary btn-big" id="btnBegin" ${locked ? 'disabled' : ''}>${locked ? c.unlock.text : d.relaxed ? 'Begin a relaxed run' : d.depth.sel ? 'Begin at depth ' + d.depth.sel : 'Begin run'}</button>
+          ${locked ? '' : d.stats.wins > 0 ? `<button class="btn btn-rush" id="btnRush">${ico('swords', 18)} Boss rush<small>${d.rush[selClass] ? 'Best ' + U.fmtTime(d.rush[selClass]) : 'Five bosses, back to back'}</small></button>` : `<p class="depth-hint">${ico('lock', 14)} Slay the Rift Lord to open the boss rush: five bosses, back to back.</p>`}
         </div>
         <div class="cd-tree">
           <h3>Ascension paths <small>one talent every 6 levels, and only one path can reach its final tier</small></h3>
@@ -200,8 +266,34 @@
         </div>`;
       const begin = $('btnBegin');
       if (!locked) click(begin, () => PS.Game.start(selClass));
+      const rt = $('relaxedTog');
+      if (rt) rt.addEventListener('change', () => { d.relaxed = rt.checked; PS.Save.save(); this.renderClasses(); });
+      if ($('btnRush')) click($('btnRush'), () => PS.Game.start(selClass, { rush: true }));
       const step = (id, by) => { const b = $(id); if (b) click(b, () => { d.depth.sel = U.clamp(d.depth.sel + by, 0, d.depth.max); PS.Save.save(); this.renderClasses(); }); };
       step('depthDown', -1); step('depthUp', 1);
+      document.querySelectorAll('#classDetail .sigil').forEach((b) => click(b, () => {
+        const id = b.dataset.sigil;
+        // a locked sigil cannot be worn, but tapping it says what unlocks it (touch screens have no tooltip)
+        if (!d.feats[D.SIGILS[id].feat]) { sigilPeek = sigilPeek === id ? '' : id; this.renderClasses(); return; }
+        sigilPeek = '';
+        d.sigil = d.sigil === id ? '' : id;
+        PS.Save.save(); this.renderClasses();
+      }));
+    },
+    /** one perk to wear into the run; each is unlocked by a feat */
+    sigilPicker() {
+      const d = PS.Save.data, ids = Object.keys(D.SIGILS), open = ids.filter((id) => d.feats[D.SIGILS[id].feat]);
+      if (d.sigil && !open.includes(d.sigil)) d.sigil = '';
+      const cur = D.SIGILS[d.sigil], peek = D.SIGILS[sigilPeek];
+      const peekText = peek ? `${esc(peek.name)}: ${esc(peek.text)} Locked. Feat: ${esc(PS.Feats.BY_ID[peek.feat].name)} (${esc(PS.Feats.BY_ID[peek.feat].text)})` : '';
+      return `<div class="depth sigils">
+        <div class="depth-head"><span><b>Sigil</b><small>${peekText || (cur ? esc(cur.name) + ': ' + esc(cur.text) : open.length ? 'Wear one into the run. None chosen.' : 'Feats unlock sigils: one perk to wear into a run. Tap one to see its feat.')}</small></span><small style="white-space:nowrap">${open.length} / ${ids.length}</small></div>
+        <div class="sigil-row">${ids.map((id) => {
+          const s = D.SIGILS[id], ok = open.includes(id), f = PS.Feats.BY_ID[s.feat];
+          const tip = `<b>${esc(s.name)}</b><br>${esc(s.text)}` + (ok ? '' : `<br><span class='off'>Locked. Feat: ${esc(f.name)} (${esc(f.text)})</span>`);
+          return `<button class="sigil${id === d.sigil ? ' sel' : ''}${ok ? '' : ' locked'}${id === sigilPeek ? ' peek' : ''}" data-sigil="${id}" data-tip="${tip}" aria-label="${esc(s.name)}${ok ? '' : ', locked'}">${ico(ok ? s.icon : 'lock', 20)}</button>`;
+        }).join('')}</div>
+      </div>`;
     },
     /** Rift Depth stepper on the class screen: the modifiers stack, so the list shows everything in force */
     depthPicker() {
@@ -242,11 +334,11 @@
             <li>Everyone plays the same seed: the same hordes and the same elites, in the same order.</li>
             <li>Every hero gets the full skill tree, so the board compares play, not grind.</li>
             <li>Play as often as you like. Your best run of the day counts.</li>
-            <li>Your first run each day pays double Essence.</li>
+            <li>Your first run each day pays double Essence, and 10% more for every day in a row you have played, up to 50%.</li>
           </ul>
           <dl class="record three">
             <div><dt>Your best today</dt><dd>${day.mine.attempts ? U.fmtNum(day.mine.best) : 'None yet'}</dd></div>
-            <div><dt>Runs today</dt><dd>${day.mine.attempts}</dd></div>
+            <div><dt>Day streak</dt><dd>${(() => { const s = PS.Save.data.streak, today = day.date, y = PS.Daily.dateOf(Date.parse(today + 'T00:00:00Z') - 86400000); return s.last === today || s.last === y ? s.n : 0; })()}</dd></div>
             <div><dt>Resets in</dt><dd>${day.left}</dd></div>
           </dl>
           <button class="btn btn-primary btn-big" id="btnDaily">Enter today's rift</button>
@@ -343,9 +435,10 @@
 
     /* ---------------------------------------------------------------- leaderboard */
     renderBoard(fromServer) {
-      const tabs = ['all'].concat(D.CLASS_IDS, 'daily'), daily = boardTab === 'daily';
-      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : t === 'daily' ? 'Daily rift' : D.CLASSES[t].name}</button>`).join('');
+      const tabs = ['all'].concat(D.CLASS_IDS, 'daily', 'history'), daily = boardTab === 'daily';
+      $('boardTabs').innerHTML = tabs.map((t) => `<button class="tab${t === boardTab ? ' sel' : ''}" data-tab="${t}">${t === 'all' ? 'All classes' : t === 'daily' ? 'Daily rift' : t === 'history' ? 'Your runs' : D.CLASSES[t].name}</button>`).join('');
       $('boardTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { boardTab = b.dataset.tab; this.renderBoard(); }));
+      if (boardTab === 'history') { this.renderHistory(); return; }
       // show what we have now; the global rows re-render this when they arrive
       if (!fromServer && PS.Save.fetchBoard) PS.Save.fetchBoard(boardTab);
       const global = PS.Save.boardScope && PS.Save.boardScope(boardTab) === 'global';
@@ -371,6 +464,148 @@
         }).join('')}</tbody></table>`;
     },
 
+    /** the last runs on this device, newest first, each with its seed and a way to play that seed again */
+    renderHistory() {
+      const d = PS.Save.data, rows = d.history;
+      $('boardScope').textContent = 'Your last ' + (rows.length || '') + ' runs on this device';
+      $('boardScope').classList.remove('global');
+      const L = d.life, st = d.stats, hrs = (L.time || 0) / 3600;
+      const tally = [
+        ['Time in the rift', hrs >= 1 ? hrs.toFixed(1) + ' h' : Math.round((L.time || 0) / 60) + ' min'], ['Runs', st.runs], ['Rift Lords slain', st.wins], ['Bosses slain', st.bosses],
+        ['Enemies slain', U.fmtNum(st.kills)], ['Elites slain', U.fmtNum(L.elites || 0)], ['Damage dealt', U.fmtNum(L.dmg || 0)], ['Gold earned', U.fmtNum(L.gold || 0)],
+        ['Reactions set off', U.fmtNum(L.reactions || 0)], ['Bullets deflected', U.fmtNum(L.deflected || 0)], ['Breaches sealed', L.breaches || 0], ['Hoarders caught', L.hoarders || 0],
+        ['Pacts struck', L.pacts || 0], ['Relics held', U.fmtNum(L.relics || 0)], ['Levels gained', U.fmtNum(L.levels || 0)], ['Essence earned', U.fmtNum(d.essenceTotal)],
+      ];
+      const lifeBox = st.runs ? `<dl class="life">${tally.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : '';
+      const seedBox = lifeBox + `<form class="seed-form" id="seedForm"><label for="seedIn">Play a seed</label>
+          <input id="seedIn" type="text" maxlength="40" placeholder="Paste a seed from a friend's run" autocomplete="off">
+          <select id="seedCls" aria-label="Class">${D.CLASS_IDS.filter((id) => d.unlocked[id]).map((id) => `<option value="${id}"${id === selClass ? ' selected' : ''}>${D.CLASSES[id].name}</option>`).join('')}</select>
+          <button class="btn btn-small" type="submit">Play</button></form>`;
+      const wireSeed = () => $('seedForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const v = $('seedIn').value.trim();
+        if (v) { PS.Audio.play('uiClick', { vol: 0.5 }); PS.Game.start($('seedCls').value, { seed: v }); }
+      });
+      if (!rows.length) { $('boardBody').innerHTML = seedBox + '<div class="empty"><p>No runs yet. Every run you finish is kept here with its seed.</p></div>'; wireSeed(); return; }
+      const per = {};
+      for (const r of rows) { const c = per[r.cls] || (per[r.cls] = { n: 0, won: 0, best: 0 }); c.n++; if (r.won) c.won++; c.best = Math.max(c.best, r.score); }
+      $('boardBody').innerHTML = `${seedBox}
+        <div class="hist-sum">${D.CLASS_IDS.filter((id) => per[id]).map((id) => `<span class="chip" style="--rc:${D.CLASSES[id].color}"><b style="color:${D.CLASSES[id].color}">${D.CLASSES[id].name}</b> ${per[id].n} run${per[id].n > 1 ? 's' : ''}, ${per[id].won} won, best <em>${U.fmtNum(per[id].best)}</em></span>`).join('')}</div>
+        <ul class="hist">${rows.map((r, i) => {
+          const c = D.CLASSES[r.cls] || { name: r.cls, color: '#fff' };
+          const how = r.won ? (r.rush ? 'Cleared the gauntlet' : 'Slew the Rift Lord') : r.retired ? 'Walked away' : r.by ? 'Fell to ' + esc(r.by) : 'Fell';
+          const extras = [r.rush ? 'Boss rush' : '', r.relaxed ? 'Relaxed' : '', r.depth ? 'Depth ' + r.depth : '', r.daily ? 'Daily rift' : '', r.sigil && D.SIGILS[r.sigil] ? esc(D.SIGILS[r.sigil].name) : '', (r.pacts || []).length ? (r.pacts.length + ' pact' + (r.pacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · ');
+          return `<li class="hist-row${r.won ? ' won' : ''}" style="--c:${c.color}">
+            <span class="hist-main"><b style="color:${c.color}">${c.name}</b><span class="hist-score">${Math.round(r.score).toLocaleString('en-US')}</span></span>
+            <span class="hist-how">${r.won ? ico('crown', 14) + ' ' : ''}${how} at ${U.fmtTime(r.time)} · level ${r.level} · ${U.fmtNum(r.kills)} slain${extras ? ' · ' + extras : ''}</span>
+            <span class="hist-build muted">${esc((r.build || []).join(', '))}</span>
+            <span class="hist-end"><small class="muted">${new Date(r.date).toLocaleDateString()} · ${r.daily ? 'daily rift' : `seed <span class="seed-text">${esc(String(r.seed))}</span>`}</small>
+              ${r.daily || r.rush ? '' : `<button class="btn btn-small" data-replay="${i}" ${d.unlocked[r.cls] ? '' : 'disabled'}>Play this seed</button>`}</span>
+          </li>`;
+        }).join('')}</ul>`;
+      wireSeed();
+      $('boardBody').querySelectorAll('[data-replay]').forEach((b) => click(b, () => {
+        const r = rows[+b.dataset.replay];
+        PS.Game.start(r.cls, { seed: r.seed, depth: Math.min(r.depth || 0, d.depth.max), relaxed: !!r.relaxed });
+      }));
+    },
+
+    /** the codex's five shelves: what each holds, and how much of it has been found */
+    codexShelves() {
+      const cx = PS.Save.data.codex, S = PS.Skills.DEFS, E = PS.Enemies.DEFS;
+      const evoIds = Object.keys(S).filter((id) => S[id].evo);
+      const foeIds = Object.keys(E).concat(PS.Bosses.DEFS.map((b) => b.id));
+      return [
+        { id: 'relics', name: 'Relics', ids: Object.keys(D.RELICS), has: (id) => !!cx.relics[id] },
+        { id: 'evos', name: 'Evolutions', ids: evoIds, has: (id) => !!cx.evos[id] },
+        { id: 'rx', name: 'Reactions', ids: Object.keys(D.REACTIONS), has: (k) => !!cx.rx[D.REACTIONS[k].name] },
+        { id: 'sets', name: 'Resonances', ids: D.RELIC_SETS.map((s) => s.id), has: (id) => !!cx.sets[id] },
+        { id: 'pacts', name: 'Pacts', ids: Object.keys(D.PACTS), has: (id) => !!cx.pacts[id] },
+        { id: 'rift', name: 'The rift', ids: D.AFFIX_IDS.map((id) => 'affix:' + id).concat(Object.keys(D.TIDES).map((id) => 'tide:' + id)), has: (id) => !!cx.rift[id] },
+        { id: 'foes', name: 'Bestiary', ids: foeIds, has: (id) => cx.foes[id] > 0 },
+      ];
+    },
+    codexCount() {
+      let done = 0, total = 0;
+      for (const s of this.codexShelves()) { total += s.ids.length; done += s.ids.filter(s.has).length; }
+      return { done, total };
+    },
+    renderCodex() {
+      const cx = PS.Save.data.codex, shelves = this.codexShelves(), n = this.codexCount();
+      const sh = shelves.find((s) => s.id === codexTab) || shelves[0];
+      $('codexScope').textContent = `${n.done} of ${n.total} found`;
+      $('codexTabs').innerHTML = shelves.map((s) => `<button class="tab${s === sh ? ' sel' : ''}" data-tab="${s.id}">${s.name} <small>${s.ids.filter(s.has).length}/${s.ids.length}</small></button>`).join('');
+      $('codexTabs').querySelectorAll('.tab').forEach((b) => click(b, () => { codexTab = b.dataset.tab; this.renderCodex(); }));
+      const entry = (known, color, icon, name, sub, text, extra) => `<li class="cx${known ? '' : ' unknown'}" style="--c:${known ? color : '#6d6690'}">
+        <span class="cx-ico">${typeof icon === 'string' && icon[0] === '<' ? icon : ico(known ? icon : 'lock', 24)}</span>
+        <span class="cx-text"><b>${known ? esc(name) : '???'}</b>${sub ? `<small>${sub}</small>` : ''}<span>${text}</span></span>${extra || ''}</li>`;
+      let html = '', hint = '';
+      if (sh.id === 'relics') {
+        hint = 'Relics turn up in chests, on elites and bosses, and in sealed breaches. A relic is recorded once you have held it.';
+        html = [0, 1, 2, 3, 4].map((t) => {
+          const r = D.RARITY[t], ids = sh.ids.filter((id) => D.RELICS[id].tier === t);
+          return `<h3 style="color:${r.color}">${r.name} <small>${ids.filter(sh.has).length} / ${ids.length}</small></h3><ul class="cx-list">${ids.map((id) => {
+            const d = D.RELICS[id], k = sh.has(id);
+            return entry(k, r.color, d.icon, d.name, d.max > 1 && d.max < 99 ? `Stacks ${d.max} times` : d.max >= 99 ? 'Stacks without limit' : 'One only', k ? esc(d.desc) : 'Not found yet.');
+          }).join('')}</ul>`;
+        }).join('');
+      } else if (sh.id === 'evos') {
+        hint = 'A skill at level 6 evolves when you hold its tome. The tome is always shown; the evolution is recorded once you have awakened it.';
+        html = D.ELEMENT_IDS.map((el) => {
+          const ids = sh.ids.filter((id) => PS.Skills.DEFS[id].el === el), e = D.ELEMENTS[el];
+          return `<h3 style="color:${e.color}">${ico(e.icon, 16)} ${e.name}</h3><ul class="cx-list">${ids.map((id) => {
+            const d = PS.Skills.DEFS[id], k = sh.has(id);
+            return entry(k, e.color, d.icon, d.evo.name, `${esc(d.name)} + ${esc(D.TOMES[d.evo.tome].name)}`, k ? esc(d.evo.desc) : esc(d.desc));
+          }).join('')}</ul>`;
+        }).join('');
+      } else if (sh.id === 'rx') {
+        hint = 'Hit one enemy with two different elements within 4 seconds and the pair reacts. The pair is always shown; what it does is recorded once you set it off.';
+        html = `<ul class="cx-list">${sh.ids.map((key) => {
+          const r = D.REACTIONS[key], k = sh.has(key);
+          const pair = `<span class="rx-els">${r.els.map((e) => `<i style="--c:${D.ELEMENTS[e].color}">${ico(D.ELEMENTS[e].icon, 13)}</i>`).join('')}</span>`;
+          return entry(k, D.ELEMENTS[r.els[1]].color, pair, r.name, r.els.map((e) => D.ELEMENTS[e].name).join(' and '), k ? esc(r.text) : 'Not set off yet.');
+        }).join('')}</ul>`;
+      } else if (sh.id === 'sets') {
+        hint = 'Hold every relic of a set in one run and it resonates. A piece is named once you have held that relic; the bonus is recorded once you complete the set.';
+        html = `<ul class="cx-list">${D.RELIC_SETS.map((st) => {
+          const k = sh.has(st.id);
+          const parts = st.ids.map((id) => (cx.relics[id] ? esc(D.RELICS[id].name) : '???')).join(' + ');
+          return `<li class="cx${k ? '' : ' unknown'}" style="--c:${k ? '#f0b94a' : '#6d6690'}"><span class="cx-ico">${ico(k ? 'gem' : 'lock', 24)}</span>
+            <span class="cx-text"><b>${k ? esc(st.name) : '???'}</b><small>${parts}</small><span>${k ? esc(st.text) : 'Not completed yet.'}</span></span></li>`;
+        }).join('')}</ul>`;
+      } else if (sh.id === 'rift') {
+        hint = 'What the rift itself throws at you: an affix is recorded once you have slain an elite that carried it, a tide once you have been through one.';
+        html = `<h3>Elite affixes</h3><ul class="cx-list">${D.AFFIX_IDS.map((id) => { const a = D.AFFIXES[id], k = sh.has('affix:' + id); return entry(k, a.color, 'skull', a.name, '', k ? esc(a.text) : 'Not slain yet.'); }).join('')}</ul>
+          <h3>Rift tides</h3><ul class="cx-list">${Object.values(D.TIDES).map((td) => { const k = sh.has('tide:' + td.id); return entry(k, td.color, td.icon, td.name, k ? td.dur + ' seconds' : '', k ? esc(td.text) : 'Not weathered yet.'); }).join('')}</ul>`;
+      } else if (sh.id === 'pacts') {
+        hint = 'Dark altars offer pacts. A pact is recorded once you have struck it and finished the run.';
+        html = `<ul class="cx-list">${sh.ids.map((id) => {
+          const d = D.PACTS[id], k = sh.has(id);
+          return entry(k, '#ff5a7a', d.icon, d.name, '', k ? `${esc(d.gift)} <em class="cx-price">${esc(d.price)}</em>` : 'Not struck yet.');
+        }).join('')}</ul>`;
+      } else {
+        hint = 'Everything you have slain, across every run.';
+        const E = PS.Enemies.DEFS, B = PS.Bosses.DEFS;
+        const row = (id, name, sub, note, color, art) => { const k = sh.has(id); return entry(k, color, k ? art : 'lock', name, sub, k ? esc(note) : 'Not slain yet.', k ? `<span class="cx-n">${U.fmtNum(cx.foes[id])}<small>slain</small></span>` : ''); };
+        html = `<h3>The horde</h3><ul class="cx-list">${Object.keys(E).map((id) => row(id, E[id].name, '', E[id].note, E[id].color, portrait(id, E[id].color, E[id].r, 52))).join('')}</ul>
+          <h3>Bosses</h3><ul class="cx-list">${B.map((b, i) => row(b.id, b.name, esc(b.title), (b.overtime ? '' : '') + (b.overtime ? 'Waits beyond the Rift Lord, in overtime.' : `Arrives at ${mmss(PS.Director.BOSS_TIMES[i])}.`), b.color, portrait(b.sprite, b.color, b.r, 52))).join('')}</ul>`;
+      }
+      $('codexBody').innerHTML = `<p class="muted cx-hint">${hint}</p>${html}`;
+    },
+    renderFeats() {
+      const have = PS.Save.data.feats, F = PS.Feats, s = F.summary(), sigilOf = {};
+      for (const id in D.SIGILS) sigilOf[D.SIGILS[id].feat] = D.SIGILS[id];
+      $('featsScope').innerHTML = `${s.done} of ${s.total} earned` + (s.left ? `, ${ico('essence', 13)} ${U.fmtNum(s.left)} Essence still to claim` : '');
+      $('featsBody').innerHTML = Object.keys(F.GROUPS).map((g) => {
+        const list = F.LIST.filter((f) => f.group === g);
+        return `<section class="feat-group"><h3>${F.GROUPS[g]} <small>${list.filter((f) => have[f.id]).length} / ${list.length}</small></h3><ul class="feat-list">${list.map((f) => `
+          <li class="feat${have[f.id] ? ' done' : ''}">
+            <span class="feat-ico">${ico(have[f.id] ? f.icon : 'lock', 22)}</span>
+            <span class="feat-text"><b>${esc(f.name)}</b><span>${esc(f.text)}</span>${sigilOf[f.id] ? `<small class="feat-sigil">${ico(sigilOf[f.id].icon, 12)} Unlocks the ${esc(sigilOf[f.id].name)}</small>` : ''}</span>
+            <span class="feat-ess">${have[f.id] ? ico('check', 14) : ico('essence', 13) + ' ' + f.essence}</span>
+          </li>`).join('')}</ul></section>`;
+      }).join('');
+    },
     renderHelp() {
       const k = (s) => `<kbd>${s}</kbd>`;
       $('helpBody').innerHTML = `
@@ -386,15 +621,18 @@
             <li>${k('Esc')}<span>Pause and inspect your build</span></li>
             <li>${k('1')}${k('2')}${k('3')}<span>Pick a reward card</span></li>
           </ul>
-          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus A confirms and B goes back.</p>
+          <p class="muted">Touch screens get a movement stick and auto-aim. On a gamepad: left stick moves, right stick aims, A dashes, B wards, X uses your ability, Start pauses; in menus up and down walk the list, left and right change tabs, A confirms and B goes back.</p>
         </div>
         <div class="help-col">
           <h3>The run</h3>
           <p>Kill enemies, collect the gems they drop, level up. Every level offers three rewards: a new skill, an upgrade, or a tome that boosts your stats. Rarer cards are stronger. You start with only your class attack: new skill and tome slots open as you level, and the HUD shows when.</p>
           <p>Every 6 levels your class ascends: pick which of its three paths to advance. Only one path can reach its final tier, so choose your capstone with care.</p>
-          <p>Gold opens chests on the map for relics. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle.</p>
+          <p>Gold opens chests on the map for relics; a purple chest is free, but an elite stands guard inside it. Elites and bosses drop them for free. Shrines grant a blessing if you hold the circle, a forge lets you pick one of your skills to level up, and a merchant sells one thing for gold before she moves on.</p>
+          <p>Dark altars offer a pact: a strong gift with a price, both for the rest of the run. Step into a breach to wake it and beat its trial before the timer burns down, and it leaves a relic: slay its spawn, kill its champion, or hold the ring.</p>
           <p>Your class attack cuts enemy bullets out of the air, and a well-timed Ward throws them back; both recharge your ability. Keep moving: the rift shells the ground wherever you stand.</p>
-          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score.</p>
+          <p><b style="color:#ff5a72">Red is the rift's.</b> Every bullet, circle, beam and shockwave that can hurt you is drawn in the same red; the circles have a dashed rim and flash white just before they land. Anything in another colour is yours, and harmless to you.</p>
+          <p>Once you have slain the Rift Lord, the class screen offers a boss rush: all five bosses back to back, with a burst of levels to spend before each. It is scored on speed and kept off the leaderboard.</p>
+          <p>A boss arrives every 3 minutes. Beat the Rift Lord at 12:00 to win, then keep going for a bigger score. Overtime has two bosses of its own.</p>
           <p>When a run ends, the summary charts your damage over time, lists every source of it, and shows what hurt you.</p>
         </div>
         <div class="help-col">
@@ -402,6 +640,11 @@
           <p>Each skill belongs to one of six elements. Owning 2, 4 and 6 skills of the same element unlocks set bonuses, so a focused build is far stronger than a scattered one.</p>
           <ul class="els">${D.ELEMENT_IDS.map((id) => `<li style="--c:${D.ELEMENTS[id].color}">${ico(D.ELEMENTS[id].icon, 16)}<b>${D.ELEMENTS[id].name}</b><span>${D.AFFINITY[id][1].text}</span></li>`).join('')}</ul>
           <p>A skill at level 6 evolves if you own its matching tome. An evolved skill counts twice toward its element, and can then be overcharged without limit.</p>
+          <p>Some relics belong to a named set. Hold every piece and the set resonates, with a bonus of its own; a relic card says which set it is part of and when it would complete one.</p>
+          <h3>Between runs</h3>
+          <p>Essence buys permanent upgrades in the skill tree. Feats are one-time goals that pay Essence, and some unlock a sigil: one perk to wear into a run, chosen on the class screen.</p>
+          <p>Every run earns the class you played mastery, and each rank is 1% more damage for that class. The codex records every relic, evolution, reaction, pact and enemy you have met.</p>
+          <p>If the rift is too much, or you only want to unwind, switch on Relaxed on the class screen: a gentler rift that still pays Essence, kept off the leaderboard.</p>
         </div>
         <div class="help-col">
           <h3>Reactions</h3>
@@ -412,7 +655,9 @@
           <h3>Elites and hordes</h3>
           <p>An elite arrives about once a minute and drops a relic chest. Every elite carries an affix, and its name tells you which:</p>
           <ul class="rxs">${D.AFFIX_IDS.map((id) => `<li><span class="rx-els"><i style="--c:${D.AFFIXES[id].color}"></i></span><b>${D.AFFIXES[id].name}</b><span>${D.AFFIXES[id].text}</span></li>`).join('')}</ul>
-          <p>Hordes break over you in four shapes: a closing ring, a stampede from one side, a pincer from two, and a wall that sweeps the whole screen with a single gap to slip through.</p>
+          <p>Two enemies change how you fight: a Rift Toad crouches and leaps onto the spot it marked, and a Warder shields every enemy inside its pale dotted ring, so kill it first.</p>
+          <p>Every few minutes a rift tide bends the rules for a short spell: ${Object.values(D.TIDES).map((t) => `<b style="color:${t.color}">${t.name}</b>`).join(', ')}. Its name and seconds show under the clock.</p>
+          <p>Hordes break over you in six shapes: a closing ring, a stampede from one side, a pincer from two, a wall that sweeps the whole screen with a single gap to slip through, a coil that closes from one side after another, and a spearhead with a heavy at its point.</p>
         </div>
         <div class="help-col">
           <h3>Going deeper</h3>
@@ -433,8 +678,14 @@
         ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
+        <div class="set-row"><span><b>Calmer screen</b><small>One switch for a quieter fight: subtle own effects, numbers for critical hits only, no screen shake or flashes. Each can still be set on its own below</small></span><button class="btn btn-small" data-calm type="button">${s.subtleFx && !s.shake && s.flash === false && s.dmgNums === 'crits' ? 'Restore defaults' : 'Make it calmer'}</button></div>
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
-        ${tog('dmgNums', 'Damage numbers', 'Floating numbers over enemies')}
+        <label class="set-row"><span><b>Danger colour</b><small>The colour of everything that can hurt you. Change it if red is hard to tell from your own effects</small></span>
+          <select data-danger>${[['red', 'Red'], ['pink', 'Pink'], ['white', 'White']].map(([v, l]) => `<option value="${v}"${(s.danger || 'red') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        ${tog('subtleFx', 'Subtle own effects', 'Draw your own ground effects and shock rings at half strength, so danger zones stand out more')}
+        ${tog('flash', 'Screen flashes', 'Full-screen flashes on big hits, bombs and evolutions')}
+        <label class="set-row"><span><b>Damage numbers</b><small>Floating numbers over enemies. Critical hits only keeps the screen quieter</small></span>
+          <select data-dmgnums>${[['all', 'All'], ['crits', 'Critical hits only'], ['off', 'Off']].map(([v, l]) => `<option value="${v}"${(s.dmgNums === true ? 'all' : s.dmgNums || 'off') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="set-row"><span><b>Graphics</b><small>Auto lowers the resolution while frames run slow, and raises it again when they recover</small></span>
           <select data-quality>${[['auto', 'Auto'], ['high', 'Sharp'], ['low', 'Fast']].map(([v, l]) => `<option value="${v}"${(s.quality || 'auto') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
         ${PS.Save.syncCode && PS.Save.syncCode() ? `<div class="set-row set-link"><span><b>Play on another device</b><small>Copy this code there to share your Essence, upgrades and unlocks. Treat it like a password.</small></span>
@@ -451,6 +702,17 @@
       });
       const nm = root.querySelector('[data-name]');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const calm = root.querySelector('[data-calm]');
+      calm.addEventListener('click', () => {
+        const on = !(s.subtleFx && !s.shake && s.flash === false && s.dmgNums === 'crits');
+        s.subtleFx = on; s.shake = !on; s.flash = !on; s.dmgNums = on ? 'crits' : 'all';
+        PS.Save.save(); PS.Audio.play('uiClick', { vol: 0.5 });
+        this.renderSettings(root);
+      });
+      const dn = root.querySelector('[data-dmgnums]');
+      dn.addEventListener('change', () => { s.dmgNums = dn.value; PS.Save.save(); });
+      const dg = root.querySelector('[data-danger]');
+      dg.addEventListener('change', () => { s.danger = dg.value; PS.Save.save(); });
       const q = root.querySelector('[data-quality]');
       q.addEventListener('change', () => { s.quality = q.value; PS.Render.setQuality(q.value); PS.Save.save(); });
       const copy = root.querySelector('[data-copy]');
@@ -493,6 +755,7 @@
       $('screens').hidden = true;
       $('ovOver').hidden = true; $('ovPause').hidden = true; $('ovChoice').hidden = true;
       $('hud').hidden = false;
+      $('hud').classList.remove('tide'); tideSig = '';
       $('touch').hidden = !PS.Input.touch;
       $('toasts').innerHTML = '';
       $('banner').hidden = true;
@@ -553,7 +816,12 @@
       if (G.boss) next = '';
       else if (Dr.bossIdx < Dr.BOSS_TIMES.length) next = 'Boss in ' + U.fmtTime(Dr.BOSS_TIMES[Dr.bossIdx] - G.time);
       else if (Dr.victory) next = 'Beyond the rift';
+      if (Dr.tide) next = Dr.tide.name + ' ' + Math.ceil(Dr.tideLeft) + 's';
+      if (G.rush) next = 'Boss rush, stage ' + Math.min(G.rush.stage + 1, Dr.rushStages) + ' of ' + Dr.rushStages;
       $('hudNext').textContent = next;
+      $('hudNext').style.color = Dr.tide ? Dr.tide.color : '';
+      const tideId = Dr.tide ? Dr.tide.id : '';
+      if (tideId !== tideSig) { tideSig = tideId; const h = $('hud'); h.classList.toggle('tide', !!tideId); if (tideId) h.style.setProperty('--tide', Dr.tide.color); }
       $('bossBar').hidden = !G.boss;
 
       // loadout tiles only re-render when something changed
@@ -643,9 +911,9 @@
       box.innerHTML = spec.cards.map((c, i) => {
         const rar = D.RARITY[c.tier] || D.RARITY[0];
         const col = c.color || (c.el ? elColor(c.el) : rar.color);
-        const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : rar.name;
+        const kind = c.special === 'evolve' ? 'Evolution' : c.special === 'talent' ? 'Ascension' : c.special === 'pact' ? 'Pact' : rar.name;
         const canBan = spec.kind === 'level' && (c.type === 'skill' || c.type === 'tome');
-        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' ? col : rar.color};--c:${col};--d:${i * 70}ms">
+        return `<button class="card r-${rar.id}${c.special ? ' sp-' + c.special : ''} ${canBan ? 'can-ban' : 'no-ban'}${i === padCard && PS.Input.pad ? ' pad-focus' : ''}" data-i="${i}" style="--rc:${c.special === 'talent' || c.special === 'pact' ? col : rar.color};--c:${col};--d:${i * 70}ms">
           <span class="card-key">${i + 1}</span>
           <span class="card-ban">${ico('ban', 22)}</span>
           <span class="card-tag">${esc(c.tag)}</span>
@@ -653,6 +921,8 @@
           <span class="card-title">${esc(c.title)}</span>
           ${c.el ? `<span class="card-el">${ico(D.ELEMENTS[c.el].icon, 13)} ${D.ELEMENTS[c.el].name}</span>` : ''}
           <span class="card-desc">${esc(c.desc)}</span>
+          ${c.price ? `<span class="card-price">${esc(c.price)}</span>` : ''}
+          ${c.cost ? `<span class="card-cost${p.gold < c.cost ? ' poor' : ''}">${ico('coin', 14)} ${c.cost} gold</span>` : ''}
           ${c.lines.map((l) => `<span class="card-line">${esc(l)}</span>`).join('')}
           <span class="card-rar">${kind}</span>
         </button>`;
@@ -668,6 +938,9 @@
           <button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} Skip for 10 gold</button>`;
         click($('actReroll'), () => { if (!this.clickGuard()) this.rerollCards(); });
         click($('actBanish'), () => { if (!this.clickGuard()) { banishMode = !banishMode; this.renderCards(); } });
+        click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
+      } else if (spec.kind === 'pact' || spec.kind === 'shop') {
+        act.innerHTML = `<button class="btn btn-small btn-ghost" id="actSkip">${ico('skip', 16)} ${spec.kind === 'shop' ? 'Buy nothing' : 'Walk away'}</button>`;
         click($('actSkip'), () => { if (!this.clickGuard()) PS.Game.choose(curSpec, null); });
       } else act.innerHTML = '';
       box.classList.toggle('banishing', banishMode);
@@ -687,6 +960,7 @@
         else PS.Audio.play('deny', { vol: 0.5 });
         return;
       }
+      if (card.cost && PS.G.player.gold < card.cost) { PS.Audio.play('deny', { vol: 0.5 }); return; }
       PS.Audio.play('pick');
       PS.Game.choose(curSpec, card);
     },
@@ -745,6 +1019,9 @@
           <div class="chips">${p.tomes.map((t) => `<span class="chip" data-tip="+${t.def.fmt(t.val)} ${t.def.stat.toLowerCase()}">${ico(t.def.icon, 15)} ${t.def.name.replace('Tome of ', '')} <em>${t.level}</em></span>`).join('') || '<span class="muted">None yet.</span>'}</div>
           <h3>Relics</h3>
           <div class="chips">${p.relicOrder.map((id) => { const r = D.RELICS[id]; return `<span class="chip r-${D.RARITY[r.tier].id}" style="--rc:${D.RARITY[r.tier].color}" data-tip="${esc(r.desc)}">${ico(r.icon, 15)} ${esc(r.name)}${p.relics[id] > 1 ? ` <em>×${p.relics[id]}</em>` : ''}</span>`; }).join('') || '<span class="muted">Open chests to find relics.</span>'}</div>
+          ${p.sets && p.sets.length ? `<h3>Resonances</h3><div class="chips">${p.sets.map((st) => `<span class="chip" style="--rc:rgba(240,185,74,0.6)" data-tip="${esc(st.ids.map((id) => D.RELICS[id].name).join(' + '))}<br>${esc(st.text)}">${ico('gem', 15)} ${esc(st.name)}</span>`).join('')}</div>` : ''}
+          ${G.sigil ? `<h3>Sigil</h3><div class="chips"><span class="chip" data-tip="${esc(D.SIGILS[G.sigil].text)}">${ico(D.SIGILS[G.sigil].icon, 15)} ${esc(D.SIGILS[G.sigil].name)}</span></div>` : ''}
+          ${p.pacts.length ? `<h3>Pacts</h3><div class="chips">${p.pacts.map((id) => { const b = D.PACTS[id]; return `<span class="chip pact" data-tip="<b>${esc(b.name)}</b><br>${esc(b.gift)}<br><span class='off'>${esc(b.price)}</span>">${ico(b.icon, 15)} ${esc(b.name)}</span>`; }).join('')}</div>` : ''}
           ${Object.keys(p.boons).length ? `<h3>Blessings</h3><div class="chips">${Object.keys(p.boons).map((id) => { const b = D.BOONS[id]; return `<span class="chip">${ico(b.icon, 15)} +${b.fmt(p.boons[id])} ${b.stat.toLowerCase()}</span>`; }).join('')}</div>` : ''}
           <h3>Stats</h3>
           <dl class="statlist">${stats.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
@@ -767,6 +1044,8 @@
       const pct = (v) => '+' + Math.round((v - 1) * 100) + '%';
       return `${G.daily ? `<p class="muted">Daily rift for ${G.daily}. Everyone has the full skill tree.</p>` : G.depth ? `<p class="muted">Depth ${G.depth}: score ×${D.depthScore(G.depth).toFixed(2)}. In all, the horde has ${pct(G.rules.hp)} health and hits ${pct(G.rules.dmg)} harder.</p>` : ''}
         ${mods.length ? `<ul class="mods">${mods.map((m) => `<li>${ico(m.icon, 15)}<b>${esc(m.name)}</b><span>${esc(m.text)}</span></li>`).join('')}</ul>` : ''}
+        ${PS.Director.tide ? `<ul class="mods"><li style="color:${PS.Director.tide.color}">${ico(PS.Director.tide.icon, 15)}<b>${esc(PS.Director.tide.name)}, ${Math.ceil(PS.Director.tideLeft)}s left</b><span>${esc(PS.Director.tide.text)}</span></li></ul>` : ''}
+        ${G.rush ? `<p class="muted">Boss rush: stage ${Math.min(G.rush.stage + 1, PS.Director.rushStages)} of ${PS.Director.rushStages}.</p>` : ''}
         <p class="muted seed">Seed ${esc(G.seed)}</p>`;
     },
 
@@ -775,8 +1054,8 @@
       const G = PS.G, r = res.run, c = D.CLASSES[r.cls], d = PS.Save.data;
       $('ovChoice').hidden = true; $('ovPause').hidden = true;
       $('hud').hidden = true; $('touch').hidden = true;
-      const title = r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
-      const sub = r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.`
+      const title = G.rush ? (r.won ? 'Gauntlet cleared' : res.retired ? 'Rush abandoned' : 'You fell') : r.won ? 'The rift is broken' : res.retired ? 'Run ended' : 'You fell';
+      const sub = G.rush ? (r.won ? `All ${PS.Director.rushStages} bosses down in ${U.fmtTime(r.time)}.` : `${r.bosses} of ${PS.Director.rushStages} bosses down after ${U.fmtTime(r.time)}.`) : r.won ? `You slew the Rift Lord and pushed ${U.fmtTime(Math.max(0, r.time - 720))} beyond.` : res.retired ? `You walked away after ${U.fmtTime(r.time)}.`
         : G.boss ? `Slain by ${G.boss.def.name}, ${G.boss.def.title}.` : `Overrun after ${U.fmtTime(r.time)}${G.lastHurt ? '. The last blow: ' + esc(G.lastHurt) : ''}.`;
       const sources = Object.keys(G.dmgBy).length;
       const hurt = Object.entries(G.hurtBy).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -786,18 +1065,25 @@
           <h2>${title}</h2>
           <p>${sub}</p>
         </header>
+        ${!r.won && !res.retired && !G.relaxed && !G.rush && !G.daily && d.stats.bosses === 0 && d.stats.runs >= 2 ? `<p class="hint over-tip">${ico('feather', 14)} The first boss is the wall most heroes hit. Essence from every run buys permanent upgrades in the skill tree, and the class screen has a Relaxed switch for a gentler rift.</p>` : ''}
         <div class="over-score">
           <div class="score-num" id="scoreNum">0</div>
           <div class="score-tags">
             ${res.unlockedDepth ? `<span class="tag gold">${ico('key', 14)} Rift Depth ${res.unlockedDepth} unlocked</span>` : ''}
-            ${res.best ? `<span class="tag gold">${G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
+            ${res.unlockedClass ? `<span class="tag gold">${ico(CLASS_ICON[res.unlockedClass], 14)} ${D.CLASSES[res.unlockedClass].name} unlocked</span>` : ''}
+            ${res.mastery && res.mastery.up ? `<span class="tag gold">${ico('star', 14)} ${c.name} mastery ${res.mastery.rank}</span>` : res.mastery ? `<span class="tag">${ico('star', 14)} +${res.mastery.gained} mastery</span>` : ''}
+            ${res.best ? `<span class="tag gold">${G.rush ? 'Your fastest clear' : G.daily ? 'Your best today' : 'New best score'}</span>` : ''}
+            ${G.rush ? `<span class="tag">${ico('swords', 14)} Boss rush</span>` : ''}
+            ${G.relaxed ? `<span class="tag">${ico('feather', 14)} Relaxed, score ×0.6, off the leaderboard</span>` : ''}
             ${G.daily ? `<span class="tag">${ico('timer', 14)} Daily rift, ${esc(D.MUTATORS[G.rules.mutator].name)}</span>` : ''}
             ${G.depth ? `<span class="tag">${ico('vortex', 14)} Depth ${G.depth}, score ×${D.depthScore(G.depth).toFixed(2)}</span>` : ''}
             ${res.rank && !G.daily ? `<span class="tag" id="overRank">Rank ${res.rank} on this device</span>` : ''}
             <span class="tag world" id="overWorld" hidden></span>
-            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' : ''}</span>
+            <span class="tag ess">${ico('essence', 14)} +${U.fmtNum(res.essence)} Essence${res.firstDaily ? ', doubled for your first daily' + (res.streak > 1 ? ` and ${Math.min(50, 10 * (res.streak - 1))}% more for a ${res.streak}-day streak` : '') : ''}</span>
           </div>
         </div>
+        ${res.feats && res.feats.length ? `<section class="over-feats"><h3>Feats earned <small>+${U.fmtNum(res.feats.reduce((n, id) => n + PS.Feats.BY_ID[id].essence, 0))} Essence</small></h3>
+          <div class="chips">${res.feats.map((id) => { const f = PS.Feats.BY_ID[id]; return `<span class="chip feat-chip" data-tip="${esc(f.text)}">${ico(f.icon, 15)} ${esc(f.name)} <em>+${f.essence}</em></span>`; }).join('')}</div></section>` : ''}
         <div class="over-grid">
           <dl class="over-stats">
             <div><dt>Class</dt><dd style="color:${c.color}">${c.name}</dd></div>
@@ -826,7 +1112,18 @@
             <h3>Reactions set off</h3>
             ${rx.length ? `<div class="chips">${rx.map(([name, n]) => `<span class="chip"><i class="dot" style="background:${elColor(srcEl(name))}"></i>${esc(name)} <em>${U.fmtNum(n)}</em></span>`).join('')}</div>`
               : '<p class="muted">None. Skills of two different elements react when both hit the same enemy.</p>'}
-            <p class="muted seed">Seed ${esc(G.seed)}</p>
+            ${(() => {
+              const p = G.player, bits = [];
+              if (G.sigil) bits.push(`<span class="chip" data-tip="${esc(D.SIGILS[G.sigil].text)}">${ico(D.SIGILS[G.sigil].icon, 15)} ${esc(D.SIGILS[G.sigil].name)}</span>`);
+              for (const id of p.pacts) bits.push(`<span class="chip pact" data-tip="${esc(D.PACTS[id].gift)}<br><span class='off'>${esc(D.PACTS[id].price)}</span>">${ico(D.PACTS[id].icon, 15)} ${esc(D.PACTS[id].name)}</span>`);
+              if (G.breaches || G.breachesLost) bits.push(`<span class="chip">${ico('rift', 15)} Breaches sealed <em>${G.breaches}</em>${G.breachesLost ? ` of ${G.breaches + G.breachesLost}` : ''}</span>`);
+              if (G.hoarders) bits.push(`<span class="chip">${ico('coin', 15)} Hoarders caught <em>${G.hoarders}</em></span>`);
+              if (G.forged) bits.push(`<span class="chip">${ico('anvil', 15)} Skills tempered <em>${G.forged}</em></span>`);
+              if (G.bought) bits.push(`<span class="chip">${ico('coin', 15)} Bought from the merchant <em>${G.bought}</em></span>`);
+              if (G.tides) bits.push(`<span class="chip">${ico('moon', 15)} Tides weathered <em>${G.tides}</em></span>`);
+              return bits.length ? `<h3 class="over-sub">Along the way</h3><div class="chips">${bits.join('')}</div>` : '';
+            })()}
+            <p class="muted seed">Seed <span class="seed-text">${esc(G.seed)}</span> <button class="btn btn-small btn-ghost" id="overCopySeed" type="button">Copy</button> <button class="btn btn-small btn-ghost" id="overShare" type="button">Copy a summary</button></p>
           </div>
         </div>
         <div class="over-name">
@@ -841,6 +1138,19 @@
         </div>`;
       $('ovOver').hidden = false;
       this.runChart($('overChart'), G);
+      const cp = $('overCopySeed');
+      if (cp) cp.addEventListener('click', () => {
+        const done = () => { cp.textContent = 'Copied'; };
+        try { navigator.clipboard.writeText(String(G.seed)).then(done, () => { cp.textContent = 'Select and copy'; }); } catch (e) { cp.textContent = 'Select and copy'; }
+      });
+      const sh = $('overShare');
+      if (sh) sh.addEventListener('click', () => {
+        // one line a friend can read, with the seed to try it themselves
+        const mode = G.rush ? 'boss rush' : G.daily ? 'daily rift ' + G.daily : G.relaxed ? 'relaxed' : G.depth ? 'depth ' + G.depth : '';
+        const text = `Powerscaling: ${c.name}${mode ? ' (' + mode + ')' : ''}, ${r.score.toLocaleString('en-US')} points, ${r.won ? 'slew the Rift Lord' : 'fell'} at ${U.fmtTime(r.time)}, level ${r.level}. Build: ${(r.build || []).slice(0, 3).join(', ')}.${G.daily ? '' : ' Seed ' + G.seed + '.'}`;
+        const done = () => { sh.textContent = 'Copied'; };
+        try { navigator.clipboard.writeText(text).then(done, () => { sh.textContent = 'Could not copy'; }); } catch (e) { sh.textContent = 'Could not copy'; }
+      });
       const all = $('overDmgAll');
       if (all) click(all, () => { $('overDmg').innerHTML = this.dmgBars(G, 99); all.remove(); });
       // count the score up
@@ -985,6 +1295,7 @@
         if (btn === 'left' || btn === 'right') { padCard = (padCard + (btn === 'left' ? n - 1 : 1)) % n; this.renderCards(); PS.Audio.play('uiHover'); }
         else if (btn === 'a') this.pickCard(padCard);
         else if (btn === 'y' && curSpec.kind === 'level') this.rerollCards();
+        else if (btn === 'b' && (curSpec.kind === 'pact' || curSpec.kind === 'shop') && performance.now() - choiceAt > 600) PS.Game.choose(curSpec, null); // walk away, but not on the Ward press that was already on its way
         else if (btn === 'x' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'paused') {
         if (btn === 'b' || btn === 'a') PS.Game.resume();
@@ -992,8 +1303,23 @@
         if (btn === 'a') PS.Game.again();
         else if (btn === 'b') PS.Game.toMenu();
       } else if (st === 'menu') {
-        if (lastScreen === 'scrTitle') { if (btn === 'a') this.showScreen('scrClass'); else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard'); }
+        if (lastScreen === 'scrTitle') {
+          // up and down walk the menu, A opens the row in focus; X and Y stay as shortcuts
+          const rows = [...document.querySelectorAll('#scrTitle .mainnav button')];
+          if (btn === 'up' || btn === 'down') {
+            padNav = (padNav + (btn === 'up' ? rows.length - 1 : 1)) % rows.length;
+            rows.forEach((r, i) => r.classList.toggle('pad-focus', i === padNav));
+            PS.Audio.play('uiHover');
+          } else if (btn === 'a') rows[padNav].click();
+          else if (btn === 'x') this.showScreen('scrTree'); else if (btn === 'y') this.showScreen('scrBoard');
+        }
         else if (btn === 'b') this.showScreen('scrTitle');
+        else if ((lastScreen === 'scrCodex' || lastScreen === 'scrBoard') && (btn === 'left' || btn === 'right')) {
+          const tabs = [...document.querySelectorAll(`#${lastScreen} .tab`)], i = tabs.findIndex((t) => t.classList.contains('sel'));
+          if (tabs.length) tabs[(i + (btn === 'left' ? tabs.length - 1 : 1)) % tabs.length].click();
+        } else if (btn === 'up' || btn === 'down') {
+          document.getElementById('screens').scrollBy({ top: btn === 'up' ? -260 : 260, behavior: 'smooth' });
+        }
         else if (lastScreen === 'scrClass') {
           const ids = D.CLASS_IDS, i = ids.indexOf(selClass);
           if (btn === 'left' || btn === 'right') { selClass = ids[(i + (btn === 'left' ? ids.length - 1 : 1)) % ids.length]; this.renderClasses(); PS.Audio.play('uiHover'); }
@@ -1008,19 +1334,20 @@
     },
 
     /* ================================================================ keys */
-    onEscape() {
+    /** esc: true for the Escape key itself (P and a pad's Start pause and resume, but never dismiss an offer) */
+    onEscape(esc) {
       const st = PS.Game.state;
       if (!$('ovSettings').hidden) { $('ovSettings').hidden = true; return; }
       if (st === 'play') PS.Game.pause();
       else if (st === 'paused') PS.Game.resume();
+      else if (esc && st === 'choice' && curSpec && (curSpec.kind === 'pact' || curSpec.kind === 'shop') && performance.now() - choiceAt > 600) PS.Game.choose(curSpec, null); // walk away
       else if (st === 'menu' && lastScreen !== 'scrTitle') this.showScreen('scrTitle');
     },
     onKey(code) {
       const st = PS.Game.state;
       if (st === 'choice' && curSpec) {
-        if (code === 'Digit1' || code === 'Numpad1') this.pickCard(0);
-        else if (code === 'Digit2' || code === 'Numpad2') this.pickCard(1);
-        else if (code === 'Digit3' || code === 'Numpad3') this.pickCard(2);
+        const dg = /^(?:Digit|Numpad)([1-9])$/.exec(code);
+        if (dg) this.pickCard(+dg[1] - 1); // a forge can lay out one card per skill
         else if (code === 'KeyR' && curSpec.kind === 'level') this.rerollCards();
         else if (code === 'KeyB' && curSpec.kind === 'level' && PS.G.player.banishes > 0) { banishMode = !banishMode; this.renderCards(); }
       } else if (st === 'over' && code === 'Enter' && (!document.activeElement || document.activeElement === document.body)) {
