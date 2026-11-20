@@ -676,6 +676,7 @@
         ${tog('autoAim', 'Auto-aim', 'Attacks target the nearest enemy instead of where you point')}
         ${tog('autoFire', 'Auto-attack', 'Attack continuously without holding a button')}
         ${tog('heroBars', 'Hero bars', 'Health and dash charges shown under your hero')}
+        <div class="set-row"><span><b>Calmer screen</b><small>One switch for a quieter fight: subtle own effects, numbers for critical hits only, no screen shake or flashes. Each can still be set on its own below</small></span><button class="btn btn-small" data-calm type="button">${s.subtleFx && !s.shake && s.flash === false && s.dmgNums === 'crits' ? 'Restore defaults' : 'Make it calmer'}</button></div>
         ${tog('shake', 'Screen shake', 'Camera shake on impacts')}
         <label class="set-row"><span><b>Danger colour</b><small>The colour of everything that can hurt you. Change it if red is hard to tell from your own effects</small></span>
           <select data-danger>${[['red', 'Red'], ['pink', 'Pink'], ['white', 'White']].map(([v, l]) => `<option value="${v}"${(s.danger || 'red') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -699,6 +700,13 @@
       });
       const nm = root.querySelector('[data-name]');
       nm.addEventListener('input', () => { d.name = nm.value.trim().slice(0, 14); PS.Save.save(); });
+      const calm = root.querySelector('[data-calm]');
+      calm.addEventListener('click', () => {
+        const on = !(s.subtleFx && !s.shake && s.flash === false && s.dmgNums === 'crits');
+        s.subtleFx = on; s.shake = !on; s.flash = !on; s.dmgNums = on ? 'crits' : 'all';
+        PS.Save.save(); PS.Audio.play('uiClick', { vol: 0.5 });
+        this.renderSettings(root);
+      });
       const dn = root.querySelector('[data-dmgnums]');
       dn.addEventListener('change', () => { s.dmgNums = dn.value; PS.Save.save(); });
       const dg = root.querySelector('[data-danger]');
