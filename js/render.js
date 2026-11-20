@@ -792,7 +792,8 @@
         ctx.globalCompositeOperation = 'source-over';
         drawChest(k.x, k.y + bob, boss ? 1.25 : 1, boss);
       } else {
-        const col = k.kind === 'heal' ? '#ff5a7a' : k.kind === 'magnet' ? '#8ad1ff' : '#ffffff';
+        // health is green on the field: red is the rift's, and a red orb this size would read as a bullet
+        const col = k.kind === 'heal' ? '#7dffa0' : k.kind === 'magnet' ? '#8ad1ff' : '#ffffff';
         ctx.globalCompositeOperation = 'lighter';
         drawGlow(k.x, k.y, 30, col, 0.5);
         ctx.globalCompositeOperation = 'source-over';
@@ -1430,7 +1431,7 @@
         else if (d < md) { md = d; mag = k; }
       }
     }
-    if (heal && p.hp < p.stats.maxHp * 0.65) mark(heal.x, heal.y, '#ff5a7a', 'heart');
+    if (heal && p.hp < p.stats.maxHp * 0.65) mark(heal.x, heal.y, '#7dffa0', 'heart');
     if (mag) mark(mag.x, mag.y, '#8ad1ff', 'magnet');
     if (G.boss) mark(G.boss.x, G.boss.y, '#ff4d6d', 'skull');
     for (const e of G.enemies) if (e.elite) mark(e.x, e.y, '#ff9a4d', 'skull');
