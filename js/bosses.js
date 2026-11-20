@@ -431,6 +431,7 @@
       G.bossesKilled++;
       if (G.dmgTaken === e.hurtAt) G.flawless++;
       G.bossLog.push({ name: e.def.name, at: Math.round(e.bornAt), took: Math.round(G.time - e.bornAt) });
+      PS.Director.quietT = Math.max(PS.Director.quietT, 7); // let the kill land before the map starts talking again
       G.eprojs.length = 0;
       for (const h of G.hazards) if (h.owner === e) h.dead = true;
       for (const k of G.pickups) if (k.kind === 'xp' || k.kind === 'gold') k.pull = true; // the spoils come to you

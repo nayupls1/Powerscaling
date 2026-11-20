@@ -75,6 +75,7 @@
       this.breach = null;  // the breach being fought, if any
       this.breachN = 0;    // breaches woken so far: the first is always a swarm
       this.tideT = 200; this.tide = null; this.tideLeft = 0; this.lastTide = ''; this.guardedAt = 0;
+      this.quietT = 0; // a gap after each map event, so the ones a boss held back do not all arrive in one breath
       this.tideN = 0; this.hoarderN = 0; this.guardN = 0; this.eliteN = 0; // how many of each so far: they name the RNG.side draws // rift tides: see Data.TIDES
       this.hoarderT = 140; this.hoarder = null; // a Hoarder now and then: gold and a relic, if it is caught
       this.chestCost = 35;
@@ -262,8 +263,11 @@
         }
       }
       // a dark altar now and then, and a breach to fight over; neither while a boss holds the field
+      if (this.quietT > 0) this.quietT -= dt;
+      const quiet = bossAlive || this.quietT > 0;
       this.altarT -= dt;
-      if (this.altarT <= 0 && !bossAlive) {
+      if (this.altarT <= 0 && !quiet) {
+        this.quietT = 9;
         this.altarT = 150;
         if (!G.props.some((x) => x.kind === 'altar') && p.pacts.length < Object.keys(PS.Data.PACTS).length) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
@@ -273,7 +277,8 @@
         }
       }
       this.forgeT -= dt;
-      if (this.forgeT <= 0 && !bossAlive) {
+      if (this.forgeT <= 0 && !quiet && this.quietT <= 0) {
+        this.quietT = 9;
         this.forgeT = 190;
         if (!G.props.some((x) => x.kind === 'forge') && p.skills.length > 1) {
           const a = U.rnd() * TAU, d = U.rand(560, 820);
@@ -283,7 +288,8 @@
         }
       }
       this.breachT -= dt;
-      if (this.breachT <= 0 && !bossAlive) {
+      if (this.breachT <= 0 && !quiet && this.quietT <= 0) {
+        this.quietT = 9;
         this.breachT = (G.sigilBreach ? 58 : 115) * G.rules.breachEvery;
         if (!G.props.some((x) => x.kind === 'breach')) {
           const a = U.rnd() * TAU, d = U.rand(520, 760);
@@ -298,7 +304,8 @@
         if (this.tideLeft <= 0) { PS.UI.toast(this.tide.name + ' passes', this.tide.icon); this.tide = null; }
       } else {
         this.tideT -= dt;
-        if (this.tideT <= 0 && !bossAlive) {
+        if (this.tideT <= 0 && !quiet && this.quietT <= 0) {
+          this.quietT = 9;
           const SD = PS.RNG.side('tide' + this.tideN++);
           this.tideT = 150 + SD() * 60;
           const T = PS.Data.TIDES, ids = Object.keys(T).filter((id) => id !== this.lastTide);
@@ -315,7 +322,8 @@
         }
       }
       this.hoarderT -= dt;
-      if (this.hoarderT <= 0 && !bossAlive) {
+      if (this.hoarderT <= 0 && !quiet && this.quietT <= 0) {
+        this.quietT = 9;
         this.hoarderT = (150 + PS.RNG.side('hoarder' + this.hoarderN++)() * 60) * G.rules.hoarderEvery;
         const a = U.rnd() * TAU, d = Math.min(G.viewW, G.viewH) * 0.36;
         const x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d;

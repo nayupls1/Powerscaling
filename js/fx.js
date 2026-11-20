@@ -185,9 +185,11 @@
       budget += 320;
       burst(x, y, 110, col, 560, 1.2, 7, STREAK);
       burst(x, y, 50, '#ffffff', 380, 0.9, 5);
-      for (let i = 0; i < 4; i++) rings.push({ x, y, r: 200 + i * 130, life: 0.5 + i * 0.15, max: 0.5 + i * 0.15, color: col, w: 8 });
+      // the rings and rays of a kill are gold whatever the boss: a red boss must not ring the hero in the colour of danger
+      const win = '#ffe2a6';
+      for (let i = 0; i < 4; i++) rings.push({ x, y, r: 200 + i * 130, life: 0.5 + i * 0.15, max: 0.5 + i * 0.15, color: win, w: 8 });
       booms.push({ x, y, r: 320, life: 0.6, max: 0.6, color: col, big: true });
-      FX.rays(x, y, 460, col, 14, 1.1);
+      FX.rays(x, y, 460, win, 14, 1.1);
       flares.push({ x, y, r: e.r * 5, color: '#ffffff', life: 0.4, max: 0.4 });
       decals.push({ x, y, r: e.r * 3.6, color: col, life: 7, max: 7 });
       FX.fallen = { e, x, y, life: 0.9, max: 0.9, painted: false };
