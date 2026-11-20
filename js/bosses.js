@@ -346,7 +346,7 @@
       const G = PS.G, def = BOSSES[idx];
       const pos = PS.Director.ringPos(-30);
       // boss health is a multiple of the horde's current toughness, so fights stay a similar length all run
-      const hpMult = PS.Director.hpMult() * G.rules.bossHp * (endlessK ? (BOSSES[3].hp / def.hp) * 1.15 : 1);
+      const hpMult = PS.Director.hpMult(true) * G.rules.bossHp * (endlessK ? (BOSSES[3].hp / def.hp) * 1.15 : 1);
       const e = PS.Enemies.spawn(def, pos.x, pos.y, { hpMult });
       const dm = PS.Director.dmgMult();
       e.atk = def.atk * dm * (endlessK ? 1.15 : 1);

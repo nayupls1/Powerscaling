@@ -18,6 +18,8 @@
     essence: 0,
     essenceTotal: 0,
     tree: {},            // nodeId -> rank
+    treeV: 2,            // which build of the skill tree `tree` was bought in (Data.TREE_VERSION)
+    treeRefund: false,   // the tree was rebuilt and its Essence refunded: the tree screen says so once
     unlocked: { vanguard: true, pyromancer: true, ranger: true },
     lastClass: 'vanguard',
     settings: { sfx: 0.7, music: 0.45, shake: true, flash: true, subtleFx: false, danger: 'red', dmgNums: true, heroBars: true, quality: 'auto' },
@@ -38,6 +40,19 @@
     updatedAt: 0,        // ms, bumped on every save(); decides which copy wins when syncing with the server
   });
 
+  // what the first skill tree (before TREE_VERSION 2) charged: base cost per node, each rank 55% dearer than the first
+  const V1_COSTS = { m1: 20, m2: 35, m3: 35, m4: 60, m5: 60, m6: 90, m7: 400, v1: 20, v2: 35, v3: 35, v4: 60, v5: 60, v6: 90, v7: 400,
+    f1: 20, f2: 35, f3: 35, f4: 60, f5: 80, f6: 90, f7: 400, a1: 20, a2: 40, a3: 40, a4: 60, a5: 120, a6: 150, a7: 400, x1: 150, x2: 500, x3: 150, x4: 150 };
+  const V1_MAX = { m1: 5, m2: 5, m3: 5, m4: 3, m5: 3, m6: 3, m7: 1, v1: 5, v2: 5, v3: 5, v4: 3, v5: 3, v6: 2, v7: 1,
+    f1: 5, f2: 5, f3: 5, f4: 3, f5: 2, f6: 3, f7: 1, a1: 5, a2: 3, a3: 4, a4: 3, a5: 2, a6: 1, a7: 1, x1: 3, x2: 1, x3: 3, x4: 3 };
+  function treeV1Spent(tree) {
+    let sum = 0;
+    for (const id in V1_COSTS) {
+      const r = Math.max(0, Math.min(V1_MAX[id], Math.floor(Number(tree[id]) || 0)));
+      for (let i = 0; i < r; i++) sum += Math.round(V1_COSTS[id] * (1 + 0.55 * i));
+    }
+    return sum;
+  }
   const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
   const num = (v) => typeof v === 'number' && isFinite(v);
 
@@ -56,6 +71,15 @@
     if (!num(out.essenceTotal)) out.essenceTotal = 0;
     if (typeof out.name !== 'string') out.name = '';
     out.tree = obj(d.tree);
+    // the skill tree was rebuilt: a save from an older tree gets back everything it spent, to spend again
+    const TV = PS.Data ? PS.Data.TREE_VERSION : 0;
+    if (TV && d.treeV !== TV) {
+      const back = !num(d.treeV) || d.treeV < 2 ? treeV1Spent(out.tree) : 0;
+      out.essence += back;
+      out.tree = {};
+      out.treeV = TV;
+      out.treeRefund = back > 0; // the tree screen says so once
+    }
     out.feats = obj(d.feats);
     out.rush = obj(d.rush);
     out.mastery = obj(d.mastery);

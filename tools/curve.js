@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Power-curve report: plays many headless runs with the bot and averages, per time bucket, how strong the hero is relative to the rift.
-   Usage: node tools/curve.js [class|all] [minutes] [runs per class] [--sloppy] [--tree=full|half|arm:might|m1,m2|-a5] [--bucket=60] [--workers=4] [--json=out.json]
+   Usage: node tools/curve.js [class|all] [minutes] [runs per class] [--sloppy] [--tree=full|half|spend:3000|arm:might|m1,m2|-a5] [--bucket=60] [--workers=4] [--json=out.json]
      [--seed=abc] [--depth=3] [--mutator=flux] [--noreact]
    With --seed every run gets its own seed derived from it (seed:class:run), so the whole report is reproducible.
 
@@ -76,9 +76,10 @@ async function runOne({ cls, minutes, flags, bucket, r }) {
   const S = PS.Save.data;
   S.unlocked.reaper = true;
   S.tree = {};
-  // --tree=full | half | arm:<might|vitality|fortune|mastery> | <node id>,<node id>... (maxed) | -<node id>,... (full tree minus those)
+  // --tree=full | half | spend:<Essence> (bought cheapest-first) | arm:<might|vitality|fortune|mastery> | <node id>,<node id>... (maxed) | -<node id>,... (full tree minus those)
   const tree = String(flags.tree || '');
-  for (const n of PS.Data.META) {
+  if (tree.startsWith('spend:')) S.tree = PS.Data.metaGreedy(+tree.slice(6));
+  else for (const n of PS.Data.META) {
     if (tree === 'full') S.tree[n.id] = n.max;
     else if (tree === 'half') S.tree[n.id] = Math.floor(n.max / 2);
     else if (tree.startsWith('arm:')) S.tree[n.id] = tree.slice(4).split('+').includes(n.arm) ? n.max : 0;

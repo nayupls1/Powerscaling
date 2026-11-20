@@ -332,7 +332,7 @@
           <div class="kit"><span class="kit-ico" style="--c:#f0b94a">${ico(mut.icon, 26)}</span><div><b>${esc(mut.name)}</b><small>Today's mutator</small><p>${esc(mut.text)}</p></div></div>
           <ul class="rules">
             <li>Everyone plays the same seed: the same hordes and the same elites, in the same order.</li>
-            <li>Every hero gets the full skill tree, so the board compares play, not grind.</li>
+            <li>Every hero gets the same skill tree, ${U.fmtNum(D.DAILY_ESSENCE)} Essence of it whatever they own, so the board compares play, not grind.</li>
             <li>Play as often as you like. Your best run of the day counts.</li>
             <li>Your first run each day pays double Essence, and 10% more for every day in a row you have played, up to 50%.</li>
           </ul>
@@ -361,7 +361,7 @@
     renderTree() {
       const d = PS.Save.data, tree = d.tree;
       $('treeEssence').textContent = U.fmtNum(d.essence);
-      const SPAN = 6.9; // layout units from centre to edge
+      const SPAN = D.META_SPAN; // layout units from centre to edge
       const pos = (v) => (50 + (v / SPAN) * 50).toFixed(2) + '%';
       let lines = '';
       for (const n of D.META) {
@@ -372,22 +372,47 @@
         }
       }
       const nodes = D.META.map((n) => {
-        const rank = tree[n.id] || 0, open = this.nodeOpen(n), cost = D.metaCost(n, rank);
+        const rank = Math.min(n.max, tree[n.id] || 0), open = this.nodeOpen(n), cost = D.metaCost(n, rank);
         const cls = rank >= n.max ? 'max' : rank > 0 ? 'own' : open ? (d.essence >= cost ? 'can' : 'open') : 'locked';
-        return `<button class="tnode ${cls}${n.id === selNode ? ' sel' : ''}${n.max === 1 && n.cost >= 400 ? ' cap' : ''}" data-node="${n.id}" style="left:${pos(n.x)};top:${pos(n.y)};--c:${D.META_ARMS[n.arm].color}" aria-label="${esc(n.name)}">
+        return `<button class="tnode ${cls}${n.id === selNode ? ' sel' : ''}${n.gate ? ' cap' : ''}" data-node="${n.id}" style="left:${pos(n.x)};top:${pos(n.y)};--c:${D.META_ARMS[n.arm].color}" aria-label="${esc(n.name)}">
           ${ico(n.icon, 24)}<span class="trank">${rank}/${n.max}</span></button>`;
       }).join('');
-      $('treeCanvas').innerHTML = `
+      const canvas = $('treeCanvas'), first = !canvas.firstElementChild;
+      const keep = { x: canvas.scrollLeft, y: canvas.scrollTop };
+      canvas.innerHTML = `
         <div class="tree-square">
           <svg viewBox="${-SPAN} ${-SPAN} ${SPAN * 2} ${SPAN * 2}" class="tree-lines" aria-hidden="true">${lines}</svg>
           <div class="tcore" style="left:50%;top:50%">${ico('essence', 30)}</div>
           ${Object.keys(D.META_ARMS).map((k) => {
             const a = D.META_ARMS[k];
-            const p = { might: [0, -6.75], vitality: [-5.4, -2.0], fortune: [5.4, -2.0], mastery: [0, 6.75] }[k];
+            const p = { might: [-2.6, -12.4], vitality: [-12.4, -2.0], fortune: [12.4, -2.0], mastery: [-2.6, 12.4] }[k];
             return `<span class="tarm" style="left:${pos(p[0])};top:${pos(p[1])};color:${a.color}">${a.name}</span>`;
           }).join('')}
           ${nodes}
         </div>`;
+      // the tree is larger than the screen: open on the core, and keep the view where it was when a purchase redraws it
+      if (first) { canvas.scrollLeft = (canvas.scrollWidth - canvas.clientWidth) / 2; canvas.scrollTop = (canvas.scrollHeight - canvas.clientHeight) / 2; }
+      else {
+        canvas.scrollLeft = keep.x; canvas.scrollTop = keep.y;
+        const sel = canvas.querySelector('.tnode.sel'); // a gamepad steps through nodes that may be off screen
+        if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+      if (!canvas.dataset.pan) {
+        // drag the empty canvas to pan, as on a map
+        canvas.dataset.pan = '1';
+        let drag = null;
+        canvas.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'touch' || e.button !== 0 || e.target.closest('.tnode')) return;
+          drag = { x: e.clientX, y: e.clientY, sl: canvas.scrollLeft, st: canvas.scrollTop };
+          canvas.classList.add('panning');
+        });
+        window.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          canvas.scrollLeft = drag.sl - (e.clientX - drag.x);
+          canvas.scrollTop = drag.st - (e.clientY - drag.y);
+        });
+        window.addEventListener('pointerup', () => { drag = null; canvas.classList.remove('panning'); });
+      }
       $('treeCanvas').querySelectorAll('.tnode').forEach((b) => {
         b.addEventListener('click', () => {
           if (selNode === b.dataset.node) this.buyNode(selNode);
@@ -397,11 +422,12 @@
       this.renderTreeInfo();
     },
     renderTreeInfo() {
-      const d = PS.Save.data, n = D.META_BY_ID[selNode], rank = d.tree[n.id] || 0;
+      const d = PS.Save.data, n = D.META_BY_ID[selNode], rank = Math.min(n.max, d.tree[n.id] || 0);
       const open = this.nodeOpen(n), cost = D.metaCost(n, rank), maxed = rank >= n.max;
       const arm = D.META_ARMS[n.arm];
-      const spent = D.META.reduce((sum, m) => { let s = 0; for (let i = 0; i < (d.tree[m.id] || 0); i++) s += D.metaCost(m, i); return sum + s; }, 0);
+      const spent = D.metaSpent(d.tree), whole = D.metaSpent(Object.fromEntries(D.META.map((m) => [m.id, m.max])));
       $('treeInfo').innerHTML = `
+        ${d.treeRefund ? `<p class="hint">${ico('essence', 14)} The skill tree has been rebuilt, far deeper than before. Everything you had spent on it is back in your Essence to spend again.</p>` : ''}
         <div class="ti-head" style="--c:${arm.color}">
           <span class="ti-ico">${ico(n.icon, 30)}</span>
           <div><h3>${n.name}</h3><small style="color:${arm.color}">${arm.name}, rank ${rank} of ${n.max}</small></div>
@@ -414,6 +440,8 @@
           : !open ? `<p class="ti-note">Locked. Buy a connected upgrade first.</p>`
           : `<button class="btn btn-primary btn-big" id="btnBuy" ${d.essence < cost ? 'disabled' : ''}>${d.essence < cost ? `Need ${U.fmtNum(cost - d.essence)} more Essence` : `Buy for ${U.fmtNum(cost)} Essence`}</button>`}
         <p class="ti-foot">Essence is earned at the end of every run, win or lose. Upgrades are permanent and apply to every class.</p>
+        <div class="ti-progress"><span style="width:${((100 * spent) / whole).toFixed(1)}%"></span></div>
+        <p class="ti-foot">${U.fmtNum(spent)} of ${U.fmtNum(whole)} Essence spent on the tree (${((100 * spent) / whole).toFixed(1)}%). Drag the tree to see all of it.</p>
         ${spent > 0 ? `<button class="btn btn-ghost" id="btnRefund">Refund all (${U.fmtNum(spent)} Essence)</button>` : ''}`;
       const buy = $('btnBuy');
       if (buy) buy.addEventListener('click', () => this.buyNode(n.id));
@@ -424,10 +452,11 @@
       });
     },
     buyNode(id) {
-      const d = PS.Save.data, n = D.META_BY_ID[id], rank = d.tree[id] || 0, cost = D.metaCost(n, rank);
+      const d = PS.Save.data, n = D.META_BY_ID[id], rank = Math.min(n.max, d.tree[id] || 0), cost = D.metaCost(n, rank);
       if (rank >= n.max || !this.nodeOpen(n) || d.essence < cost) { PS.Audio.play('deny', { vol: 0.5 }); return; }
       d.essence -= cost;
       d.tree[id] = rank + 1;
+      d.treeRefund = false;
       PS.Save.save();
       PS.Audio.play('buy');
       this.renderTree();
@@ -662,7 +691,7 @@
           <h3>Going deeper</h3>
           <p>Slay the Rift Lord and Rift Depth 1 opens. Each depth adds one modifier on top of the ones before it, hardens the horde a little more (${Math.round((D.DEPTH_HP - 1) * 100)}% health and ${Math.round((D.DEPTH_DMG - 1) * 100)}% damage a depth), and multiplies your score and Essence. Win at your deepest depth to open the next; there are ${D.DEPTH_MAX}.</p>
           <ul class="rxs">${D.DEPTHS.map((m, i) => `<li><span class="rx-els"><i style="--c:#9b6bff">${i + 1}</i></span><b>${m.name}</b><span>${m.text}</span></li>`).join('')}</ul>
-          <p>The daily rift is one seed a day, the same for everyone: a set class, a mutator that bends the rules, and the full skill tree for every hero. Your best run of the day goes on the daily board.</p>
+          <p>The daily rift is one seed a day, the same for everyone: a set class, a mutator that bends the rules, and the same lent skill tree for every hero. Your best run of the day goes on the daily board.</p>
         </div>`;
     },
 
@@ -1033,7 +1062,7 @@
       const mut = G.rules.mutator && D.MUTATORS[G.rules.mutator];
       const mods = mut ? [mut] : D.DEPTHS.slice(0, G.depth);
       const pct = (v) => '+' + Math.round((v - 1) * 100) + '%';
-      return `${G.daily ? `<p class="muted">Daily rift for ${G.daily}. Everyone has the full skill tree.</p>` : G.depth ? `<p class="muted">Depth ${G.depth}: score ×${D.depthScore(G.depth).toFixed(2)}. In all, the horde has ${pct(G.rules.hp)} health and hits ${pct(G.rules.dmg)} harder.</p>` : ''}
+      return `${G.daily ? `<p class="muted">Daily rift for ${G.daily}. Everyone has the same lent skill tree.</p>` : G.depth ? `<p class="muted">Depth ${G.depth}: score ×${D.depthScore(G.depth).toFixed(2)}. In all, the horde has ${pct(G.rules.hp)} health and hits ${pct(G.rules.dmg)} harder.</p>` : ''}
         ${mods.length ? `<ul class="mods">${mods.map((m) => `<li>${ico(m.icon, 15)}<b>${esc(m.name)}</b><span>${esc(m.text)}</span></li>`).join('')}</ul>` : ''}
         ${PS.Director.tide ? `<ul class="mods"><li style="color:${PS.Director.tide.color}">${ico(PS.Director.tide.icon, 15)}<b>${esc(PS.Director.tide.name)}, ${Math.ceil(PS.Director.tideLeft)}s left</b><span>${esc(PS.Director.tide.text)}</span></li></ul>` : ''}
         ${G.rush ? `<p class="muted">Boss rush: stage ${Math.min(G.rush.stage + 1, PS.Director.rushStages)} of ${PS.Director.rushStages}.</p>` : ''}

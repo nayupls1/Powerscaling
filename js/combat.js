@@ -241,7 +241,7 @@
     react(e, rx) {
       const G = PS.G, p = G.player, s = p.stats, area = s.area;
       const a = rx.els[0], b = rx.els[1], name = rx.name;
-      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react * (s.f.rxBoost ? 1.6 : 1);
+      const pw = (C.power(a) + C.power(b)) * 0.5 * RX_POWER * G.rules.react * (s.f.rxBoost ? 1.6 : 1) * (1 + (s.m.rxDmg || 0));
       const x = e.x, y = e.y;
       const hit = (el, extra) => Object.assign({ el, src: name, noProc: true }, extra);
       G.reactions[name] = (G.reactions[name] || 0) + 1;
